@@ -1,10 +1,17 @@
 [gd_scene format=3 uid="uid://cryd2b1lnjw3x"]
 
 [ext_resource type="Script" uid="uid://cghaa230a28" path="res://scenes/player/cat_controller.gd" id="1_u6cqk"]
+[ext_resource type="Texture2D" uid="uid://bw1xuw636yq36" path="res://icon.svg" id="2_m24ub"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_o5qli"]
+size = Vector2(90, 89)
 
 [node name="Cat" type="CharacterBody2D" unique_id=211071589]
 script = ExtResource("1_u6cqk")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=782726021]
+texture = ExtResource("2_m24ub")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=766384723]
+position = Vector2(35, 34.5)
+shape = SubResource("RectangleShape2D_o5qli")
