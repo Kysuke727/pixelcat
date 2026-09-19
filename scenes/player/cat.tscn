@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://cryd2b1lnjw3x"]
+
+[ext_resource type="Script" uid="uid://cghaa230a28" path="res://scenes/player/cat_controller.gd" id="1_u6cqk"]
+
+[node name="Cat" type="CharacterBody2D" unique_id=211071589]
+script = ExtResource("1_u6cqk")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=782726021]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=766384723]
