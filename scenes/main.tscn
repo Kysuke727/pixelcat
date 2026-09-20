@@ -14,10 +14,10 @@ position = Vector2(532, 322)
 shape = SubResource("RectangleShape2D_ab0bu")
 
 [node name="ColorRect" type="ColorRect" parent="wall" unique_id=1359269409]
-offset_left = 388.0
-offset_top = 301.0
-offset_right = 687.0
-offset_bottom = 342.0
+offset_left = 382.0
+offset_top = 290.0
+offset_right = 681.0
+offset_bottom = 331.0
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
 position = Vector2(300, 300)
