@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://b3ng00yahc8ce"]
 
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_o5qli"]
+[ext_resource type="AudioStream" uid="uid://b1ay67v5g0nyb" path="res://assets/audio/music/jingles_PIZZI00.ogg" id="2_0wfyh"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(300, 40)
@@ -21,3 +22,7 @@ offset_bottom = 331.0
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
 position = Vector2(300, 300)
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=281329646]
+stream = ExtResource("2_0wfyh")
+autoplay = true
