@@ -1,7 +1,8 @@
 extends CharacterBody2D
-
 const SPEED = 200.0
-
+@onready var animated_sprite = $AnimatedSprite2D
+func _ready():
+	animated_sprite.play("idle")
 func _physics_process(delta):
 	var direction = Input.get_vector(
 		"move_left",
