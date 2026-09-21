@@ -1,28 +1,80 @@
 [gd_scene format=3 uid="uid://b3ng00yahc8ce"]
 
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_o5qli"]
-[ext_resource type="AudioStream" uid="uid://b1ay67v5g0nyb" path="res://assets/audio/music/jingles_PIZZI00.ogg" id="2_0wfyh"]
+[ext_resource type="AudioStream" uid="uid://dr6e1bmiiopv6" path="res://assets/audio/music/井字棋.mp3" id="2_0wfyh"]
+[ext_resource type="AudioStream" uid="uid://1jpti8kaqad" path="res://assets/audio/sfx/click3.wav" id="3_sugp2"]
+[ext_resource type="PackedScene" uid="uid://b4tumclyonk3g" path="res://scenes/ui/ui_main.tscn" id="4_jyhfs"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
-size = Vector2(300, 40)
+size = Vector2(650, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sugp2"]
+size = Vector2(650, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(560, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tbgi4"]
+size = Vector2(560, 40)
 
 [node name="main" type="Node2D" unique_id=476113682]
 
-[node name="wall" type="StaticBody2D" parent="." unique_id=989804564]
+[node name="wall_top" type="StaticBody2D" parent="." unique_id=989804564]
+position = Vector2(251, 64)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="wall" unique_id=1035811832]
-position = Vector2(532, 322)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="wall_top" unique_id=1035811832]
+position = Vector2(325, 20)
 shape = SubResource("RectangleShape2D_ab0bu")
 
-[node name="ColorRect" type="ColorRect" parent="wall" unique_id=1359269409]
-offset_left = 382.0
-offset_top = 290.0
-offset_right = 681.0
-offset_bottom = 331.0
+[node name="ColorRect" type="ColorRect" parent="wall_top" unique_id=1359269409]
+offset_right = 650.0
+offset_bottom = 40.0
+
+[node name="wall_bottom" type="StaticBody2D" parent="." unique_id=477246396]
+position = Vector2(251, 64)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="wall_bottom" unique_id=1154689547]
+position = Vector2(325, 540)
+shape = SubResource("RectangleShape2D_sugp2")
+
+[node name="ColorRect" type="ColorRect" parent="wall_bottom" unique_id=302726785]
+offset_top = 520.0
+offset_right = 650.0
+offset_bottom = 560.0
+
+[node name="wall_left" type="StaticBody2D" parent="." unique_id=205439680]
+position = Vector2(250, 64)
+rotation = -4.712389
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="wall_left" unique_id=426964275]
+position = Vector2(280, 20)
+shape = SubResource("RectangleShape2D_jyhfs")
+
+[node name="ColorRect" type="ColorRect" parent="wall_left" unique_id=987396233]
+offset_right = 560.0
+offset_bottom = 40.0
+
+[node name="wall_right" type="StaticBody2D" parent="." unique_id=1595296588]
+position = Vector2(290, 64)
+rotation = 1.5707964
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="wall_right" unique_id=1945234643]
+position = Vector2(280, -630)
+shape = SubResource("RectangleShape2D_tbgi4")
+
+[node name="ColorRect" type="ColorRect" parent="wall_right" unique_id=947442112]
+offset_top = -650.0
+offset_right = 560.0
+offset_bottom = -610.0
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
-position = Vector2(300, 300)
+position = Vector2(593, 336)
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=281329646]
+[node name="BGMPlayer" type="AudioStreamPlayer" parent="." unique_id=281329646]
 stream = ExtResource("2_0wfyh")
 autoplay = true
+
+[node name="SFXPlayer" type="AudioStreamPlayer" parent="." unique_id=788282683]
+stream = ExtResource("3_sugp2")
+
+[node name="UI" parent="." unique_id=1590554557 instance=ExtResource("4_jyhfs")]

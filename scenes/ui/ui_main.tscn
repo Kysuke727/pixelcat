@@ -1,0 +1,57 @@
+[gd_scene format=3 uid="uid://b4tumclyonk3g"]
+
+[node name="UI" type="Control" unique_id=1590554557]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HungerLabel" type="Label" parent="." unique_id=476111044]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 60.0
+offset_bottom = 51.0
+text = "Hunger
+"
+
+[node name="HungerBar" type="ProgressBar" parent="." unique_id=132521301]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 1.0
+offset_right = 146.0
+offset_bottom = 28.0
+
+[node name="MoodLbel" type="Label" parent="." unique_id=1079891718]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 30.0
+offset_right = 51.0
+offset_bottom = 53.0
+text = "Mood"
+
+[node name="MoodBar" type="ProgressBar" parent="." unique_id=697432098]
+layout_mode = 0
+offset_left = 61.0
+offset_top = 29.0
+offset_right = 146.99997
+offset_bottom = 56.0
+value = 60.0
+
+[node name="EnergyLabel" type="Label" parent="." unique_id=1113187127]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 59.0
+offset_right = 57.0
+offset_bottom = 82.0
+text = "Energy"
+
+[node name="EnergyBar" type="ProgressBar" parent="." unique_id=2044419070]
+layout_mode = 0
+offset_left = 61.0
+offset_top = 57.0
+offset_right = 147.0
+offset_bottom = 84.0
+value = 90.0
