@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://cnkujbaypkhqj" path="res://assets/characters/cat/walk_left.png" id="5_go1w6"]
 [ext_resource type="Texture2D" uid="uid://co6wqujk8ui1l" path="res://assets/characters/cat/walk_right_temp.png" id="6_8pl4k"]
 [ext_resource type="Texture2D" uid="uid://dtk486wxgd3yj" path="res://assets/characters/cat/walk_up.png" id="7_pqgx7"]
+[ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scenes/player/cat_stats.gd" id="8_go1w6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o5qli"]
 size = Vector2(21, 15)
@@ -194,3 +195,6 @@ shape = SubResource("RectangleShape2D_o5qli")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1139835518]
 sprite_frames = SubResource("SpriteFrames_ab0bu")
 animation = &"walk_down"
+
+[node name="Stats" type="Node" parent="." unique_id=681362496]
+script = ExtResource("8_go1w6")

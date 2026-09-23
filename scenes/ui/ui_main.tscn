@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://b4tumclyonk3g"]
 
+[ext_resource type="Script" uid="uid://bxo7cb56ea8nf" path="res://scenes/ui/ui_main.gd" id="1_1pib8"]
+
 [node name="UI" type="Control" unique_id=1590554557]
 layout_mode = 3
 anchors_preset = 15
@@ -7,6 +9,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_1pib8")
 
 [node name="HungerLabel" type="Label" parent="." unique_id=476111044]
 layout_mode = 0
