@@ -78,3 +78,9 @@ autoplay = true
 stream = ExtResource("3_sugp2")
 
 [node name="UI" parent="." unique_id=1590554557 instance=ExtResource("4_jyhfs")]
+
+[node name="LeftBorder" type="ColorRect" parent="." unique_id=1755918080]
+offset_left = 210.0
+offset_top = 64.0
+offset_right = 252.0
+offset_bottom = 624.0
