@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://balg7vlwvktfq"]
+
+[ext_resource type="Script" uid="uid://dtonj74kkmofv" path="res://scripts/bed.gd" id="1_l7pu3"]
+[ext_resource type="Texture2D" uid="uid://bw1xuw636yq36" path="res://icon.svg" id="1_ndayx"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qe648"]
+radius = 59.0
+height = 163.94397
+
+[node name="Bed" type="Area2D" unique_id=152342307]
+script = ExtResource("1_l7pu3")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=827035290]
+position = Vector2(826.5, 402)
+scale = Vector2(0.8359375, 0.8125)
+texture = ExtResource("1_ndayx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=613681681]
+position = Vector2(824.99994, 401.99997)
+rotation = -1.5668786
+scale = Vector2(0.9201575, 1)
+shape = SubResource("CapsuleShape2D_qe648")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

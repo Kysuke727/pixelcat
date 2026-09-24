@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://cgpon5js3xast"]
+
+[ext_resource type="Script" uid="uid://bpixn60uokxjq" path="res://scripts/food_bowl.gd" id="1_enlq8"]
+[ext_resource type="Texture2D" uid="uid://bw1xuw636yq36" path="res://icon.svg" id="2_ccq3j"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ynyhv"]
+radius = 40.0
+
+[node name="Foodbowl" type="Area2D" unique_id=631572844]
+script = ExtResource("1_enlq8")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=219855261]
+position = Vector2(348.05002, 470.8)
+scale = Vector2(0.7648434, 0.70624983)
+texture = ExtResource("2_ccq3j")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1483240405]
+position = Vector2(348, 470)
+shape = SubResource("CircleShape2D_ynyhv")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

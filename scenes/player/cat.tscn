@@ -1,13 +1,13 @@
 [gd_scene format=3 uid="uid://cryd2b1lnjw3x"]
 
-[ext_resource type="Script" uid="uid://cghaa230a28" path="res://scenes/player/cat_controller.gd" id="1_u6cqk"]
+[ext_resource type="Script" uid="uid://cghaa230a28" path="res://scripts/cat_controller.gd" id="1_u6cqk"]
 [ext_resource type="Texture2D" uid="uid://cblwyhj6xjqy2" path="res://assets/characters/cat/first_cat.png" id="2_m24ub"]
 [ext_resource type="Texture2D" uid="uid://c2j8mx443qwxs" path="res://assets/characters/cat/idle_blink.png" id="3_fvnai"]
 [ext_resource type="Texture2D" uid="uid://ddcfj1ifrf8eu" path="res://assets/characters/cat/walk_down.png" id="4_s2nwn"]
 [ext_resource type="Texture2D" uid="uid://cnkujbaypkhqj" path="res://assets/characters/cat/walk_left.png" id="5_go1w6"]
 [ext_resource type="Texture2D" uid="uid://co6wqujk8ui1l" path="res://assets/characters/cat/walk_right_temp.png" id="6_8pl4k"]
 [ext_resource type="Texture2D" uid="uid://dtk486wxgd3yj" path="res://assets/characters/cat/walk_up.png" id="7_pqgx7"]
-[ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scenes/player/cat_stats.gd" id="8_go1w6"]
+[ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scripts/cat_stats.gd" id="8_go1w6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o5qli"]
 size = Vector2(21, 15)
