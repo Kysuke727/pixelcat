@@ -4,10 +4,8 @@
 [ext_resource type="AudioStream" uid="uid://dr6e1bmiiopv6" path="res://assets/audio/music/井字棋.mp3" id="2_0wfyh"]
 [ext_resource type="AudioStream" uid="uid://1jpti8kaqad" path="res://assets/audio/sfx/click3.wav" id="3_sugp2"]
 [ext_resource type="PackedScene" uid="uid://b4tumclyonk3g" path="res://scenes/ui/ui_main.tscn" id="4_jyhfs"]
-[ext_resource type="PackedScene" uid="uid://cgpon5js3xast" path="res://scenes/interactables/foodbowl.tscn" id="5_tbgi4"]
-[ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scripts/cat_stats.gd" id="5_tipki"]
-[ext_resource type="PackedScene" uid="uid://dj8kto7fttbet" path="res://scenes/interactables/toy.tscn" id="6_o6xl0"]
-[ext_resource type="PackedScene" uid="uid://balg7vlwvktfq" path="res://scenes/interactables/bed.tscn" id="7_tipki"]
+[ext_resource type="PackedScene" uid="uid://cgpon5js3xast" path="res://scenes/interactables/food_bowl.tscn" id="5_tbgi4"]
+f6cb2ce20f19dc9da300a2fa7649401d2f64d0a6
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -93,9 +91,13 @@ autoplay = true
 stream = ExtResource("3_sugp2")
 
 [node name="UI" parent="." unique_id=1590554557 instance=ExtResource("4_jyhfs")]
+metadata/_edit_use_anchors_ = true
 
 [node name="LeftBorder" type="ColorRect" parent="." unique_id=1755918080]
 offset_left = 210.0
 offset_top = 64.0
 offset_right = 252.0
 offset_bottom = 624.0
+
+[node name="FoodBowl" parent="." unique_id=1200830469 instance=ExtResource("5_tbgi4")]
+position = Vector2(635, 347)

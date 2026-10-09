@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://cgpon5js3xast"]
+
+[ext_resource type="Script" uid="uid://bpixn60uokxjq" path="res://scenes/interactables/food_bowl.gd" id="1_enlq8"]
+[ext_resource type="Texture2D" uid="uid://cvqe3hsvjnmmf" path="res://assets/objects/food_bowl.png" id="1_unlev"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_enlq8"]
+size = Vector2(22, 18)
+
+[node name="FoodBowl" type="Area2D" unique_id=1200830469]
+script = ExtResource("1_enlq8")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=111400127]
+position = Vector2(0, 4)
+scale = Vector2(0.525, 0.49)
+texture = ExtResource("1_unlev")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1543467456]
+position = Vector2(0, 1)
+shape = SubResource("RectangleShape2D_enlq8")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]
