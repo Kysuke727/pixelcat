@@ -5,7 +5,9 @@
 [ext_resource type="AudioStream" uid="uid://1jpti8kaqad" path="res://assets/audio/sfx/click3.wav" id="3_sugp2"]
 [ext_resource type="PackedScene" uid="uid://b4tumclyonk3g" path="res://scenes/ui/ui_main.tscn" id="4_jyhfs"]
 [ext_resource type="PackedScene" uid="uid://cgpon5js3xast" path="res://scenes/interactables/food_bowl.tscn" id="5_tbgi4"]
-f6cb2ce20f19dc9da300a2fa7649401d2f64d0a6
+[ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scripts/cat_stats.gd" id="5_tipki"]
+[ext_resource type="PackedScene" uid="uid://dj8kto7fttbet" path="res://scenes/interactables/toy.tscn" id="6_o6xl0"]
+[ext_resource type="PackedScene" uid="uid://balg7vlwvktfq" path="res://scenes/interactables/bed.tscn" id="7_tipki"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -75,7 +77,8 @@ offset_bottom = -610.0
 
 [node name="Bed" parent="World" unique_id=1388561695 instance=ExtResource("7_tipki")]
 
-[node name="Foodbowl" parent="World" unique_id=808035528 instance=ExtResource("5_tbgi4")]
+[node name="FoodBowl" parent="World" unique_id=808035528 instance=ExtResource("5_tbgi4")]
+position = Vector2(635, 347)
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
 position = Vector2(593, 336)
@@ -98,6 +101,3 @@ offset_left = 210.0
 offset_top = 64.0
 offset_right = 252.0
 offset_bottom = 624.0
-
-[node name="FoodBowl" parent="." unique_id=1200830469 instance=ExtResource("5_tbgi4")]
-position = Vector2(635, 347)

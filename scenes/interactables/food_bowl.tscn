@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cgpon5js3xast"]
 
-[ext_resource type="Script" uid="uid://bpixn60uokxjq" path="res://scenes/interactables/food_bowl.gd" id="1_enlq8"]
+[ext_resource type="Script" uid="uid://bpixn60uokxjq" path="res://scripts/food_bowl.gd" id="1_enlq8"]
 [ext_resource type="Texture2D" uid="uid://cvqe3hsvjnmmf" path="res://assets/objects/food_bowl.png" id="1_unlev"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_enlq8"]
