@@ -4,7 +4,7 @@ extends Control
 @onready var mood_bar = $MoodBar
 @onready var energy_bar = $EnergyBar
 
-@onready var stats = get_parent().get_node("Cat/Cat_stats")
+@onready var stats = get_parent().get_node("Cat/Stats")
 
 func _ready():
 	hunger_bar.max_value = 100

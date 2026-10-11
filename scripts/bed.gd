@@ -10,7 +10,7 @@ func _on_body_exited(body):
 		body.unregister_interactable(self)
 func interact():
 	if cat_nearby != null:
-		var stats = cat_nearby.get_node_or_null("Cat_stats")
+		var stats = cat_nearby.get_node_or_null("Stats")
 		if stats != null:
 			stats.add_energy(20)
 			print("睡觉")
