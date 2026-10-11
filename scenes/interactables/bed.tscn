@@ -22,3 +22,4 @@ scale = Vector2(0.9201575, 1)
 shape = SubResource("CapsuleShape2D_qe648")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]

@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
 const SPEED = 200.0
-
+var nearby_objects = []
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 
@@ -39,3 +39,24 @@ func update_animation(direction):
 			animated_sprite.play("walk_down")
 		else:
 			animated_sprite.play("walk_up")
+func register_interactable(object):
+	if not nearby_objects.has(object):
+		nearby_objects.append(object)
+func unregister_interactable(object):
+	nearby_objects.erase(object)
+func _process(_delta):
+	if Input.is_action_just_pressed("interact"):
+		if nearby_objects.size() > 0:
+			var min_distance = INF
+			var nearest_object = null
+			for object in nearby_objects:
+				var distance = global_position.distance_to(object.get_node("CollisionShape2D").global_position)
+				print(object.name, " 距离：", distance)
+				if distance < min_distance:
+					min_distance = distance
+					nearest_object = object
+			print("最近的家具：", nearest_object.name)
+			if nearest_object.has_method("interact"):
+				nearest_object.interact()
+		else:
+			print("附近没有家具")

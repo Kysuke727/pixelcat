@@ -74,11 +74,12 @@ offset_right = 560.0
 offset_bottom = -610.0
 
 [node name="Toy" parent="World" unique_id=1082080486 instance=ExtResource("6_o6xl0")]
+position = Vector2(182, -102)
 
 [node name="Bed" parent="World" unique_id=1388561695 instance=ExtResource("7_tipki")]
 
 [node name="FoodBowl" parent="World" unique_id=808035528 instance=ExtResource("5_tbgi4")]
-position = Vector2(635, 347)
+position = Vector2(777, 401)
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
 position = Vector2(593, 336)
