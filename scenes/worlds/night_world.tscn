@@ -1,0 +1,97 @@
+[gd_scene format=3 uid="uid://bxxehv6dlj81a"]
+
+[ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
+[ext_resource type="AudioStream" uid="uid://c02j4tbrpjcmp" path="res://assets/audio/music/小镇.mp3" id="2_ug1gh"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
+size = Vector2(1000, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qe648"]
+size = Vector2(1000, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7fymg"]
+size = Vector2(20, 700)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
+size = Vector2(20, 700)
+
+[node name="NightWorld" type="Node2D" unique_id=590361467]
+
+[node name="Groud" type="Node2D" parent="." unique_id=1226507053]
+
+[node name="NightFloor" type="Polygon2D" parent="Groud" unique_id=257597940]
+color = Color(0.1254902, 0.15686275, 0.23921569, 1)
+polygon = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
+
+[node name="Street" type="Polygon2D" parent="Groud" unique_id=31876004]
+color = Color(0.22352941, 0.2627451, 0.39215687, 1)
+polygon = PackedVector2Array(350, 0, 650, 0, 650, 700, 350, 700)
+
+[node name="Park" type="Polygon2D" parent="Groud" unique_id=1892569871]
+color = Color(0.14117648, 0.28235295, 0.23137255, 1)
+polygon = PackedVector2Array(30, 180, 320, 180, 320, 500, 30, 500)
+
+[node name="Walls" type="Node2D" parent="." unique_id=1480901505]
+
+[node name="WallTop" type="StaticBody2D" parent="Walls" unique_id=1063834062]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallTop" unique_id=660910872]
+position = Vector2(500, 0)
+shape = SubResource("RectangleShape2D_ynyhv")
+
+[node name="WallBottom" type="StaticBody2D" parent="Walls" unique_id=1884202366]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallBottom" unique_id=1456840447]
+position = Vector2(500, 700)
+shape = SubResource("RectangleShape2D_qe648")
+
+[node name="WallLeft" type="StaticBody2D" parent="Walls" unique_id=1644662808]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallLeft" unique_id=618314979]
+position = Vector2(0, 350)
+shape = SubResource("RectangleShape2D_7fymg")
+
+[node name="WallRight" type="StaticBody2D" parent="Walls" unique_id=1321220713]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallRight" unique_id=575000623]
+position = Vector2(1000, 350)
+shape = SubResource("RectangleShape2D_fojya")
+
+[node name="Decorations" type="Node2D" parent="." unique_id=1352625751]
+
+[node name="StreetLamp1" type="Polygon2D" parent="Decorations" unique_id=1692922329]
+position = Vector2(680, 180)
+color = Color(0.40784314, 0.4392157, 0.5019608, 1)
+polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+
+[node name="StreetLamp2D2" type="Polygon2D" parent="Decorations" unique_id=14542261]
+position = Vector2(680, 360)
+color = Color(0.40784314, 0.4392157, 0.5019608, 1)
+polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+
+[node name="StreetLamp2D3" type="Polygon2D" parent="Decorations" unique_id=184136245]
+position = Vector2(680, 540)
+color = Color(0.40784314, 0.4392157, 0.5019608, 1)
+polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+
+[node name="Tree1" type="Polygon2D" parent="Decorations" unique_id=1516793081]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(150, 250)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Tree2" type="Polygon2D" parent="Decorations" unique_id=920148860]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(230, 340)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Tree3" type="Polygon2D" parent="Decorations" unique_id=2028586079]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(100, 420)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_gnfau")]
+position = Vector2(500, 350)
+
+[node name="NightMusic" type="AudioStreamPlayer2D" parent="." unique_id=381423912]
+stream = ExtResource("2_ug1gh")
+autoplay = true
