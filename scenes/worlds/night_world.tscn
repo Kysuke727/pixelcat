@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://bxxehv6dlj81a"]
 
+[ext_resource type="PackedScene" uid="uid://bty4tdkmvfer2" path="res://scenes/enemies/enemy_basic.tscn" id="1_bqfs8"]
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
 [ext_resource type="AudioStream" uid="uid://c02j4tbrpjcmp" path="res://assets/audio/music/小镇.mp3" id="2_ug1gh"]
 
@@ -91,6 +92,9 @@ polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_gnfau")]
 position = Vector2(500, 350)
+
+[node name="EnemyBasic" parent="." unique_id=1446444493 instance=ExtResource("1_bqfs8")]
+position = Vector2(350, 350)
 
 [node name="NightMusic" type="AudioStreamPlayer2D" parent="." unique_id=381423912]
 stream = ExtResource("2_ug1gh")

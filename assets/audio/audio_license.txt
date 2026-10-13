@@ -12,7 +12,7 @@ SFX（音效）
 
 music（背景音乐）
 
-* 井字棋
+* 井字棋.mp3
   Creator: 黑耀耀
   Source: 黑耀耀的素材小屋
   Website: https://www.heiyaoyao.cn
@@ -22,12 +22,15 @@ music（背景音乐）
   音乐允许个人及商业项目使用，
   使用时应标注来源：
   “音乐：黑耀耀的素材小屋”。
-* 小镇
-  Source: 黑耀耀的素材小屋
-  Website: https://www.heiyaoyao.cn
+ 
+* 小镇.mp3
+	Artist: 黑耀耀
+	Source: 黑耀耀的素材小屋
+	Website: https://www.heiyaoyao.cn
+	Usage Note: Background music for PixelCat night map
 
-  Usage Note:
-  根据《黑耀耀的素材小屋》使用规约，
-  音乐允许个人及商业项目使用，
-  使用时应标注来源：
-  “音乐：黑耀耀的素材小屋”。
+punch2a.mp3
+Source: 小森平
+
+damage1.mp3
+Source: 小森平

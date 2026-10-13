@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://bty4tdkmvfer2"]
+
+[ext_resource type="Script" uid="uid://dsl8mumi6f4rq" path="res://scripts/enemies/enemy_basic.gd" id="1_3830d"]
+[ext_resource type="AudioStream" uid="uid://chni55qvc5f75" path="res://assets/audio/sfx/enemy_attack.mp3" id="2_haaaj"]
+[ext_resource type="AudioStream" uid="uid://begmp6gqga60j" path="res://assets/audio/sfx/enemy_hit.mp3" id="3_rgfb6"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ynyhv"]
+radius = 12.0
+
+[node name="EnemyBasic" type="CharacterBody2D" unique_id=1446444493]
+script = ExtResource("1_3830d")
+
+[node name="BodyVisual" type="Polygon2D" parent="." unique_id=828358250]
+color = Color(0.8748053, 0.00061896147, 0.87573373, 1)
+polygon = PackedVector2Array(0, -12, 12, 0, 0, 12, -12, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=167028081]
+shape = SubResource("CircleShape2D_ynyhv")
+
+[node name="AttackSound" type="AudioStreamPlayer2D" parent="." unique_id=219896040]
+stream = ExtResource("2_haaaj")
+
+[node name="HitSound" type="AudioStreamPlayer2D" parent="." unique_id=1150820175]
+stream = ExtResource("3_rgfb6")
