@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://dsl8mumi6f4rq" path="res://scripts/enemies/enemy_basic.gd" id="1_3830d"]
 [ext_resource type="AudioStream" uid="uid://chni55qvc5f75" path="res://assets/audio/sfx/enemy_attack.mp3" id="2_haaaj"]
 [ext_resource type="AudioStream" uid="uid://begmp6gqga60j" path="res://assets/audio/sfx/enemy_hit.mp3" id="3_rgfb6"]
+[ext_resource type="AudioStream" uid="uid://bhiolak02ycln" path="res://assets/audio/sfx/enemy_death.mp3" id="4_8gxe3"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ynyhv"]
 radius = 12.0
@@ -22,3 +23,6 @@ stream = ExtResource("2_haaaj")
 
 [node name="HitSound" type="AudioStreamPlayer2D" parent="." unique_id=1150820175]
 stream = ExtResource("3_rgfb6")
+
+[node name="DeathSound" type="AudioStreamPlayer2D" parent="." unique_id=145397608]
+stream = ExtResource("4_8gxe3")

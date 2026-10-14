@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://crdk4cmg23b4j"]
+
+[ext_resource type="Script" uid="uid://c4s7uml0rkbgd" path="res://scripts/battle_ui.gd" id="1_2hywk"]
+
+[node name="BattleUI" type="Control" unique_id=1765966774]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_2hywk")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=507748496]
+layout_mode = 0
+offset_left = 426.0
+offset_top = 24.0
+offset_right = 726.0
+offset_bottom = 104.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=628356897]
+layout_mode = 2
+
+[node name="EnemyName" type="Label" parent="PanelContainer/VBoxContainer" unique_id=391986439]
+custom_minimum_size = Vector2(280, 24)
+layout_mode = 2
+tooltip_text = "测试敌人"
+
+[node name="EnemyHPBar" type="ProgressBar" parent="PanelContainer/VBoxContainer" unique_id=502985259]
+custom_minimum_size = Vector2(280, 20)
+layout_mode = 2
+value = 100.0
