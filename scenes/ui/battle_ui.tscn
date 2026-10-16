@@ -25,6 +25,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(280, 24)
 layout_mode = 2
 tooltip_text = "测试敌人"
+mouse_filter = 0
 
 [node name="EnemyHPBar" type="ProgressBar" parent="PanelContainer/VBoxContainer" unique_id=502985259]
 custom_minimum_size = Vector2(280, 20)

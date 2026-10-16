@@ -37,3 +37,6 @@ Source: 小森平
 
 game_explosion5.mp3
 Source: 小森平
+
+coin04.mp3
+Source: 小森平

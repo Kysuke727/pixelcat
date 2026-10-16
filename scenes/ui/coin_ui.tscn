@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://dwmtx50eqnjrx"]
+
+[ext_resource type="Script" uid="uid://kpdu3hm6byjt" path="res://scripts/coin_ui.gd" id="1_e7x4s"]
+[ext_resource type="AudioStream" uid="uid://drat6nnct4p20" path="res://assets/audio/sfx/PickupSound.mp3" id="2_55f6b"]
+
+[node name="CoinUI" type="Control" unique_id=1943915820]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_e7x4s")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=73899253]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer" unique_id=526442633]
+layout_mode = 2
+
+[node name="CoinIcon" type="TextureRect" parent="PanelContainer/HBoxContainer" unique_id=1906515507]
+layout_mode = 2
+
+[node name="CoinLabel" type="Label" parent="PanelContainer/HBoxContainer" unique_id=1631641883]
+layout_mode = 2
+text = "金币：0"
+
+[node name="PickupSound" type="AudioStreamPlayer2D" parent="." unique_id=297457492]
+stream = ExtResource("2_55f6b")
