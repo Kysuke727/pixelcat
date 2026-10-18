@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://bnmkuv58727s1"]
+
+[ext_resource type="Script" uid="uid://ckj1cgixw3wm5" path="res://scripts/coin.gd" id="1_7qpmk"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ynyhv"]
+radius = 16.0
+
+[node name="Coin" type="Area2D" unique_id=369757548]
+script = ExtResource("1_7qpmk")
+
+[node name="CoinVisual" type="Polygon2D" parent="." unique_id=2077753973]
+color = Color(0.8784314, 1, 0, 1)
+polygon = PackedVector2Array(0, -12, 8, 0, 0, 12, -8, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1609495862]
+shape = SubResource("CircleShape2D_ynyhv")

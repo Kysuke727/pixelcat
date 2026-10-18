@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://b1mji8j5vn362"]
+
+[ext_resource type="Script" uid="uid://clhinbabkhdkf" path="res://scripts/buff_ui.gd" id="1_2hqx8"]
+
+[node name="BuffUI" type="Control" unique_id=633658903]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 150.0
+offset_right = -872.0
+offset_bottom = -453.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_2hqx8")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1907219681]
+layout_mode = 0
+offset_left = 1.0
+offset_top = -1.0
+offset_right = 261.0
+offset_bottom = 44.0
+
+[node name="BuffLabel" type="Label" parent="PanelContainer" unique_id=1501659536]
+layout_mode = 2
+text = "夜晚加成：等待状态计算"

@@ -6,7 +6,9 @@
 [ext_resource type="PackedScene" uid="uid://b4tumclyonk3g" path="res://scenes/ui/ui_main.tscn" id="4_jyhfs"]
 [ext_resource type="PackedScene" uid="uid://cgpon5js3xast" path="res://scenes/interactables/food_bowl.tscn" id="5_tbgi4"]
 [ext_resource type="PackedScene" uid="uid://dj8kto7fttbet" path="res://scenes/interactables/toy.tscn" id="6_o6xl0"]
+[ext_resource type="AudioStream" uid="uid://bvkg765saeqa5" path="res://assets/audio/sfx/switch17.wav" id="7_85g3d"]
 [ext_resource type="PackedScene" uid="uid://balg7vlwvktfq" path="res://scenes/interactables/bed.tscn" id="7_tipki"]
+[ext_resource type="Script" uid="uid://c6b2btc525jqk" path="res://scripts/state_switch_soundm_player_2d.gd" id="8_choun"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -89,6 +91,10 @@ autoplay = true
 
 [node name="SFXPlayer" type="AudioStreamPlayer" parent="." unique_id=788282683]
 stream = ExtResource("3_sugp2")
+
+[node name="StateSwitchSoundmPlayer2D" type="AudioStreamPlayer2D" parent="." unique_id=551151065]
+stream = ExtResource("7_85g3d")
+script = ExtResource("8_choun")
 
 [node name="UI" parent="." unique_id=1590554557 instance=ExtResource("4_jyhfs")]
 metadata/_edit_use_anchors_ = true
