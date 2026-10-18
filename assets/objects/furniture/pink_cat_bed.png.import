@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvqe3hsvjnmmf"
-path="res://.godot/imported/food_bowl.png-e9194230ba521fad8b90c7018a37a787.ctex"
+uid="uid://twwdauopipme"
+path="res://.godot/imported/pink_cat_bed.png-cb8e5393011ce18948769cfa17e4616f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/objects/food_bowl.png"
-dest_files=["res://.godot/imported/food_bowl.png-e9194230ba521fad8b90c7018a37a787.ctex"]
+source_file="res://assets/objects/furniture/pink_cat_bed.png"
+dest_files=["res://.godot/imported/pink_cat_bed.png-cb8e5393011ce18948769cfa17e4616f.ctex"]
 
 [params]
 
