@@ -1,6 +1,6 @@
 extends Node2D
 
-enum ActionState { NONE, MELEE, RANGED }
+enum ActionState { IDLE, ATTACK1, ATTACK2, RECOVERY, RANGED }
 
 @export_category("Melee")
 @export var melee_damage: int = 2
@@ -10,6 +10,12 @@ enum ActionState { NONE, MELEE, RANGED }
 @export var melee_active_end: float = 0.16
 @export var melee_movement_multiplier: float = 0.65
 @export var melee_knockback: float = 150.0
+@export_category("Combo")
+@export var combo_window: float = 0.35
+@export var stun_duration: float = 1.0
+@export var stun_resistance_duration: float = 1.0
+
+const COMBO_STUN_CHANCE: float = 0.5
 
 @export_category("Ranged")
 @export var projectile_scene: PackedScene
@@ -21,10 +27,15 @@ enum ActionState { NONE, MELEE, RANGED }
 @export var projectile_range: float = 220.0
 @export var ranged_movement_multiplier: float = 0.8
 
-var action_state: int = ActionState.NONE
+var action_state: int = ActionState.IDLE
 var action_time: float = 0.0
 var melee_cooldown_left: float = 0.0
 var ranged_cooldown_left: float = 0.0
+var combo_window_left: float = 0.0
+var combo_window_open: bool = false
+var buffered_combo: bool = false
+var combo_stun_targets: Dictionary = {}
+var stun_rng := RandomNumberGenerator.new()
 var combat_enabled: bool = true
 var projectile_fired: bool = false
 var melee_window_open: bool = false
@@ -43,6 +54,7 @@ var sprite_base_scale: Vector2
 
 
 func _ready() -> void:
+	stun_rng.randomize()
 	sprite_base_position = sprite.position
 	sprite_base_rotation = sprite.rotation
 	sprite_base_scale = sprite.scale
@@ -54,16 +66,32 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	melee_cooldown_left = maxf(melee_cooldown_left - delta, 0.0)
 	ranged_cooldown_left = maxf(ranged_cooldown_left - delta, 0.0)
+	if combo_window_open:
+		combo_window_left = maxf(combo_window_left - delta, 0.0)
+		if combo_window_left <= 0.0:
+			combo_window_open = false
+			buffered_combo = false
 
-	if action_state != ActionState.NONE:
+	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
+		if action_state == ActionState.ATTACK1 and combo_window_open and Input.is_action_just_pressed("melee_attack"):
+			buffered_combo = true
 		action_time += delta
 		_update_action()
 		return
+	if action_state == ActionState.RANGED:
+		action_time += delta
+		_update_action()
+		return
+	if action_state == ActionState.RECOVERY and melee_cooldown_left <= 0.0 and not combo_window_open:
+		action_state = ActionState.IDLE
 
 	if not _can_start_action():
 		return
-	if Input.is_action_just_pressed("melee_attack") and melee_cooldown_left <= 0.0:
-		_start_melee()
+	if Input.is_action_just_pressed("melee_attack"):
+		if combo_window_open:
+			_start_melee(true)
+		elif action_state == ActionState.IDLE and melee_cooldown_left <= 0.0:
+			_start_melee(false)
 	elif Input.is_action_just_pressed("ranged_attack") and ranged_cooldown_left <= 0.0:
 		_start_ranged()
 
@@ -83,12 +111,18 @@ func _is_night_combat_scene() -> bool:
 	return scene != null and scene.is_in_group("night_exploration")
 
 
-func _start_melee() -> void:
-	action_state = ActionState.MELEE
+func _start_melee(is_second_attack: bool = false) -> void:
+	action_state = ActionState.ATTACK2 if is_second_attack else ActionState.ATTACK1
 	action_time = 0.0
 	melee_cooldown_left = melee_cooldown
 	melee_window_open = false
 	hit_targets.clear()
+	if is_second_attack:
+		combo_window_open = false
+		combo_window_left = 0.0
+		buffered_combo = false
+	else:
+		combo_stun_targets.clear()
 	facing = _get_facing()
 	_update_hitbox_transform()
 	_begin_action_visual("attack")
@@ -100,12 +134,15 @@ func _start_ranged() -> void:
 	action_time = 0.0
 	ranged_cooldown_left = ranged_cooldown
 	projectile_fired = false
+	combo_window_open = false
+	combo_window_left = 0.0
+	buffered_combo = false
 	facing = _get_facing()
 	_begin_action_visual("cast")
 
 
 func _update_action() -> void:
-	if action_state == ActionState.MELEE:
+	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		if not melee_window_open and action_time >= melee_active_start and action_time < melee_active_end:
 			_set_melee_window(true)
 		if melee_window_open:
@@ -159,7 +196,17 @@ func _try_damage_target(target: Node) -> void:
 	if hit_targets.has(target_id):
 		return
 	hit_targets[target_id] = true
-	target.receive_damage(melee_damage, player.global_position, melee_knockback)
+	var accepted: bool = target.receive_damage(melee_damage, player.global_position, melee_knockback)
+	if not accepted:
+		return
+	if action_state == ActionState.ATTACK1:
+		if not combo_window_open:
+			combo_window_open = true
+			combo_window_left = combo_window
+	elif action_state == ActionState.ATTACK2 and not combo_stun_targets.has(target_id):
+		combo_stun_targets[target_id] = true
+		if stun_rng.randf() < COMBO_STUN_CHANCE and target.has_method("apply_stun"):
+			target.apply_stun(stun_duration, stun_resistance_duration)
 
 
 func _spawn_projectile() -> void:
@@ -205,7 +252,7 @@ func _update_fallback_visual(progress: float) -> void:
 		return
 	var eased := sin(clampf(progress, 0.0, 1.0) * PI)
 	sprite.position = sprite_base_position + facing * eased * 3.0
-	if action_state == ActionState.MELEE:
+	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		sprite.rotation = sprite_base_rotation + eased * 0.18 * (1.0 if facing.x >= 0.0 else -1.0)
 	else:
 		sprite.scale = sprite_base_scale * (1.0 + eased * 0.08)
@@ -213,18 +260,24 @@ func _update_fallback_visual(progress: float) -> void:
 
 func _finish_action() -> void:
 	_set_melee_window(false)
-	action_state = ActionState.NONE
+	var completed_state := action_state
+	action_state = ActionState.RECOVERY if completed_state == ActionState.ATTACK1 or completed_state == ActionState.ATTACK2 else ActionState.IDLE
 	action_time = 0.0
 	attack_arc.visible = false
 	_restore_sprite()
 	if player.has_method("restore_movement_animation"):
 		player.restore_movement_animation()
+	if completed_state == ActionState.ATTACK1 and buffered_combo and combo_window_open and _can_start_action():
+		_start_melee(true)
 
 
 func cancel_action() -> void:
-	if action_state == ActionState.NONE:
+	if action_state == ActionState.IDLE:
 		return
 	_finish_action()
+	combo_window_open = false
+	combo_window_left = 0.0
+	buffered_combo = false
 
 
 func set_combat_enabled(enabled: bool) -> void:
@@ -240,11 +293,11 @@ func _restore_sprite() -> void:
 
 
 func is_action_active() -> bool:
-	return action_state != ActionState.NONE
+	return action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2 or action_state == ActionState.RANGED
 
 
 func get_movement_multiplier() -> float:
-	if action_state == ActionState.MELEE:
+	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		return melee_movement_multiplier
 	if action_state == ActionState.RANGED:
 		return ranged_movement_multiplier

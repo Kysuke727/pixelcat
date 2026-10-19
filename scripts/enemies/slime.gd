@@ -11,6 +11,7 @@ enum SlimeState {
 	LUNGE,
 	RECOVER,
 	HURT,
+	STUNNED,
 	DEAD
 }
 
@@ -56,6 +57,8 @@ var state: int = SlimeState.IDLE
 var current_health: int
 var state_time_left: float = 0.0
 var cooldown_left: float = 0.0
+var stun_time_left: float = 0.0
+var stun_resistance_left: float = 0.0
 var spawn_position: Vector2
 var wander_direction: Vector2 = Vector2.ZERO
 var locked_target_position: Vector2
@@ -89,6 +92,8 @@ func _physics_process(delta: float) -> void:
 	if state == SlimeState.DEAD:
 		return
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
+	stun_resistance_left = maxf(stun_resistance_left - delta, 0.0)
+	stun_time_left = maxf(stun_time_left - delta, 0.0)
 	state_time_left = maxf(state_time_left - delta, 0.0)
 	animation_time += delta
 	if not is_instance_valid(target):
@@ -109,6 +114,8 @@ func _physics_process(delta: float) -> void:
 			_process_recover()
 		SlimeState.HURT:
 			_process_hurt(delta)
+		SlimeState.STUNNED:
+			_process_stunned()
 
 	_update_sprite()
 
@@ -206,6 +213,26 @@ func _process_hurt(delta: float) -> void:
 		_change_state(SlimeState.CHASE if _target_distance() <= disengage_range else SlimeState.WANDER)
 
 
+func _process_stunned() -> void:
+	velocity = Vector2.ZERO
+	move_and_slide()
+	if stun_time_left <= 0.0:
+		_change_state(SlimeState.CHASE if _target_distance() <= disengage_range else SlimeState.WANDER)
+		_choose_idle_duration()
+
+
+func apply_stun(duration: float, resistance_duration: float) -> bool:
+	if state == SlimeState.DEAD or duration <= 0.0 or stun_resistance_left > 0.0:
+		return false
+	stun_time_left = duration
+	stun_resistance_left = duration + maxf(resistance_duration, 0.0)
+	velocity = Vector2.ZERO
+	attack_area.set_deferred("monitoring", false)
+	_change_state(SlimeState.STUNNED)
+	_play_hit_flash()
+	return true
+
+
 func _apply_lunge_hits() -> void:
 	for body in attack_area.get_overlapping_bodies():
 		if not body.is_in_group("player") or not body.has_method("receive_damage"):
@@ -225,6 +252,9 @@ func receive_damage(amount: int, source_position: Vector2, knockback_force: floa
 	_show_in_battle_ui()
 	if current_health <= 0:
 		_die()
+		return true
+	if state == SlimeState.STUNNED:
+		_play_hit_flash()
 		return true
 
 	attack_area.set_deferred("monitoring", false)
