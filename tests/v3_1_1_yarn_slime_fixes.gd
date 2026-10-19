@@ -20,6 +20,17 @@ func _run() -> void:
 	for enemy in get_nodes_in_group("enemies"):
 		enemy.set_physics_process(false)
 		enemy.global_position = Vector2(930.0, 650.0)
+	var angle_probe := load("res://scenes/combat/yarn_connection.tscn").instantiate() as YarnConnection
+	_check(angle_probe._wrap_angle_reaches_threshold(270.0), "positive winding reaches the exact 270-degree threshold")
+	_check(angle_probe._wrap_angle_reaches_threshold(-270.0), "negative winding reaches the exact 270-degree threshold")
+	_check(angle_probe._wrap_angle_reaches_threshold(269.9999994), "sub-microdegree floating error still reaches the threshold")
+	_check(angle_probe._wrap_angle_reaches_threshold(-269.9999994), "negative winding tolerates the same floating error")
+	_check(not angle_probe._wrap_angle_reaches_threshold(269.99), "meaningfully sub-threshold winding remains incomplete")
+	angle_probe.required_wrap_angle_degrees = 240.0
+	_check(angle_probe._wrap_angle_reaches_threshold(240.0), "skill-adjusted positive 240-degree threshold is accepted")
+	_check(angle_probe._wrap_angle_reaches_threshold(-239.9999994), "skill-adjusted negative threshold tolerates floating error")
+	_check(not angle_probe._wrap_angle_reaches_threshold(239.99), "skill-adjusted winding remains incomplete below tolerance")
+	angle_probe.free()
 	var lamp_point := world.get_node("Decorations/LampWrapPoint1") as Node2D
 	var lamp_collision := lamp_point.get_node("StaticBody2D/CollisionShape2D") as CollisionShape2D
 	_check(lamp_point.get_node("StaticBody2D") is StaticBody2D, "street lamp has a physical blocker separate from its wrap marker")
@@ -172,6 +183,26 @@ func _run() -> void:
 	_check(static_connection.winding_complete, "270 degrees around static pivot completes winding")
 	_check(maximum_route_length_step < 40.0, "routed yarn topology changes continuously without a sudden wrap jump")
 	_check(not static_connection.is_taut and static_target.bind_time_left <= 0.0, "winding without tension does not bind")
+	var actual_wrap_history := static_connection.wrap_angle_history.duplicate()
+	static_connection.wrap_angle_history.clear()
+	static_connection.wrap_angle_history.append(269.999999402585)
+	static_connection.winding_complete = false
+	static_connection._update_wrap_angle()
+	_check(static_connection.winding_complete, "Godot-reproduced 269.9999994-degree result reaches threshold")
+	_check(not static_connection.loop_bound, "floating tolerance does not bypass the required active pull")
+	static_connection.wrap_angle_history.clear()
+	static_connection.wrap_angle_history.append(270.0 - YarnConnection.WRAP_ANGLE_EPSILON_DEGREES * 0.5)
+	static_connection.winding_complete = true
+	static_connection._update_wrap_angle()
+	_check(static_connection.winding_complete, "sub-tolerance edge noise does not flicker winding completion")
+	_check(not static_connection.loop_bound, "threshold tolerance alone cannot bind before active tension")
+	static_connection.wrap_angle_history[0] = 270.0 - YarnConnection.WRAP_ANGLE_EPSILON_DEGREES * 2.0
+	static_connection._update_wrap_angle()
+	_check(not static_connection.winding_complete, "deliberate reverse unwrapping beyond tolerance clears completion")
+	static_connection.wrap_angle_history = actual_wrap_history
+	static_connection.accumulated_wrap_angle = static_connection._history_wrap_angle_degrees()
+	static_connection.winding_complete = true
+	static_connection.wrap_state = YarnConnection.WrapState.WOUND
 	_check(static_connection.path_points.size() >= 5, "visual yarn route bends around the support edge instead of through its center")
 	_check(_path_clears_circle(static_connection.path_points, static_pivot_position, 20.0), "static yarn path stays outside the support surface")
 	_check(absf(_path_oriented_arc_degrees(static_connection.path_points, static_pivot_position)) >= 180.0, "rendered yarn route preserves the major wrap topology")

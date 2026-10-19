@@ -138,6 +138,7 @@ func _run() -> void:
 	var blocked_connection := _create_connection(combat, player, blocked_target)
 	await physics_frame
 	await physics_frame
+	blocked_connection.path_valid = blocked_connection._validate_current_path()
 	_check(
 		is_instance_valid(blocked_connection) and not blocked_connection.path_valid,
 		"wall occlusion invalidates yarn path instead of drawing through it"
@@ -189,8 +190,11 @@ func _spawn_slime(parent: Node, position: Vector2) -> CharacterBody2D:
 	return slime
 
 
-func _create_connection(combat: Node, player: Node2D, target: Node2D) -> Node2D:
-	var connection: Node2D = load("res://scenes/combat/yarn_connection.tscn").instantiate()
+func _create_connection(combat: Node, player: Node2D, target: Node2D) -> YarnConnection:
+	var connection := load("res://scenes/combat/yarn_connection.tscn").instantiate() as YarnConnection
+	# This harness drives connections explicitly; disable their automatic _process
+	# so manual calls and frame callbacks cannot advance the same fixture twice.
+	connection.set_process(false)
 	connection.configure(player, target, combat)
 	current_scene.add_child(connection)
 	return connection

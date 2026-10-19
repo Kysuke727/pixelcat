@@ -3,6 +3,8 @@ class_name YarnConnection
 
 enum WrapState { SEEKING_SUPPORT, WRAPPED, WOUND, TAUT, BOUND }
 
+const WRAP_ANGLE_EPSILON_DEGREES: float = 0.00001
+
 @export_category("Connection")
 @export var slow_multiplier: float = 0.5
 @export var slow_duration: float = 3.0
@@ -250,6 +252,10 @@ func _history_wrap_angle_degrees() -> float:
 	return total
 
 
+func _wrap_angle_reaches_threshold(angle_degrees: float) -> bool:
+	return absf(angle_degrees) + WRAP_ANGLE_EPSILON_DEGREES >= required_wrap_angle_degrees
+
+
 func _update_wrap_angle() -> bool:
 	valid_movement_this_frame = false
 	if not is_wrapped or not _is_valid_support(wrap_pivot):
@@ -317,7 +323,7 @@ func _update_wrap_angle() -> bool:
 	var effective_wrap_angle := _history_wrap_angle_degrees() + _pending_wrap_angle_degrees
 	if absf(effective_wrap_angle) > 0.1:
 		wrap_side_sign = signf(effective_wrap_angle)
-	if absf(effective_wrap_angle) >= required_wrap_angle_degrees:
+	if _wrap_angle_reaches_threshold(effective_wrap_angle):
 		if absf(_pending_wrap_angle_degrees) > 0.001:
 			wrap_angle_history.append(_pending_wrap_angle_degrees)
 		accumulated_wrap_angle = effective_wrap_angle
@@ -325,13 +331,13 @@ func _update_wrap_angle() -> bool:
 		_pending_wrap_angle_degrees = 0.0
 		_pending_player_travel = 0.0
 		wrap_side_sign = signf(accumulated_wrap_angle)
-	if winding_complete and absf(effective_wrap_angle) < required_wrap_angle_degrees:
+	if winding_complete and not _wrap_angle_reaches_threshold(effective_wrap_angle):
 		winding_complete = false
 		is_taut = false
 		tension_value = 0.0
 		wrap_state = WrapState.WRAPPED
 		last_bind_failure_reason = "反向移动已解除部分缠绕进度"
-	if not winding_complete and absf(effective_wrap_angle) >= required_wrap_angle_degrees:
+	if not winding_complete and _wrap_angle_reaches_threshold(effective_wrap_angle):
 		winding_complete = true
 		wrap_state = WrapState.WOUND
 		player_position_at_wound = player.global_position
