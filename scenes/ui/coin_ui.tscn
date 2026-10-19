@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://kpdu3hm6byjt" path="res://scripts/coin_ui.gd" id="1_e7x4s"]
 [ext_resource type="AudioStream" uid="uid://drat6nnct4p20" path="res://assets/audio/sfx/PickupSound.mp3" id="2_55f6b"]
+[ext_resource type="Texture2D" path="res://assets/objects/items/golden_fish.png" id="3_fish"]
 
 [node name="CoinUI" type="Control" unique_id=1943915820]
 layout_mode = 3
@@ -19,11 +20,15 @@ offset_bottom = 40.0
 layout_mode = 2
 
 [node name="CoinIcon" type="TextureRect" parent="PanelContainer/HBoxContainer" unique_id=1906515507]
+custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
+texture = ExtResource("3_fish")
+expand_mode = 3
+stretch_mode = 5
 
 [node name="CoinLabel" type="Label" parent="PanelContainer/HBoxContainer" unique_id=1631641883]
 layout_mode = 2
-text = "金币：0"
+text = "小鱼干：0"
 
 [node name="PickupSound" type="AudioStreamPlayer2D" parent="." unique_id=297457492]
 stream = ExtResource("2_55f6b")

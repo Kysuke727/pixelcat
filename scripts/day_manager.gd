@@ -20,6 +20,8 @@ var saved_energy: float = 100.0
 func switch_to_night():
 	if current_state == TimeState.NIGHT:
 		return
+	if not ExpeditionManager.run_active:
+		ExpeditionManager.begin_run()
 
 	save_cat_stats()
 	current_state = TimeState.NIGHT
@@ -42,6 +44,9 @@ func switch_to_night():
 
 func switch_to_day():
 	if current_state == TimeState.DAY:
+		return
+	if ExpeditionManager.run_active:
+		ExpeditionManager.finish_run(false)
 		return
 
 	save_cat_stats()
@@ -128,9 +133,22 @@ func _input(event):
 			if event.keycode == KEY_N:
 				switch_to_night()
 
-			elif event.keycode == KEY_B:
+			elif event.keycode == KEY_B and current_state == TimeState.DAY:
 				switch_to_day()
 
 
 func _ready():
 	print("DayManager 已启动")
+	call_deferred("_resume_saved_expedition")
+
+
+func _resume_saved_expedition() -> void:
+	if ExpeditionManager.run_active and current_state == TimeState.DAY:
+		current_state = TimeState.NIGHT
+		var error := get_tree().change_scene_to_file(NIGHT_SCENE)
+		if error != OK:
+			current_state = TimeState.DAY
+			push_error("保存的夜晚探索无法恢复；保留存档并回到白天")
+			return
+		await get_tree().scene_changed
+		restore_cat_stats(get_tree().current_scene)
