@@ -126,6 +126,10 @@ func _can_start_action() -> bool:
 		return false
 	if player.has_method("is_in_hitstun") and player.is_in_hitstun():
 		return false
+	if player.has_method("is_guard_broken") and player.is_guard_broken():
+		return false
+	if player.get("is_defending") == true:
+		return false
 	return true
 
 
@@ -343,12 +347,12 @@ func _finish_action() -> void:
 
 
 func cancel_action() -> void:
-	if action_state == ActionState.IDLE:
-		return
-	_finish_action()
 	combo_window_open = false
 	combo_window_left = 0.0
 	buffered_combo = false
+	if action_state == ActionState.IDLE:
+		return
+	_finish_action()
 
 
 func set_combat_enabled(enabled: bool) -> void:

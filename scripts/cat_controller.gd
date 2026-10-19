@@ -10,6 +10,16 @@ signal died
 @export var player_hit_stagger_duration: float = 0.5
 @export var received_knockback_decay: float = 700.0
 
+@export_category("Defense")
+@export var shield_max_durability: float = 100.0
+@export var slime_attack_shield_cost: float = 35.0
+@export var shield_regen_delay: float = 2.0
+@export var shield_regen_per_second: float = 20.0
+@export var defense_movement_multiplier: float = 0.55
+@export var guard_break_stun_duration: float = 3.0
+@export var perfect_guard_window: float = 0.7
+@export var perfect_guard_pause_duration: float = 1.0
+
 var current_health: int
 var nearby_objects: Array[Node] = []
 var last_facing: Vector2 = Vector2.DOWN
@@ -17,6 +27,13 @@ var invincibility_left: float = 0.0
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
+var shield_durability: float = 100.0
+var shield_regen_delay_left: float = 0.0
+var guard_break_left: float = 0.0
+var is_defending: bool = false
+var perfect_guard_flash_left: float = 0.0
+var defend_must_release: bool = false
+var perfect_guard_hold_consumed: bool = false
 var received_attack_ids: Dictionary = {}
 var received_attack_id_order: Array[int] = []
 var attack_block_handler: Callable
@@ -27,8 +44,14 @@ var attack_block_handler: Callable
 
 func _ready() -> void:
 	current_health = max_health
+	shield_durability = shield_max_durability
 	add_to_group("player")
 	animated_sprite.play("idle")
+	var time_controller := get_node_or_null("/root/CombatTimeController")
+	if is_instance_valid(time_controller) and time_controller.is_enemy_side_paused():
+		for enemy in get_tree().get_nodes_in_group("enemies"):
+			if enemy.has_method("set_combat_paused"):
+				enemy.set_combat_paused(true)
 	health_changed.emit(current_health, max_health)
 
 
@@ -38,6 +61,12 @@ func _physics_process(delta: float) -> void:
 
 	if dead:
 		velocity = Vector2.ZERO
+		return
+	_update_defense(delta)
+	if guard_break_left > 0.0:
+		velocity = Vector2.ZERO
+		update_animation(Vector2.ZERO)
+		move_and_slide()
 		return
 
 	if hitstun_left > 0.0:
@@ -58,9 +87,9 @@ func _physics_process(delta: float) -> void:
 	if direction != Vector2.ZERO:
 		last_facing = direction.normalized()
 
-	var movement_multiplier := 1.0
+	var movement_multiplier := defense_movement_multiplier if is_defending else 1.0
 	if combat != null and combat.has_method("get_movement_multiplier"):
-		movement_multiplier = combat.get_movement_multiplier()
+		movement_multiplier *= combat.get_movement_multiplier()
 	velocity = direction * SPEED * movement_multiplier
 
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
@@ -111,6 +140,95 @@ func is_in_hitstun() -> bool:
 	return hitstun_left > 0.0
 
 
+func is_guard_broken() -> bool:
+	return guard_break_left > 0.0
+
+
+func _update_defense(delta: float) -> void:
+	perfect_guard_flash_left = maxf(perfect_guard_flash_left - delta, 0.0)
+	var defend_held := Input.is_action_pressed("defend")
+	var defend_just_pressed := Input.is_action_just_pressed("defend")
+	if not defend_held:
+		if is_defending:
+			is_defending = false
+			shield_regen_delay_left = shield_regen_delay
+		defend_must_release = false
+		perfect_guard_hold_consumed = false
+	if guard_break_left > 0.0:
+		guard_break_left = maxf(guard_break_left - delta, 0.0)
+		is_defending = false
+		return
+	if hitstun_left > 0.0:
+		is_defending = false
+		return
+	if defend_just_pressed and not defend_must_release and shield_durability > 0.0:
+		_handle_defend_press(defend_held)
+	elif (
+		defend_held
+		and not perfect_guard_hold_consumed
+		and not defend_must_release
+		and shield_durability > 0.0
+		and not is_defending
+	):
+		is_defending = true
+		if combat != null and combat.has_method("cancel_action"):
+			combat.cancel_action()
+	if is_defending:
+		return
+	if shield_regen_delay_left > 0.0:
+		shield_regen_delay_left = maxf(shield_regen_delay_left - delta, 0.0)
+	elif shield_durability < shield_max_durability:
+		shield_durability = minf(
+			shield_durability + shield_regen_per_second * delta,
+			shield_max_durability
+		)
+
+
+func _handle_defend_press(defend_held: bool) -> void:
+	if defend_must_release or shield_durability <= 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0:
+		return
+	if _try_perfect_guard():
+		perfect_guard_hold_consumed = defend_held
+		is_defending = false
+	else:
+		is_defending = true
+		if combat != null and combat.has_method("cancel_action"):
+			combat.cancel_action()
+
+
+func _try_perfect_guard() -> bool:
+	var time_controller := get_node_or_null("/root/CombatTimeController")
+	if not is_instance_valid(time_controller) or time_controller.is_enemy_side_paused():
+		return false
+	var best_enemy: Node = null
+	var best_attack_id: int = 0
+	var best_eta := INF
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not enemy.has_method("get_attack_eta_for"):
+			continue
+		var eta: float = enemy.get_attack_eta_for(self, perfect_guard_window)
+		if eta >= 0.0 and eta < best_eta:
+			best_enemy = enemy
+			best_attack_id = int(enemy.current_attack_id)
+			best_eta = eta
+	if not is_instance_valid(best_enemy) or not best_enemy.has_method("parry_attack"):
+		return false
+	if not best_enemy.parry_attack(best_attack_id):
+		return false
+	time_controller.pause_enemy_side(perfect_guard_pause_duration)
+	perfect_guard_flash_left = perfect_guard_pause_duration
+	return true
+
+
+func _break_shield() -> void:
+	shield_durability = 0.0
+	guard_break_left = guard_break_stun_duration
+	is_defending = false
+	defend_must_release = Input.is_action_pressed("defend")
+	if combat != null and combat.has_method("cancel_action"):
+		combat.cancel_action()
+
+
 func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 120.0) -> bool:
 	if dead or invincibility_left > 0.0 or amount <= 0:
 		return false
@@ -136,7 +254,8 @@ func receive_attack_damage(
 	attack_id: int,
 	amount: int,
 	source_position: Vector2,
-	knockback_force: float = 120.0
+	knockback_force: float = 120.0,
+	shield_damage: float = 35.0
 ) -> bool:
 	if attack_id <= 0 or received_attack_ids.has(attack_id):
 		return false
@@ -145,7 +264,7 @@ func receive_attack_damage(
 	if received_attack_id_order.size() > 128:
 		var expired_id: int = received_attack_id_order.pop_front()
 		received_attack_ids.erase(expired_id)
-	if try_block_attack(attack_id):
+	if try_block_attack(attack_id, shield_damage):
 		return true
 	var accepted := receive_damage(amount, source_position, knockback_force)
 	if accepted and not dead:
@@ -153,11 +272,15 @@ func receive_attack_damage(
 	return accepted
 
 
-func try_block_attack(_attack_id: int) -> bool:
-	# Stage D adds the shield and perfect-guard decision here.
+func try_block_attack(attack_id: int, shield_damage: float = 35.0) -> bool:
 	if attack_block_handler.is_valid():
-		return bool(attack_block_handler.call(_attack_id))
-	return false
+		return bool(attack_block_handler.call(attack_id))
+	if dead or guard_break_left > 0.0 or not is_defending or shield_durability <= 0.0:
+		return false
+	shield_durability = maxf(shield_durability - maxf(shield_damage, 0.0), 0.0)
+	if shield_durability <= 0.0:
+		_break_shield()
+	return true
 
 
 func play_hit_feedback() -> void:
@@ -170,7 +293,11 @@ func die() -> void:
 	if dead:
 		return
 	dead = true
+	is_defending = false
 	velocity = Vector2.ZERO
+	var time_controller := get_node_or_null("/root/CombatTimeController")
+	if is_instance_valid(time_controller):
+		time_controller.clear_enemy_pause()
 	if combat != null and combat.has_method("set_combat_enabled"):
 		combat.set_combat_enabled(false)
 	animated_sprite.stop()

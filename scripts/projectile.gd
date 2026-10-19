@@ -10,6 +10,7 @@ var source: Node2D
 var distance_travelled: float = 0.0
 var hit_targets: Dictionary = {}
 var consumed: bool = false
+var combat_paused: bool = false
 
 
 func _ready() -> void:
@@ -25,6 +26,11 @@ func setup(
 ) -> void:
 	direction = new_direction.normalized()
 	source = new_source
+	if is_instance_valid(source) and source.is_in_group("enemies"):
+		add_to_group("enemy_projectiles")
+		var time_controller := get_node_or_null("/root/CombatTimeController")
+		if is_instance_valid(time_controller) and time_controller.is_enemy_side_paused():
+			combat_paused = true
 	damage = new_damage
 	speed = new_speed
 	max_range = new_max_range
@@ -32,7 +38,7 @@ func setup(
 
 
 func _physics_process(delta: float) -> void:
-	if consumed:
+	if consumed or combat_paused:
 		return
 	var movement := direction * speed * delta
 	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + movement)
@@ -49,6 +55,10 @@ func _physics_process(delta: float) -> void:
 	if distance_travelled >= max_range:
 		_notify_yarn_miss()
 		_consume()
+
+
+func set_combat_paused(paused: bool) -> void:
+	combat_paused = paused
 
 
 func _on_body_entered(body: Node2D) -> void:

@@ -40,6 +40,8 @@ static var _next_attack_id: int = 1
 @export var lunge_speed: float = 145.0
 @export var recover_duration: float = 0.45
 @export var attack_knockback: float = 135.0
+@export var shield_durability_cost: float = 35.0
+@export var perfect_guard_hit_radius: float = 23.0
 
 @export_category("Collision Stun")
 @export var collision_stun_duration: float = 1.0
@@ -83,6 +85,8 @@ var target: Node2D
 var animation_time: float = 0.0
 var facing: Vector2 = Vector2.DOWN
 var current_attack_id: int = 0
+var current_attack_parried: bool = false
+var combat_paused: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var body_collision: CollisionShape2D = $CollisionShape2D
@@ -100,11 +104,13 @@ func _ready() -> void:
 	attack_area.set_deferred("monitoring", false)
 	_choose_idle_duration()
 	_find_player()
+	if is_instance_valid(CombatTimeController) and CombatTimeController.is_enemy_side_paused():
+		combat_paused = true
 	health_changed.emit(current_health, max_health)
 
 
 func _physics_process(delta: float) -> void:
-	if state == SlimeState.DEAD:
+	if state == SlimeState.DEAD or combat_paused:
 		return
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
 	stun_resistance_left = maxf(stun_resistance_left - delta, 0.0)
@@ -192,6 +198,10 @@ func _process_chase() -> void:
 	if distance <= attack_range and cooldown_left <= 0.0:
 		locked_target_position = target.global_position
 		velocity = Vector2.ZERO
+		attacked_targets.clear()
+		current_attack_id = _next_attack_id
+		_next_attack_id += 1
+		current_attack_parried = false
 		_change_state(SlimeState.WINDUP)
 		state_time_left = windup_duration
 		return
@@ -208,9 +218,6 @@ func _process_windup() -> void:
 		if lunge_direction == Vector2.ZERO:
 			lunge_direction = facing
 		_update_facing(lunge_direction)
-		attacked_targets.clear()
-		current_attack_id = _next_attack_id
-		_next_attack_id += 1
 		attack_area.monitoring = true
 		if attack_sound.stream != null:
 			attack_sound.play()
@@ -296,13 +303,83 @@ func _move_and_check_impacts() -> void:
 
 func _try_lunge_hit(body: Node) -> void:
 	var body_id := body.get_instance_id()
-	if attacked_targets.has(body_id):
+	if current_attack_parried or attacked_targets.has(body_id):
 		return
 	attacked_targets[body_id] = true
 	if body.has_method("receive_attack_damage"):
-		body.receive_attack_damage(current_attack_id, attack_damage, global_position, attack_knockback)
+		body.receive_attack_damage(
+			current_attack_id,
+			attack_damage,
+			global_position,
+			attack_knockback,
+			shield_durability_cost
+		)
 	elif body.has_method("receive_damage"):
 		body.receive_damage(attack_damage, global_position, attack_knockback)
+
+
+func get_attack_eta_for(candidate: Node2D, max_window: float = 0.7) -> float:
+	if (
+		state == SlimeState.DEAD
+		or combat_paused
+		or current_attack_parried
+		or current_attack_id <= 0
+		or (state != SlimeState.WINDUP and state != SlimeState.LUNGE)
+		or not is_instance_valid(candidate)
+	):
+		return -1.0
+	var direction := lunge_direction
+	var windup_left := 0.0
+	if state == SlimeState.WINDUP:
+		direction = global_position.direction_to(locked_target_position)
+		windup_left = state_time_left
+	if direction == Vector2.ZERO:
+		direction = facing
+	var offset := candidate.global_position - global_position
+	var distance_along := offset.dot(direction)
+	var lateral_distance := absf(offset.cross(direction))
+	if distance_along < 0.0 or lateral_distance > perfect_guard_hit_radius:
+		return -1.0
+	var speed := maxf(lunge_speed * slow_multiplier, 1.0)
+	var travel_distance := maxf(distance_along - perfect_guard_hit_radius, 0.0)
+	var travel_time := travel_distance / speed
+	if travel_time > lunge_duration:
+		return -1.0
+	if not _has_clear_attack_line(candidate, direction, distance_along):
+		return -1.0
+	var eta := windup_left + travel_time
+	return eta if eta <= max_window else -1.0
+
+
+func _has_clear_attack_line(candidate: Node2D, direction: Vector2, distance_along: float) -> bool:
+	var end_position := global_position + direction * distance_along
+	var query := PhysicsRayQueryParameters2D.create(global_position, end_position)
+	query.collision_mask = 1
+	var exclusions: Array[RID] = [get_rid()]
+	if candidate is CollisionObject2D:
+		exclusions.append((candidate as CollisionObject2D).get_rid())
+	query.exclude = exclusions
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
+
+
+func parry_attack(attack_id: int) -> bool:
+	if (
+		attack_id != current_attack_id
+		or current_attack_parried
+		or (state != SlimeState.WINDUP and state != SlimeState.LUNGE)
+	):
+		return false
+	current_attack_parried = true
+	attack_area.set_deferred("monitoring", false)
+	_change_state(SlimeState.RECOVER)
+	state_time_left = recover_duration
+	velocity = Vector2.ZERO
+	_play_hit_flash()
+	return true
+
+
+func set_combat_paused(paused: bool) -> void:
+	combat_paused = paused
 
 
 func receive_collision_impact(other: Node, approach_speed: float) -> bool:

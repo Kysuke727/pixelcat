@@ -58,6 +58,9 @@ func _run() -> void:
 	var lunger := _spawn_slime(night_scene, Vector2(570.0, 350.0))
 	lunger.lunge_speed = 260.0
 	lunger.state = lunger.SlimeState.WINDUP
+	# This test injects WINDUP directly instead of entering through CHASE.
+	# Real gameplay assigns the attack ID when CHASE starts the windup.
+	lunger.current_attack_id = 880002
 	lunger.locked_target_position = player.global_position
 	lunger.state_time_left = 0.0
 	var health_before: int = player.current_health
