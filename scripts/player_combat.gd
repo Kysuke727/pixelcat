@@ -38,12 +38,6 @@ var current_melee_attack_id: int = 0
 @export var yarn_bind_duration: float = 1.5
 @export var yarn_connection_duration: float = 10.0
 @export var yarn_maximum_length: float = 0.0 # 0 = unlimited connection length
-@export var yarn_sample_distance: float = 6.0
-@export_range(180.0, 360.0) var yarn_required_loop_angle_degrees: float = 270.0
-@export var yarn_minimum_loop_radius: float = 24.0
-@export var yarn_minimum_loop_perimeter: float = 120.0
-@export var yarn_minimum_loop_area: float = 450.0
-@export var yarn_maximum_samples: int = 384
 @export var yarn_cut_cooldown_reduction: float = 1.5
 @export_category("Yarn Skill Interface — Stage 04 can set these bonuses")
 @export_range(0.0, 0.3, 0.01) var yarn_skill_slow_reduction_bonus: float = 0.0
@@ -305,6 +299,7 @@ func on_yarn_hit(target: Node2D) -> bool:
 	):
 		return false
 	var connection = YARN_CONNECTION_SCENE.instantiate()
+	var tuning: CombatV3Tuning = CombatBalance.tuning
 	var skill_modifiers := ProgressionManager.get_skill_modifiers()
 	var slow_reduction := clampf(1.0 - yarn_slow_multiplier + yarn_skill_slow_reduction_bonus + float(skill_modifiers["slow_reduction_bonus"]), 0.0, 0.8)
 	connection.configure(player, target, self, {
@@ -313,12 +308,13 @@ func on_yarn_hit(target: Node2D) -> bool:
 		"bind_duration": minf(yarn_bind_duration + yarn_skill_bind_duration_bonus + float(skill_modifiers["bind_duration_bonus"]), 2.5),
 		"maximum_duration": minf(yarn_connection_duration + yarn_skill_connection_duration_bonus + float(skill_modifiers["connection_duration_bonus"]), 15.0),
 		"maximum_length": yarn_maximum_length,
-		"sample_distance": yarn_sample_distance,
-		"required_loop_angle_degrees": maxf(yarn_required_loop_angle_degrees - yarn_skill_loop_angle_reduction - float(skill_modifiers["loop_angle_reduction"]), 240.0),
-		"minimum_loop_radius": yarn_minimum_loop_radius,
-		"minimum_loop_perimeter": yarn_minimum_loop_perimeter,
-		"minimum_loop_area": yarn_minimum_loop_area,
-		"maximum_samples": yarn_maximum_samples,
+		"minimum_player_step": tuning.yarn_minimum_player_step,
+		"required_wrap_angle_degrees": maxf(tuning.yarn_required_wrap_angle_degrees - yarn_skill_loop_angle_reduction - float(skill_modifiers["loop_angle_reduction"]), 240.0),
+		"minimum_wrap_radius": tuning.yarn_minimum_wrap_radius,
+		"minimum_pivot_contact_radius": tuning.yarn_minimum_pivot_contact_radius,
+		"maximum_sample_angle_degrees": tuning.yarn_maximum_sample_angle_degrees,
+		"required_tension_extension": tuning.yarn_required_tension_extension,
+		"required_pull_distance": tuning.yarn_required_pull_distance,
 		"cooldown_reduction_on_cut": yarn_cut_cooldown_reduction
 	})
 	get_tree().current_scene.add_child(connection)

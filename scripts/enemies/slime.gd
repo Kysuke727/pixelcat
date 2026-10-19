@@ -35,6 +35,7 @@ static var _next_attack_id: int = 1
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
+@export_range(8.0, 32.0, 1.0) var yarn_wrap_radius: float = 14.0
 
 @export_category("Lunge")
 @export var windup_duration: float = 0.4

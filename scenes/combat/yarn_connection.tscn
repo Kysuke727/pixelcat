@@ -21,6 +21,23 @@ end_cap_mode = 2
 
 [node name="DebugStatus" type="Label" parent="."]
 visible = false
-offset_right = 150.0
-offset_bottom = 44.0
-text = "连接：成功"
+offset_left = -180.0
+offset_top = -105.0
+offset_right = 180.0
+offset_bottom = 0.0
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 10
+text = "毛线状态"
+
+[node name="PivotMarker" type="Polygon2D" parent="."]
+visible = false
+z_index = 15
+color = Color(0.45, 1, 0.68, 0.95)
+polygon = PackedVector2Array(0, -8, 4, -4, 8, 0, 4, 4, 0, 8, -4, 4, -8, 0, -4, -4)
+
+[node name="AnchorKnot" type="Polygon2D" parent="."]
+z_index = 16
+color = Color(1.0, 0.42, 0.72, 1.0)
+polygon = PackedVector2Array(0, -6, 4, -3, 6, 0, 3, 4, 0, 6, -4, 3, -6, 0, -3, -4)

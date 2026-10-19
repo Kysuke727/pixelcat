@@ -16,6 +16,13 @@ class_name CombatV3Tuning
 
 @export_category("毛线技能")
 @export var yarn_cooldown: float = 4.0
+@export_range(180.0, 360.0) var yarn_required_wrap_angle_degrees: float = 270.0
+@export var yarn_minimum_wrap_radius: float = 22.0
+@export var yarn_minimum_pivot_contact_radius: float = 18.0
+@export var yarn_minimum_player_step: float = 6.0
+@export var yarn_maximum_sample_angle_degrees: float = 100.0
+@export var yarn_required_tension_extension: float = 24.0
+@export var yarn_required_pull_distance: float = 20.0
 
 @export_category("闪避")
 @export var dodge_distance: float = 55.0

@@ -1,38 +1,67 @@
 extends Node2D
 class_name YarnConnection
 
+enum WrapState { SEEKING_SUPPORT, WRAPPED, WOUND, TAUT, BOUND }
+
+@export_category("Connection")
 @export var slow_multiplier: float = 0.5
 @export var slow_duration: float = 3.0
 @export var bind_duration: float = 1.5
 @export var maximum_duration: float = 10.0
 @export var maximum_length: float = 0.0 # 0 = no connection-length limit
-@export var sample_distance: float = 6.0
-@export_range(180.0, 360.0) var required_loop_angle_degrees: float = 270.0
-@export var minimum_loop_radius: float = 24.0
-@export var minimum_loop_perimeter: float = 120.0
-@export var minimum_loop_area: float = 450.0
-@export var maximum_samples: int = 384
 @export var cooldown_reduction_on_cut: float = 1.5
+
+@export_category("Wrap Detection")
+@export_range(180.0, 360.0) var required_wrap_angle_degrees: float = 270.0
+@export var minimum_wrap_radius: float = 22.0
+@export var minimum_pivot_contact_radius: float = 18.0
+@export var minimum_player_step: float = 6.0
+@export var maximum_sample_angle_degrees: float = 100.0
+
+@export_category("Tension — tune in playtests")
+@export var required_tension_extension: float = 24.0
+@export var required_pull_distance: float = 20.0
+
+@export_category("Debug")
+@export var show_debug_status: bool = true
 
 var player: Node2D
 var target: Node2D
 var combat: Node
-var lifetime_left: float
+var lifetime_left: float = 0.0
+var wrap_pivot: Node2D
+var wrap_state: WrapState = WrapState.SEEKING_SUPPORT
 var trail_points: Array[Vector2] = []
-var trail_offsets: Array[Vector2] = []
-var trail_length: float = 0.0
-var accumulated_loop_angle: float = 0.0
+var path_points: Array[Vector2] = []
+var accumulated_wrap_angle: float = 0.0
+var wrap_contact_radius: float = 0.0
+var wrap_path_length_at_contact: float = 0.0
+var routed_path_length_at_wound: float = 0.0
+var player_radius_at_wound: float = 0.0
+var player_position_at_wound: Vector2 = Vector2.ZERO
+var pivot_position_at_wound: Vector2 = Vector2.ZERO
+var tension_value: float = 0.0
+var path_valid: bool = true
+var is_wrapped: bool = false
+var winding_complete: bool = false
+var is_taut: bool = false
 var loop_bound: bool = false
+var valid_movement_this_frame: bool = false
 var cut_reward_claimed: bool = false
 var finished: bool = false
 var owner_scene: Node
-var last_bind_failure_reason: String = "等待有效移动轨迹"
-
-@export var show_debug_status: bool = true
+var last_bind_failure_reason: String = "寻找可缠绕支点"
+var _last_player_position: Vector2 = Vector2.ZERO
+var _last_player_relative_to_pivot: Vector2 = Vector2.ZERO
+var _last_pivot_position: Vector2 = Vector2.ZERO
+var _dynamic_pivot: bool = false
+var wrap_side_sign: float = 1.0
 
 @onready var tether_line: Line2D = $TetherLine
 @onready var trail_line: Line2D = $TrailLine
 @onready var debug_status: Label = $DebugStatus
+@onready var pivot_marker: Polygon2D = $PivotMarker
+@onready var anchor_knot: Polygon2D = $AnchorKnot
 
 
 func configure(new_player: Node2D, new_target: Node2D, new_combat: Node, settings: Dictionary = {}) -> void:
@@ -48,178 +77,375 @@ func _ready() -> void:
 	owner_scene = get_tree().current_scene
 	lifetime_left = maximum_duration
 	if is_instance_valid(player):
+		_last_player_position = player.global_position
 		trail_points.append(player.global_position)
-	if is_instance_valid(player) and is_instance_valid(target):
-		trail_offsets.append(player.global_position - target.global_position)
 	if is_instance_valid(target) and target.has_method("apply_yarn_slow"):
 		target.apply_yarn_slow(slow_duration, slow_multiplier)
-	_update_lines()
+	_update_visuals()
 
 
 func _process(delta: float) -> void:
 	if finished:
 		return
-	if (
-		not is_instance_valid(player)
-		or not is_instance_valid(target)
-		or not is_instance_valid(owner_scene)
-		or get_tree().current_scene != owner_scene
-		or (player.has_method("is_alive") and not player.is_alive())
-		or (target.has_method("is_alive") and not target.is_alive())
-	):
+	if not _connection_endpoints_are_valid():
+		last_bind_failure_reason = "锚定目标或玩家已失效"
 		_finish()
 		return
 	lifetime_left = maxf(lifetime_left - delta, 0.0)
-	if lifetime_left <= 0.0 or (maximum_length > 0.0 and player.global_position.distance_to(target.global_position) > maximum_length):
-		last_bind_failure_reason = "连接超时" if lifetime_left <= 0.0 else "超过连接最大距离"
+	if lifetime_left <= 0.0:
+		last_bind_failure_reason = "连接超时"
 		_finish()
 		return
-	if not _has_clear_line_of_sight():
-		last_bind_failure_reason = "目标与玩家之间被障碍物遮挡"
+	if maximum_length > 0.0 and player.global_position.distance_to(target.global_position) > maximum_length:
+		last_bind_failure_reason = "超过连接最大距离"
 		_finish()
 		return
-	_sample_player_path()
-	_try_close_loop()
-	_update_lines()
+	if is_wrapped and not _is_valid_support(wrap_pivot):
+		_reset_wrap_state("动态支点已死亡或静态支点已移除")
+	if not is_wrapped:
+		_try_acquire_support()
+	_update_player_trail()
+	_update_wrap_angle()
+	_update_tension_and_bind()
+	_update_visuals()
 
 
-func _sample_player_path() -> void:
-	if trail_offsets.is_empty():
-		trail_points.append(player.global_position)
-		trail_offsets.append(player.global_position - target.global_position)
-		return
+func _connection_endpoints_are_valid() -> bool:
+	return (
+		is_instance_valid(player)
+		and is_instance_valid(target)
+		and is_instance_valid(owner_scene)
+		and get_tree().current_scene == owner_scene
+		and (not player.has_method("is_alive") or player.is_alive())
+		and (not target.has_method("is_alive") or target.is_alive())
+	)
+
+
+func _update_player_trail() -> void:
 	var current := player.global_position
-	var current_offset := current - target.global_position
-	var previous_offset: Vector2 = trail_offsets.back()
-	var segment_length := previous_offset.distance_to(current_offset)
-	if segment_length < sample_distance:
+	if trail_points.is_empty() or trail_points.back().distance_to(current) >= minimum_player_step:
+		trail_points.append(current)
+		while trail_points.size() > 256:
+			trail_points.remove_at(1)
+
+
+func _try_acquire_support() -> void:
+	var rope_start := player.global_position
+	var rope_end := target.global_position
+	var candidates: Array[Node2D] = []
+	for candidate in get_tree().get_nodes_in_group("yarn_wrap_points"):
+		if candidate is Node2D and _is_valid_support(candidate):
+			candidates.append(candidate)
+	for candidate in get_tree().get_nodes_in_group("enemies"):
+		if candidate is Node2D and candidate != target and _is_valid_support(candidate):
+			candidates.append(candidate)
+
+	var nearest_support: Node2D
+	var nearest_distance := INF
+	for candidate in candidates:
+		var radius := _get_support_radius(candidate)
+		var distance := _distance_to_segment(candidate.global_position, rope_start, rope_end)
+		if distance <= radius and distance < nearest_distance:
+			nearest_support = candidate
+			nearest_distance = distance
+	if is_instance_valid(nearest_support):
+		wrap_pivot = nearest_support
+		_dynamic_pivot = nearest_support.is_in_group("enemies")
+		wrap_contact_radius = _get_support_radius(nearest_support)
+		is_wrapped = true
+		wrap_state = WrapState.WRAPPED
+		_last_pivot_position = wrap_pivot.global_position
+		_last_player_relative_to_pivot = player.global_position - _last_pivot_position
+		wrap_path_length_at_contact = _routed_path_length()
+		last_bind_failure_reason = "已接触支点，继续绕支点移动"
 		return
-	trail_length += segment_length
-	trail_points.append(current)
-	trail_offsets.append(current_offset)
-	if previous_offset.length() >= minimum_loop_radius and current_offset.length() >= minimum_loop_radius:
-		accumulated_loop_angle += rad_to_deg(previous_offset.angle_to(current_offset))
-	_simplify_last_points()
-	while trail_offsets.size() > maxi(maximum_samples, 3):
-		trail_points.remove_at(1)
-		trail_offsets.remove_at(1)
+
+	var obstruction := _ray_hit(rope_start, rope_end, [player, target])
+	if obstruction.is_empty():
+		path_valid = true
+		last_bind_failure_reason = "毛线尚未接触可缠绕支点"
+	else:
+		path_valid = false
+		last_bind_failure_reason = "毛线被未配置为支点的障碍物挡住"
 
 
-func _simplify_last_points() -> void:
-	while trail_offsets.size() >= 3:
-		var count := trail_offsets.size()
-		var first: Vector2 = trail_offsets[count - 3]
-		var middle: Vector2 = trail_offsets[count - 2]
-		var last: Vector2 = trail_offsets[count - 1]
-		var first_leg := middle - first
-		var second_leg := last - middle
-		if first_leg.length_squared() == 0.0 or second_leg.length_squared() == 0.0:
-			trail_points.remove_at(count - 2)
-			trail_offsets.remove_at(count - 2)
-			continue
-		var normalized_cross := absf(first_leg.normalized().cross(second_leg.normalized()))
-		if normalized_cross < 0.035 and first_leg.dot(second_leg) > 0.0:
-			trail_points.remove_at(count - 2)
-		else:
-			break
+func _is_valid_support(candidate: Node2D) -> bool:
+	if not is_instance_valid(candidate) or candidate == target:
+		return false
+	if candidate.is_in_group("enemies"):
+		return not candidate.has_method("is_alive") or candidate.is_alive()
+	return candidate.is_in_group("yarn_wrap_points")
 
 
-func _try_close_loop() -> void:
+func _get_support_radius(candidate: Node2D) -> float:
+	var radius_variant: Variant = candidate.get("yarn_wrap_radius")
+	if radius_variant != null and typeof(radius_variant) in [TYPE_FLOAT, TYPE_INT]:
+		return maxf(float(radius_variant), 1.0)
+	return minimum_pivot_contact_radius
+
+
+func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float:
+	var segment := end - start
+	var length_squared := segment.length_squared()
+	if length_squared <= 0.001:
+		return point.distance_to(start)
+	var along := clampf((point - start).dot(segment) / length_squared, 0.0, 1.0)
+	return point.distance_to(start + segment * along)
+
+
+func _update_wrap_angle() -> void:
+	valid_movement_this_frame = false
+	if not is_wrapped or not _is_valid_support(wrap_pivot):
+		return
+	if not _validate_current_path():
+		accumulated_wrap_angle = 0.0
+		winding_complete = false
+		is_taut = false
+		wrap_state = WrapState.WRAPPED
+		tension_value = 0.0
+		last_bind_failure_reason = "毛线路径无效，绕行进度已清除"
+		_last_player_position = player.global_position
+		_last_player_relative_to_pivot = player.global_position - wrap_pivot.global_position
+		return
+	var current_pivot_position := wrap_pivot.global_position
+	var current_relative := player.global_position - current_pivot_position
+	var player_step := player.global_position.distance_to(_last_player_position)
+	if player_step >= minimum_player_step:
+		if (
+			_last_player_relative_to_pivot.length() >= maxf(minimum_wrap_radius, wrap_contact_radius)
+			and current_relative.length() >= maxf(minimum_wrap_radius, wrap_contact_radius)
+		):
+			var angular_step := rad_to_deg(_last_player_relative_to_pivot.angle_to(current_relative))
+			if absf(angular_step) <= maximum_sample_angle_degrees:
+				accumulated_wrap_angle += angular_step
+				valid_movement_this_frame = absf(angular_step) > 0.1
+		trail_points.append(player.global_position)
+		while trail_points.size() > 256:
+			trail_points.remove_at(1)
+	_last_player_relative_to_pivot = current_relative
+	_last_pivot_position = current_pivot_position
+	_last_player_position = player.global_position
+	if winding_complete and absf(accumulated_wrap_angle) < required_wrap_angle_degrees:
+		winding_complete = false
+		is_taut = false
+		tension_value = 0.0
+		wrap_state = WrapState.WRAPPED
+		last_bind_failure_reason = "反向移动已解除部分缠绕进度"
+	if not winding_complete and absf(accumulated_wrap_angle) >= required_wrap_angle_degrees:
+		winding_complete = true
+		wrap_state = WrapState.WOUND
+		player_position_at_wound = player.global_position
+		pivot_position_at_wound = wrap_pivot.global_position
+		player_radius_at_wound = player.global_position.distance_to(wrap_pivot.global_position)
+		routed_path_length_at_wound = _routed_path_length()
+		last_bind_failure_reason = "缠绕完成，继续拉紧毛线"
+
+
+func _update_tension_and_bind() -> void:
+	path_valid = _validate_current_path()
+	if not path_valid:
+		is_taut = false
+		last_bind_failure_reason = "毛线路径被未配置支点的障碍物阻断"
+		return
+	if not winding_complete or not is_wrapped:
+		return
+	var route_extension := _routed_path_length() - routed_path_length_at_wound
+	var radial_pull := player.global_position.distance_to(wrap_pivot.global_position) - player_radius_at_wound
+	var pull_vector := player.global_position - player_position_at_wound
+	var away_from_pivot := (player_position_at_wound - pivot_position_at_wound).normalized()
+	var effective_pull := pull_vector.dot(away_from_pivot)
+	tension_value = maxf(maxf(route_extension, radial_pull), 0.0)
+	is_taut = tension_value >= required_tension_extension and radial_pull >= required_pull_distance and effective_pull >= required_pull_distance
+	if not is_taut:
+		wrap_state = WrapState.WOUND
+		last_bind_failure_reason = "已缠绕，等待拉紧（张力 %.1f/%.1f px）" % [tension_value, required_tension_extension]
+		return
+	wrap_state = WrapState.TAUT
+	_bind_wrapped_targets()
+
+
+func _bind_wrapped_targets() -> void:
 	if loop_bound:
 		return
-	if trail_offsets.size() < 4:
-		last_bind_failure_reason = "有效轨迹点不足（%d/4）" % trail_offsets.size()
-		return
-	if trail_length < minimum_loop_perimeter:
-		last_bind_failure_reason = "有效轨迹周长不足（%.0f/%.0f px）" % [trail_length, minimum_loop_perimeter]
-		return
-	if absf(accumulated_loop_angle) < required_loop_angle_degrees:
-		last_bind_failure_reason = "绕行角度不足（%.0f°/%.0f°）" % [absf(accumulated_loop_angle), required_loop_angle_degrees]
-		return
-	var polygon := PackedVector2Array()
-	for offset in trail_offsets:
-		polygon.append(target.global_position + offset)
-	if absf(_signed_polygon_area(polygon)) < minimum_loop_area:
-		last_bind_failure_reason = "闭合区域面积不足（%.0f/%.0f px²）" % [absf(_signed_polygon_area(polygon)), minimum_loop_area]
-		return
+	var targets: Array[Node2D] = [target]
+	if _dynamic_pivot and wrap_pivot != target:
+		targets.append(wrap_pivot)
 	var bound_count := 0
-	var attempted_bind_count := 0
-	for enemy in get_tree().get_nodes_in_group("enemies"):
+	for enemy in targets:
 		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
 			continue
-		# The tethered target is always a valid bind candidate: at 270° the
-		# auto-closing chord can leave the orbit center outside the polygon.
-		if enemy == target or Geometry2D.is_point_in_polygon(enemy.global_position, polygon):
-			attempted_bind_count += 1
-			if bool(enemy.apply_yarn_bind(bind_duration)):
-				bound_count += 1
-	if bound_count == 0:
-		last_bind_failure_reason = "闭合区域内没有可束缚敌人" if attempted_bind_count == 0 else "敌人处于束缚免疫期或已被束缚"
-		return
-	loop_bound = true
-	last_bind_failure_reason = ""
+		if bool(enemy.apply_yarn_bind(bind_duration)):
+			bound_count += 1
+	loop_bound = bound_count > 0
+	if loop_bound:
+		wrap_state = WrapState.BOUND
+		last_bind_failure_reason = "束缚已触发" if bound_count == targets.size() else "部分目标处于束缚免疫期"
+	else:
+		last_bind_failure_reason = "目标处于束缚免疫期或已被束缚"
 
 
-func _signed_polygon_area(polygon: PackedVector2Array) -> float:
-	var area := 0.0
-	for index in range(polygon.size()):
-		var next_index := (index + 1) % polygon.size()
-		area += polygon[index].cross(polygon[next_index])
-	return area * 0.5
+func _validate_current_path() -> bool:
+	if not is_wrapped:
+		var direct_obstruction := _ray_hit(player.global_position, target.global_position, [player, target])
+		if direct_obstruction.is_empty():
+			return true
+		return false
+	var excluded: Array[Node] = [player, target, wrap_pivot]
+	if wrap_pivot.get_parent() is CollisionObject2D:
+		excluded.append(wrap_pivot.get_parent())
+	if player.global_position.distance_to(wrap_pivot.global_position) <= wrap_contact_radius:
+		return false
+	if target.global_position.distance_to(wrap_pivot.global_position) <= wrap_contact_radius:
+		return false
+	var path := _build_routed_path()
+	if path.size() < 2:
+		return false
+	for index in range(path.size() - 1):
+		if not _ray_hit(path[index], path[index + 1], excluded).is_empty():
+			return false
+	return true
 
 
-func _update_lines() -> void:
+func _ray_hit(start: Vector2, end: Vector2, exclude_nodes: Array[Node]) -> Dictionary:
+	if start.distance_squared_to(end) <= 0.001:
+		return {}
+	var query := PhysicsRayQueryParameters2D.create(start, end)
+	query.collision_mask = 1
+	var exclusions: Array[RID] = []
+	for node in exclude_nodes:
+		if node is CollisionObject2D and is_instance_valid(node):
+			exclusions.append((node as CollisionObject2D).get_rid())
+	query.exclude = exclusions
+	return get_world_2d().direct_space_state.intersect_ray(query)
+
+
+func _routed_path_length() -> float:
+	var points := _build_routed_path()
+	var length := 0.0
+	for index in range(points.size() - 1):
+		length += points[index].distance_to(points[index + 1])
+	return length
+
+
+func _build_routed_path() -> PackedVector2Array:
+	var points := PackedVector2Array()
 	if not is_instance_valid(player) or not is_instance_valid(target):
-		return
-	tether_line.points = PackedVector2Array([
-			to_local(player.global_position),
-			to_local(target.global_position)
-	])
+		return points
+	points.append(player.global_position)
+	if not is_wrapped or not _is_valid_support(wrap_pivot):
+		points.append(target.global_position)
+		return points
+	var center := wrap_pivot.global_position
+	var radius := wrap_contact_radius
+	var player_offset := player.global_position - center
+	var target_offset := target.global_position - center
+	if player_offset.length() <= radius or target_offset.length() <= radius:
+		points.append(target.global_position)
+		return points
+	var player_phi := player_offset.angle()
+	var target_phi := target_offset.angle()
+	var player_alpha := acos(clampf(radius / player_offset.length(), -1.0, 1.0))
+	var target_alpha := acos(clampf(radius / target_offset.length(), -1.0, 1.0))
+	var best_start := Vector2.ZERO
+	var best_end := Vector2.ZERO
+	var best_side := 1.0
+	var best_length := INF
+	for player_angle in [player_phi - player_alpha, player_phi + player_alpha]:
+		for target_angle in [target_phi - target_alpha, target_phi + target_alpha]:
+			var start_tangent := center + Vector2.from_angle(player_angle) * radius
+			var end_tangent := center + Vector2.from_angle(target_angle) * radius
+			var side_cross := (start_tangent - center).cross(end_tangent - center)
+			var candidate_side := 1.0 if side_cross >= 0.0 else -1.0
+			var candidate_length := player.global_position.distance_to(start_tangent) + start_tangent.distance_to(end_tangent) + end_tangent.distance_to(target.global_position)
+			if candidate_side == wrap_side_sign and candidate_length < best_length:
+				best_start = start_tangent
+				best_end = end_tangent
+				best_side = candidate_side
+				best_length = candidate_length
+		if best_length < INF:
+			break
+	if best_length == INF:
+		points.append(target.global_position)
+		return points
+	points.append(best_start)
+	var start_angle := (best_start - center).angle()
+	var end_angle := (best_end - center).angle()
+	var arc_delta := wrapf(end_angle - start_angle, -PI, PI)
+	if absf(arc_delta) < 0.001:
+		arc_delta = best_side * TAU
+	var arc_subdivisions := maxi(8, ceili(absf(arc_delta) / deg_to_rad(12.0)))
+	for arc_step in range(1, arc_subdivisions):
+		points.append(center + Vector2.from_angle(start_angle + arc_delta * float(arc_step) / float(arc_subdivisions)) * radius)
+	points.append(best_end)
+	points.append(target.global_position)
+	return points
+
+
+func _update_visuals() -> void:
+	path_points.clear()
+	var full_path := _build_routed_path()
+	if path_valid:
+		for point in full_path:
+			path_points.append(point)
+	else:
+		var excluded: Array[Node] = [player, target]
+		if is_wrapped and is_instance_valid(wrap_pivot):
+			excluded.append(wrap_pivot)
+			if wrap_pivot.get_parent() is CollisionObject2D:
+				excluded.append(wrap_pivot.get_parent())
+		for index in range(full_path.size() - 1):
+			path_points.append(full_path[index])
+			var obstruction := _ray_hit(full_path[index], full_path[index + 1], excluded)
+			if not obstruction.is_empty():
+				path_points.append(obstruction["position"])
+				break
+		if path_points.size() == full_path.size():
+			path_points.append(full_path[full_path.size() - 1])
+	var local_path := PackedVector2Array()
+	for point in path_points:
+		local_path.append(to_local(point))
+	tether_line.points = local_path
+	tether_line.default_color = Color(1.0, 0.25, 0.48, 1.0) if not path_valid else Color(1.0, 0.45, 0.72, 0.9)
+	anchor_knot.position = to_local(target.global_position)
 	var local_trail := PackedVector2Array()
-	for offset in trail_offsets:
-		local_trail.append(to_local(target.global_position + offset))
+	for point in trail_points:
+		local_trail.append(to_local(point))
 	trail_line.points = local_trail
-	trail_line.visible = local_trail.size() > 1
-	if is_instance_valid(debug_status):
-		debug_status.visible = show_debug_status
-		debug_status.position = to_local(player.global_position) + Vector2(-75.0, -50.0)
-		var target_name: String = str(target.name) if is_instance_valid(target) else "无"
-		var loop_ready := (
-			trail_offsets.size() >= 4
-			and trail_length >= minimum_loop_perimeter
-			and absf(accumulated_loop_angle) >= required_loop_angle_degrees
-			and absf(_signed_polygon_area(_current_polygon())) >= minimum_loop_area
-		)
-		var status_text := "连接：成功 | 目标：%s\n角度：%.0f° | 轨迹点：%d\n可触发：%s" % [target_name, absf(accumulated_loop_angle), trail_offsets.size(), "是" if loop_ready else "否"]
-		if not loop_bound and not last_bind_failure_reason.is_empty():
-			status_text += "\n原因：" + last_bind_failure_reason
-		debug_status.text = status_text
-		debug_status.add_theme_color_override("font_color", Color(1.0, 0.92, 0.65))
-		debug_status.add_theme_font_size_override("font_size", 10)
-		debug_status.z_index = 20
-
-
-func _current_polygon() -> PackedVector2Array:
-	var polygon := PackedVector2Array()
-	for offset in trail_offsets:
-		polygon.append(target.global_position + offset)
-	return polygon
+	trail_line.visible = show_debug_status and is_wrapped and local_trail.size() > 1
+	pivot_marker.visible = show_debug_status and is_wrapped and is_instance_valid(wrap_pivot)
+	if pivot_marker.visible:
+		pivot_marker.position = to_local(wrap_pivot.global_position)
+	if not is_instance_valid(debug_status) or not is_instance_valid(player):
+		return
+	debug_status.visible = show_debug_status
+	debug_status.position = to_local(player.global_position) + Vector2(-85.0, -68.0)
+	var target_name := str(target.name) if is_instance_valid(target) else "无"
+	var pivot_name := str(wrap_pivot.name) if is_wrapped and is_instance_valid(wrap_pivot) else "未接触"
+	var state_names: Array[String] = ["寻找支点", "已接触支点", "已缠绕·等待拉紧", "拉紧中", "束缚触发"]
+	var status_name: String = state_names[wrap_state]
+	var status_text := "锚定：%s | 支点：%s\n路径节点：%d | 角度：%.0f°/%.0f°\n有效移动：%s | 已缠绕：%s\n已拉紧：%s | 张力：%.1f/%.1f px\n状态：%s" % [
+		target_name,
+		pivot_name,
+		path_points.size(),
+		absf(accumulated_wrap_angle),
+		required_wrap_angle_degrees,
+		"是" if valid_movement_this_frame else "否",
+		"是" if winding_complete else "否",
+		"是" if is_taut else "否",
+		tension_value,
+		required_tension_extension,
+		status_name
+	]
+	if not last_bind_failure_reason.is_empty() and not loop_bound:
+		status_text += "\n原因：" + last_bind_failure_reason
+	debug_status.text = status_text
+	debug_status.add_theme_color_override("font_color", Color(1.0, 0.92, 0.65))
+	debug_status.add_theme_font_size_override("font_size", 10)
+	debug_status.z_index = 20
 
 
 func get_debug_status_text() -> String:
 	return debug_status.text if is_instance_valid(debug_status) else ""
-
-
-func _has_clear_line_of_sight() -> bool:
-	var query := PhysicsRayQueryParameters2D.create(player.global_position, target.global_position)
-	query.collision_mask = 1
-	var exclusions: Array[RID] = []
-	if player is CollisionObject2D:
-		exclusions.append((player as CollisionObject2D).get_rid())
-	if target is CollisionObject2D:
-		exclusions.append((target as CollisionObject2D).get_rid())
-	query.exclude = exclusions
-	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
 func cut_by_player() -> bool:
@@ -228,12 +454,33 @@ func cut_by_player() -> bool:
 	cut_reward_claimed = true
 	if is_instance_valid(combat) and combat.has_method("on_yarn_cut_reward"):
 		combat.on_yarn_cut_reward(cooldown_reduction_on_cut)
+	last_bind_failure_reason = "玩家主动剪断毛线"
 	_finish()
 	return true
 
 
 func finish_naturally() -> void:
 	_finish()
+
+
+func _reset_wrap_state(reason: String) -> void:
+	wrap_pivot = null
+	_dynamic_pivot = false
+	is_wrapped = false
+	wrap_state = WrapState.SEEKING_SUPPORT
+	accumulated_wrap_angle = 0.0
+	wrap_contact_radius = 0.0
+	wrap_path_length_at_contact = 0.0
+	routed_path_length_at_wound = 0.0
+	winding_complete = false
+	is_taut = false
+	loop_bound = false
+	path_valid = true
+	tension_value = 0.0
+	trail_points.clear()
+	trail_points.append(player.global_position)
+	_last_player_position = player.global_position
+	last_bind_failure_reason = reason
 
 
 func _finish() -> void:

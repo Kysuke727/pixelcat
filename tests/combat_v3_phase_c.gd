@@ -63,7 +63,7 @@ func _run() -> void:
 	_check(is_equal_approx(connection_b.slow_multiplier, 0.2), "skill interface caps slow at 80 percent")
 	_check(is_equal_approx(connection_b.maximum_duration, 15.0), "skill interface caps connection duration at 15 seconds")
 	_check(is_equal_approx(connection_b.bind_duration, 2.5), "skill interface caps bind at 2.5 seconds")
-	_check(is_equal_approx(connection_b.required_loop_angle_degrees, 240.0), "skill interface lowers the loop requirement to 240 degrees")
+	_check(is_equal_approx(connection_b.required_wrap_angle_degrees, 240.0), "skill interface lowers the pivot-wrap requirement to 240 degrees")
 	combat.yarn_skill_slow_reduction_bonus = 0.0
 	combat.yarn_skill_connection_duration_bonus = 0.0
 	combat.yarn_skill_bind_duration_bonus = 0.0
@@ -79,29 +79,21 @@ func _run() -> void:
 	_check(is_equal_approx(combat.ranged_cooldown_left, 1.0), "duplicate cut cannot reduce cooldown again")
 
 	var loop_target := _spawn_slime(night_scene, Vector2(500.0, 350.0))
-	var group_target := _spawn_slime(night_scene, loop_target.global_position + Vector2(0.0, 12.0))
 	player.global_position = loop_target.global_position + Vector2(60.0, 0.0)
 	var loop_connection := _create_connection(combat, player, loop_target)
 	for index in range(1, 25):
 		var angle := TAU * float(index) / 24.0
 		player.global_position = loop_target.global_position + Vector2.from_angle(angle) * 60.0
 		loop_connection._process(1.0 / 60.0)
-		if index == 16:
-			_check(not loop_connection.loop_bound, "240 degrees does not meet the base 270-degree loop requirement")
-		if index == 18:
-			_check(loop_connection.loop_bound, "270 degrees of actual movement closes the loop")
-	_check(loop_connection.loop_bound, "closed polygon around the target is recognized")
-	_check(loop_target.bind_time_left >= combat.yarn_bind_duration, "valid loop applies the configured 1.5 second bind")
-	_check(loop_connection.trail_points.size() <= loop_connection.maximum_samples, "trail sample storage stays bounded")
+	_check(not loop_connection.is_wrapped, "orbiting anchor target A alone does not acquire a support")
+	_check(not loop_connection.loop_bound, "orbiting anchor target A alone cannot bind")
+	_check(loop_connection.trail_points.size() <= 256, "debug movement trail storage stays bounded")
 	loop_target.apply_yarn_slow(3.0, 0.5)
 	loop_connection.cut_by_player()
 	_check(loop_target.slow_time_left > 0.0, "cutting a line does not cancel the independently timed slow")
-	_check(loop_target.bind_time_left > 0.0, "cutting a line does not cancel the independent bind")
 	loop_target.slow_time_left = 0.05
 	loop_target._physics_process(0.06)
 	_check(is_equal_approx(loop_target.slow_multiplier, 1.0), "slow effect restores normal speed after its timer")
-
-	_check(group_target.bind_time_left >= combat.yarn_bind_duration, "loop binds every eligible enemy inside its closed region")
 	var outside_target := _spawn_slime(night_scene, Vector2(250.0, 350.0))
 	var outside_center := Vector2(250.0, 500.0)
 	player.global_position = outside_center + Vector2(60.0, 0.0)
@@ -110,7 +102,7 @@ func _run() -> void:
 		var angle := TAU * float(index) / 24.0
 		player.global_position = outside_center + Vector2.from_angle(angle) * 60.0
 		outside_connection._process(1.0 / 60.0)
-	_check(not outside_connection.loop_bound, "moving around a different center does not count as orbiting the connected slime")
+	_check(not outside_connection.loop_bound, "movement without touching a configured support cannot trigger binding")
 
 	var expiring_connection := _create_connection(combat, player, outside_target)
 	combat.ranged_cooldown_left = 2.0
@@ -147,8 +139,8 @@ func _run() -> void:
 	await physics_frame
 	await physics_frame
 	_check(
-		not is_instance_valid(blocked_connection) or blocked_connection.finished,
-		"wall occlusion safely breaks yarn instead of drawing through it"
+		is_instance_valid(blocked_connection) and not blocked_connection.path_valid,
+		"wall occlusion invalidates yarn path instead of drawing through it"
 	)
 
 	var dead_target := _spawn_slime(night_scene, Vector2(300.0, 550.0))
@@ -169,7 +161,7 @@ func _run() -> void:
 	current_scene = night_scene
 	replacement_scene.queue_free()
 
-	for slime in [target_a, target_b, loop_target, group_target, outside_target, blocked_target, dead_target, transition_target]:
+	for slime in [target_a, target_b, loop_target, outside_target, blocked_target, dead_target, transition_target]:
 		if is_instance_valid(slime):
 			slime.queue_free()
 	if is_instance_valid(night_scene):
