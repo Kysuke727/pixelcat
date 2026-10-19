@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://drn2vrk52xx7d"]
+
+[ext_resource type="Script" uid="uid://dbil0n3qtp0ru" path="res://scripts/exit_door.gd" id="1_vp25d"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qeq1v"]
+size = Vector2(63, 98)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_owloi"]
+load_path = "res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex"
+
+[node name="ExitDoor" type="Area2D" unique_id=1157092890]
+position = Vector2(-15, 34)
+script = ExtResource("1_vp25d")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=650913448]
+shape = SubResource("RectangleShape2D_qeq1v")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1846235359]
+scale = Vector2(0.41015634, 0.6679688)
+texture = SubResource("CompressedTexture2D_owloi")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]

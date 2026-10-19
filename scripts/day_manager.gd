@@ -1,0 +1,136 @@
+
+extends Node
+
+enum TimeState {
+	DAY,
+	NIGHT
+}
+
+var current_state = TimeState.DAY
+
+const DAY_SCENE = "res://scenes/main.tscn"
+const NIGHT_SCENE = "res://scenes/worlds/night_world.tscn"
+
+var saved_hunger: float = 100.0
+var saved_mood: float = 100.0
+var saved_energy: float = 100.0
+
+
+
+func switch_to_night():
+	if current_state == TimeState.NIGHT:
+		return
+
+	save_cat_stats()
+	current_state = TimeState.NIGHT
+
+	print("现在进入夜晚了！")
+
+	var error = get_tree().change_scene_to_file(NIGHT_SCENE)
+	if error != OK:
+		print("夜晚场景切换失败：", error)
+		current_state = TimeState.DAY
+		return
+	await get_tree().scene_changed
+	restore_cat_stats(get_tree().current_scene)
+
+
+
+
+
+
+
+func switch_to_day():
+	if current_state == TimeState.DAY:
+		return
+
+	save_cat_stats()
+	current_state = TimeState.DAY
+
+	print("现在回到白天了！")
+
+	var error = get_tree().change_scene_to_file(DAY_SCENE)
+	if error != OK:
+		print("白天场景切换失败：", error)
+		current_state = TimeState.NIGHT
+		return
+
+	
+	await get_tree().scene_changed
+	restore_cat_stats(get_tree().current_scene)
+
+
+
+
+
+func save_cat_stats():
+	print("开始保存猫咪状态")
+
+	var cat = get_tree().current_scene.get_node_or_null("Cat")
+
+	if cat == null:
+		print("错误：找不到 Cat")
+		return
+
+	var stats = cat.get_node_or_null("Stats")
+
+	if stats == null:
+		print("错误：找不到 Stats")
+		return
+
+	saved_hunger = stats.hunger
+	saved_mood = stats.mood
+	saved_energy = stats.energy
+
+	print("保存成功！")
+	print("Hunger: ", saved_hunger)
+	print("Mood: ", saved_mood)
+	print("Energy: ", saved_energy)
+
+
+
+
+
+func restore_cat_stats(scene):
+	print("开始恢复猫咪状态")
+
+	if scene == null:
+		print("恢复失败：场景为空")
+		return
+
+	var cat = scene.get_node_or_null("Cat")
+
+	if cat == null:
+		print("恢复失败：找不到 Cat")
+		return
+
+	var stats = cat.get_node_or_null("Stats")
+
+	if stats == null:
+		print("恢复失败：找不到 Stats")
+		return
+
+	stats.hunger = saved_hunger
+	stats.mood = saved_mood
+	stats.energy = saved_energy
+
+	print("恢复状态成功！")
+	print("Hunger: ", stats.hunger)
+	print("Mood: ", stats.mood)
+	print("Energy: ", stats.energy)
+
+
+
+
+func _input(event):
+	if event is InputEventKey:
+		if event.pressed and not event.echo:
+			if event.keycode == KEY_N:
+				switch_to_night()
+
+			elif event.keycode == KEY_B:
+				switch_to_day()
+
+
+func _ready():
+	print("DayManager 已启动")
