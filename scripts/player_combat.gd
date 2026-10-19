@@ -100,12 +100,14 @@ func _process(delta: float) -> void:
 	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		if action_state == ActionState.ATTACK1 and combo_window_open and Input.is_action_just_pressed("melee_attack"):
 			buffered_combo = true
+		var previous_action_time := action_time
 		action_time += delta
-		_update_action()
+		_update_action(previous_action_time)
 		return
 	if action_state == ActionState.RANGED:
+		var previous_action_time := action_time
 		action_time += delta
-		_update_action()
+		_update_action(previous_action_time)
 		return
 	if action_state == ActionState.RECOVERY and melee_cooldown_left <= 0.0 and not combo_window_open:
 		action_state = ActionState.IDLE
@@ -177,9 +179,12 @@ func _start_ranged() -> void:
 	_begin_action_visual("cast")
 
 
-func _update_action() -> void:
+func _update_action(previous_action_time: float = -1.0) -> void:
 	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
-		if not melee_window_open and action_time >= melee_active_start and action_time < melee_active_end:
+		var previous_time := action_time if previous_action_time < 0.0 else previous_action_time
+		if not melee_window_open and previous_time < melee_active_start and action_time >= melee_active_end:
+			_apply_melee_shape_query()
+		elif not melee_window_open and previous_time < melee_active_end and action_time >= melee_active_start:
 			_set_melee_window(true)
 		if melee_window_open:
 			_apply_overlapping_melee_hits()
@@ -223,6 +228,20 @@ func _on_melee_body_entered(body: Node2D) -> void:
 func _apply_overlapping_melee_hits() -> void:
 	for body in melee_hitbox.get_overlapping_bodies():
 		_try_damage_target(body)
+
+
+func _apply_melee_shape_query() -> void:
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = melee_shape.shape
+	query.transform = melee_shape.global_transform
+	query.collision_mask = melee_hitbox.collision_mask
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	query.exclude = [player.get_rid()]
+	for result in get_world_2d().direct_space_state.intersect_shape(query, 64):
+		var collider: Object = result.get("collider")
+		if collider is Node:
+			_try_damage_target(collider as Node)
 
 
 func _try_damage_target(target: Node) -> void:

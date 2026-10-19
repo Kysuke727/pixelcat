@@ -92,15 +92,18 @@ scale = Vector2(0.75, 0.75)
 
 [node name="LampWrapPoint1" parent="Decorations" instance=ExtResource("13_wrap_point")]
 position = Vector2(686, 210)
-yarn_wrap_radius = 24.0
+yarn_wrap_radius = 11.0
+entity_collision_radius = 10.0
 
 [node name="LampWrapPoint2" parent="Decorations" instance=ExtResource("13_wrap_point")]
 position = Vector2(686, 390)
-yarn_wrap_radius = 24.0
+yarn_wrap_radius = 11.0
+entity_collision_radius = 10.0
 
 [node name="LampWrapPoint3" parent="Decorations" instance=ExtResource("13_wrap_point")]
 position = Vector2(686, 570)
-yarn_wrap_radius = 24.0
+yarn_wrap_radius = 11.0
+entity_collision_radius = 10.0
 
 [node name="Tree1" type="Polygon2D" parent="Decorations" unique_id=1516793081]
 color = Color(0.09411765, 0.22745098, 0.19215687, 1)

@@ -55,11 +55,29 @@ func _run() -> void:
 	_check(is_equal_approx(slime.bind_time_left, bind_before), "enemy time pause preserves remaining bind duration")
 	slime.set_combat_paused(false)
 
+	slime.state = slime.SlimeState.LUNGE
+	slime.current_attack_id = 990002
+	slime.current_attack_parried = false
+	slime.attacked_targets.clear()
+	var paused_player_health: float = player.current_health
+	slime.set_combat_paused(true)
+	slime._on_attack_area_body_entered(player)
+	slime._try_lunge_hit(player)
+	_check(player.current_health == paused_player_health and slime.attacked_targets.is_empty(), "paused lunge callbacks cannot damage or consume an attack hit")
+	slime.set_combat_paused(false)
+	await physics_frame
+	slime._try_lunge_hit(player)
+	var resumed_player_health: float = player.current_health
+	slime._try_lunge_hit(player)
+	_check(slime.attacked_targets.has(player.get_instance_id()), "resumed lunge can resolve the still-active attack")
+	_check(player.current_health == resumed_player_health, "attack id still prevents duplicate lunge damage after resume")
+
 	slime.state = slime.SlimeState.WINDUP
 	slime.current_attack_id = 990001
 	slime.bind_time_left = 0.0
 	slime.bind_resistance_left = 0.0
 	slime.apply_yarn_bind(2.0)
+	await physics_frame
 	_check(slime.state == slime.SlimeState.RECOVER, "binding cancels an active lunge or windup")
 	_check(not slime.attack_area.monitoring, "bound attack hitbox is disabled")
 
