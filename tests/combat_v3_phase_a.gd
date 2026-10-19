@@ -24,8 +24,9 @@ func _run() -> void:
 		slime.global_position = Vector2(850.0, 600.0)
 
 	var enemy: CharacterBody2D = load("res://scenes/enemies/slime.tscn").instantiate()
-	enemy.max_health = 10
 	night_scene.add_child(enemy)
+	enemy.max_health = 10
+	enemy.current_health = 10
 	enemy.global_position = player.global_position + Vector2(17.0, 0.0)
 	enemy.set_physics_process(false)
 	player.last_facing = Vector2.RIGHT
@@ -38,7 +39,7 @@ func _run() -> void:
 	await physics_frame
 	combat._apply_overlapping_melee_hits()
 	combat._apply_overlapping_melee_hits()
-	_check(enemy.current_health == 8, "Attack1 hits once for configured damage")
+	_check(enemy.current_health == 9, "Attack1 deals one configured damage once")
 	_check(combat.combo_window_open, "combo window opens only after a successful Attack1 hit")
 	_advance_action(combat, 0.16)
 	_check(combat.action_state == combat.ActionState.RECOVERY, "first attack enters recovery")
@@ -51,13 +52,16 @@ func _run() -> void:
 	await physics_frame
 	combat._apply_overlapping_melee_hits()
 	combat._apply_overlapping_melee_hits()
-	_check(enemy.current_health == 6, "Attack2 damages the same target once without duplicate damage")
+	_check(enemy.current_health == 7, "Attack2 deals two damage once without duplicate damage")
 	_check((enemy.state == enemy.SlimeState.STUNNED) == expected_stun, "Attack2 stun chance follows the seeded 50 percent roll")
 	if expected_stun:
 		_check(enemy.stun_time_left > 0.0, "successful stun lasts for its configured duration")
 		_check(not enemy.apply_stun(1.0, 1.0), "stun resistance prevents refreshing the stun")
 		_advance_slime_physics(enemy, 70)
 		_check(enemy.state != enemy.SlimeState.STUNNED, "slime resumes AI after stun ends")
+		_check(enemy.stun_immunity_left > 0.0, "slime gains one second of post-stun immunity")
+		_check(not enemy.apply_stun(1.0, 1.0), "post-stun immunity prevents immediate re-control")
+		_advance_slime_physics(enemy, 70)
 	else:
 		_check(enemy.state != enemy.SlimeState.STUNNED, "failed stun roll leaves the target unstunned")
 

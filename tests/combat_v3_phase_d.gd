@@ -31,39 +31,43 @@ func _run() -> void:
 	var health_before: int = player.current_health
 	player.is_defending = true
 	_check(
-		player.receive_attack_damage(810001, 1, Vector2(90.0, 100.0), 100.0, 35.0),
+		player.receive_attack_damage(810001, 1, Vector2(90.0, 100.0), 100.0, 25.0),
 		"ordinary defense consumes an incoming attack"
 	)
-	_check(is_equal_approx(player.shield_durability, 65.0), "ordinary lunge defense consumes 35 durability")
+	_check(is_equal_approx(player.shield_durability, 75.0), "ordinary lunge defense consumes 25 durability")
 	_check(player.current_health == health_before, "ordinary defense blocks all attack damage")
 	_check(player.hitstun_left == 0.0, "ordinary defense blocks normal hitstun")
 	_check(
-		not player.receive_attack_damage(810001, 1, Vector2(90.0, 100.0), 100.0, 35.0),
+		not player.receive_attack_damage(810001, 1, Vector2(90.0, 100.0), 100.0, 25.0),
 		"repeated same attack ID cannot consume shield twice"
 	)
-	_check(is_equal_approx(player.shield_durability, 65.0), "deduplication preserves shield durability")
+	_check(is_equal_approx(player.shield_durability, 75.0), "deduplication preserves shield durability")
 	player.is_defending = true
-	player.receive_attack_damage(810002, 1, Vector2(90.0, 100.0), 100.0, 35.0)
+	player.receive_attack_damage(810002, 1, Vector2(90.0, 100.0), 100.0, 25.0)
 	player.is_defending = true
-	player.receive_attack_damage(810003, 1, Vector2(90.0, 100.0), 100.0, 35.0)
+	player.receive_attack_damage(810003, 1, Vector2(90.0, 100.0), 100.0, 25.0)
+	player.is_defending = true
+	player.receive_attack_damage(810004, 1, Vector2(90.0, 100.0), 100.0, 25.0)
 	_check(is_equal_approx(player.shield_durability, 0.0), "shield durability never becomes negative")
-	_check(is_equal_approx(player.guard_break_left, 3.0), "empty shield triggers a 3-second guard break")
+	_check(is_equal_approx(player.guard_break_left, 1.5), "empty shield triggers a 1.5-second guard break")
 	_check(not player.is_defending, "guard break cancels active defense")
 	_check(not combat._can_start_action(), "guard break prevents J/K actions")
 	player._physics_process(0.5)
-	_check(is_equal_approx(player.guard_break_left, 2.5), "guard break timer advances without pausing the world")
+	_check(is_equal_approx(player.guard_break_left, 1.0), "guard break timer advances without pausing the world")
 
 	player.guard_break_left = 0.0
 	player.shield_durability = 30.0
-	player.shield_regen_delay_left = 2.0
+	player.shield_regen_delay_left = 3.0
 	player.is_defending = false
 	Input.action_release("defend")
 	player._update_defense(1.0)
 	_check(is_equal_approx(player.shield_durability, 30.0), "shield does not regenerate before the two-second delay")
-	player._update_defense(1.0)
-	_check(is_equal_approx(player.shield_durability, 30.0), "shield begins recovery only after the full delay")
+	player._update_defense(1.5)
+	_check(is_equal_approx(player.shield_durability, 30.0), "shield does not regenerate before three seconds without a hit")
 	player._update_defense(0.5)
-	_check(is_equal_approx(player.shield_durability, 40.0), "shield restores at 20 durability per second")
+	_check(is_equal_approx(player.shield_durability, 30.0), "shield begins recovery after the full delay")
+	player._update_defense(0.5)
+	_check(is_equal_approx(player.shield_durability, 37.5), "shield restores at 15 durability per second")
 	player.is_defending = true
 	_check(not combat._can_start_action(), "holding ordinary defense prevents J/K actions")
 	player.is_defending = false
@@ -87,7 +91,7 @@ func _run() -> void:
 	parry_enemy.locked_target_position = player.global_position
 	parry_enemy.state_time_left = 0.35
 	var eta: float = parry_enemy.get_attack_eta_for(player, 0.7)
-	_check(eta >= 0.0 and eta <= 0.7, "nearby valid lunge has an imminent hit forecast")
+	_check(eta >= 0.0 and eta <= 0.5, "nearby valid lunge has an imminent hit forecast")
 	var enemy_projectile: Area2D = load("res://scenes/combat/yarn_projectile.tscn").instantiate()
 	night_scene.add_child(enemy_projectile)
 	enemy_projectile.global_position = Vector2(300.0, 300.0)

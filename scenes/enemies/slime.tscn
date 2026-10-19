@@ -1,10 +1,11 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/slime.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/characters/slime/slime_front.png" id="2_texture"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_attack.mp3" id="3_attack"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_hit.mp3" id="4_hit"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_death.mp3" id="5_death"]
+[ext_resource type="Resource" path="res://resources/config/combat_v3_tuning.tres" id="6_tuning"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 12.0
@@ -16,6 +17,7 @@ radius = 20.0
 collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_script")
+tuning_override = ExtResource("6_tuning")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_texture")

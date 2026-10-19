@@ -4,26 +4,35 @@ const SPEED = 200.0
 signal health_changed(current_health: int, max_health: int)
 signal died
 
-@export var max_health: int = 6
-@export var invincibility_duration: float = 0.8
-@export var hitstun_duration: float = 0.22
-@export var player_hit_stagger_duration: float = 0.5
+@export var max_health: int = 5
+@export var invincibility_duration: float = 1.0
+@export var hitstun_duration: float = 0.3
+@export var player_hit_stagger_duration: float = 0.3
 @export var received_knockback_decay: float = 700.0
+@export var received_knockback_force: float = 60.0
+@export var dodge_distance: float = 55.0
+@export var dodge_invulnerability_duration: float = 0.15
+@export var dodge_cooldown: float = 15.0
+@export var dodge_duration: float = 0.15
 
 @export_category("Defense")
 @export var shield_max_durability: float = 100.0
-@export var slime_attack_shield_cost: float = 35.0
-@export var shield_regen_delay: float = 2.0
-@export var shield_regen_per_second: float = 20.0
-@export var defense_movement_multiplier: float = 0.55
-@export var guard_break_stun_duration: float = 3.0
-@export var perfect_guard_window: float = 0.7
+@export var slime_attack_shield_cost: float = 25.0
+@export var shield_regen_delay: float = 3.0
+@export var shield_regen_per_second: float = 15.0
+@export var defense_movement_multiplier: float = 0.0
+@export var guard_break_stun_duration: float = 1.5
+@export var guard_break_restore_ratio: float = 0.3
+@export var perfect_guard_window: float = 0.5
 @export var perfect_guard_pause_duration: float = 1.0
 
 var current_health: int
 var nearby_objects: Array[Node] = []
 var last_facing: Vector2 = Vector2.DOWN
 var invincibility_left: float = 0.0
+var dodge_cooldown_left: float = 0.0
+var dodge_time_left: float = 0.0
+var dodge_direction: Vector2 = Vector2.ZERO
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
@@ -43,6 +52,7 @@ var attack_block_handler: Callable
 
 
 func _ready() -> void:
+	_apply_combat_tuning()
 	current_health = max_health
 	shield_durability = shield_max_durability
 	add_to_group("player")
@@ -57,6 +67,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	invincibility_left = maxf(invincibility_left - delta, 0.0)
+	dodge_cooldown_left = maxf(dodge_cooldown_left - delta, 0.0)
 	hitstun_left = maxf(hitstun_left - delta, 0.0)
 
 	if dead:
@@ -86,6 +97,17 @@ func _physics_process(delta: float) -> void:
 	)
 	if direction != Vector2.ZERO:
 		last_facing = direction.normalized()
+	if is_defending:
+		velocity = Vector2.ZERO
+		update_animation(Vector2.ZERO)
+		move_and_slide()
+		return
+	if dodge_time_left > 0.0:
+		_move_during_dodge(delta)
+		return
+	if Input.is_action_just_pressed("dodge") and _try_start_dodge(direction):
+		_move_during_dodge(delta)
+		return
 
 	var movement_multiplier := defense_movement_multiplier if is_defending else 1.0
 	if combat != null and combat.has_method("get_movement_multiplier"):
@@ -149,6 +171,24 @@ func can_perform_combat_action() -> bool:
 	)
 
 
+func _try_start_dodge(input_direction: Vector2) -> bool:
+	if dodge_cooldown_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0 or dead or is_defending:
+		return false
+	dodge_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
+	if dodge_direction == Vector2.ZERO:
+		dodge_direction = Vector2.DOWN
+	dodge_time_left = dodge_duration
+	dodge_cooldown_left = dodge_cooldown
+	invincibility_left = maxf(invincibility_left, dodge_invulnerability_duration)
+	return true
+
+
+func _move_during_dodge(delta: float) -> void:
+	dodge_time_left = maxf(dodge_time_left - delta, 0.0)
+	velocity = dodge_direction * (dodge_distance / maxf(dodge_duration, 0.001))
+	move_and_slide()
+
+
 func is_guard_broken() -> bool:
 	return guard_break_left > 0.0
 
@@ -160,15 +200,19 @@ func _update_defense(delta: float) -> void:
 	if not defend_held:
 		if is_defending:
 			is_defending = false
-			shield_regen_delay_left = shield_regen_delay
 		defend_must_release = false
 		perfect_guard_hold_consumed = false
 	if guard_break_left > 0.0:
 		guard_break_left = maxf(guard_break_left - delta, 0.0)
 		is_defending = false
+		if guard_break_left <= 0.0:
+			shield_durability = shield_max_durability * guard_break_restore_ratio
+		else:
+			_update_shield_regeneration_delay(delta)
 		return
 	if hitstun_left > 0.0:
 		is_defending = false
+		_update_shield_regeneration(delta)
 		return
 	if defend_just_pressed and not defend_must_release and shield_durability > 0.0:
 		_handle_defend_press(defend_held)
@@ -182,15 +226,24 @@ func _update_defense(delta: float) -> void:
 		is_defending = true
 		if combat != null and combat.has_method("cancel_action"):
 			combat.cancel_action()
-	if is_defending:
+	_update_shield_regeneration(delta)
+
+
+func _update_shield_regeneration(delta: float) -> void:
+	if _update_shield_regeneration_delay(delta):
 		return
-	if shield_regen_delay_left > 0.0:
-		shield_regen_delay_left = maxf(shield_regen_delay_left - delta, 0.0)
-	elif shield_durability < shield_max_durability:
+	if shield_durability > 0.0 and shield_durability < shield_max_durability:
 		shield_durability = minf(
 			shield_durability + shield_regen_per_second * delta,
 			shield_max_durability
 		)
+
+
+func _update_shield_regeneration_delay(delta: float) -> bool:
+	if shield_regen_delay_left <= 0.0:
+		return false
+	shield_regen_delay_left = maxf(shield_regen_delay_left - delta, 0.0)
+	return true
 
 
 func _handle_defend_press(defend_held: bool) -> void:
@@ -239,7 +292,7 @@ func _break_shield() -> void:
 
 
 func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 120.0) -> bool:
-	if dead or invincibility_left > 0.0 or amount <= 0:
+	if dead or guard_break_left > 0.0 or invincibility_left > 0.0 or amount <= 0:
 		return false
 
 	current_health = maxi(current_health - amount, 0)
@@ -248,7 +301,7 @@ func receive_damage(amount: int, source_position: Vector2, knockback_force: floa
 	var knockback_direction := (global_position - source_position).normalized()
 	if knockback_direction == Vector2.ZERO:
 		knockback_direction = -last_facing
-	knockback_velocity = knockback_direction.normalized() * knockback_force
+	knockback_velocity = knockback_direction.normalized() * minf(knockback_force, received_knockback_force)
 	if combat != null and combat.has_method("cancel_action"):
 		combat.cancel_action()
 	health_changed.emit(current_health, max_health)
@@ -264,7 +317,7 @@ func receive_attack_damage(
 	amount: int,
 	source_position: Vector2,
 	knockback_force: float = 120.0,
-	shield_damage: float = 35.0
+	shield_damage: float = 25.0
 ) -> bool:
 	if attack_id <= 0 or received_attack_ids.has(attack_id):
 		return false
@@ -281,12 +334,13 @@ func receive_attack_damage(
 	return accepted
 
 
-func try_block_attack(attack_id: int, shield_damage: float = 35.0) -> bool:
+func try_block_attack(attack_id: int, shield_damage: float = 25.0) -> bool:
 	if attack_block_handler.is_valid():
 		return bool(attack_block_handler.call(attack_id))
 	if dead or guard_break_left > 0.0 or not is_defending or shield_durability <= 0.0:
 		return false
 	shield_durability = maxf(shield_durability - maxf(shield_damage, 0.0), 0.0)
+	shield_regen_delay_left = shield_regen_delay
 	if shield_durability <= 0.0:
 		_break_shield()
 	return true
@@ -312,6 +366,28 @@ func die() -> void:
 	animated_sprite.stop()
 	animated_sprite.modulate = Color(0.45, 0.45, 0.55, 1.0)
 	died.emit()
+
+
+func _apply_combat_tuning() -> void:
+	var tuning: CombatV3Tuning = CombatBalance.tuning
+	max_health = tuning.player_base_health
+	invincibility_duration = tuning.player_invulnerability_duration
+	hitstun_duration = tuning.player_hitstun_duration
+	player_hit_stagger_duration = tuning.player_hitstun_duration
+	received_knockback_force = tuning.player_knockback_force
+	dodge_distance = tuning.dodge_distance
+	dodge_invulnerability_duration = tuning.dodge_invulnerability_duration
+	dodge_cooldown = tuning.dodge_cooldown
+	dodge_duration = tuning.dodge_invulnerability_duration
+	shield_max_durability = tuning.shield_max_durability
+	slime_attack_shield_cost = tuning.slime_lunge_shield_cost
+	defense_movement_multiplier = tuning.shield_movement_multiplier
+	shield_regen_delay = tuning.shield_regen_delay
+	shield_regen_per_second = tuning.shield_regen_per_second
+	guard_break_stun_duration = tuning.guard_break_stun_duration
+	guard_break_restore_ratio = tuning.guard_break_restore_ratio
+	perfect_guard_window = tuning.perfect_guard_window
+	perfect_guard_pause_duration = tuning.perfect_guard_pause_duration
 
 
 func register_interactable(object: Node) -> void:

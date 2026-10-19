@@ -24,9 +24,10 @@ static var _next_attack_id: int = 1
 
 @export_category("Identity")
 @export var display_name: String = "史莱姆"
+@export var tuning_override: CombatV3Tuning
 
 @export_category("Stats")
-@export var max_health: int = 4
+@export var max_health: int = 5
 @export var move_speed: float = 35.0
 @export var chase_range: float = 120.0
 @export var disengage_range: float = 180.0
@@ -35,12 +36,12 @@ static var _next_attack_id: int = 1
 @export var attack_cooldown: float = 1.5
 
 @export_category("Lunge")
-@export var windup_duration: float = 0.35
+@export var windup_duration: float = 0.4
 @export var lunge_duration: float = 0.22
 @export var lunge_speed: float = 145.0
-@export var recover_duration: float = 0.45
+@export var recover_duration: float = 0.5
 @export var attack_knockback: float = 135.0
-@export var shield_durability_cost: float = 35.0
+@export var shield_durability_cost: float = 25.0
 @export var perfect_guard_hit_radius: float = 23.0
 
 @export_category("Collision Stun")
@@ -69,7 +70,14 @@ var current_health: int
 var state_time_left: float = 0.0
 var cooldown_left: float = 0.0
 var stun_time_left: float = 0.0
-var stun_resistance_left: float = 0.0
+var stun_immunity_left: float = 0.0
+var bind_resistance_left: float = 0.0
+var control_immunity_duration: float = 1.0
+var pending_combo_wall_attack_id: int = 0
+var pending_combo_wall_time_left: float = 0.0
+var pending_combo_wall_stun_duration: float = 1.0
+var pending_combo_wall_immunity_duration: float = 1.0
+var handled_combo_attack_ids: Dictionary = {}
 var collision_stun_cooldown_left: float = 0.0
 var wall_impact_cooldown_left: float = 0.0
 var slow_time_left: float = 0.0
@@ -98,6 +106,7 @@ var combat_paused: bool = false
 
 
 func _ready() -> void:
+	_apply_combat_tuning()
 	current_health = max_health
 	spawn_position = global_position
 	add_to_group("enemies")
@@ -114,13 +123,22 @@ func _physics_process(delta: float) -> void:
 	if state == SlimeState.DEAD or combat_paused:
 		return
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
-	stun_resistance_left = maxf(stun_resistance_left - delta, 0.0)
+	if state != SlimeState.STUNNED:
+		stun_immunity_left = maxf(stun_immunity_left - delta, 0.0)
 	collision_stun_cooldown_left = maxf(collision_stun_cooldown_left - delta, 0.0)
 	wall_impact_cooldown_left = maxf(wall_impact_cooldown_left - delta, 0.0)
 	slow_time_left = maxf(slow_time_left - delta, 0.0)
 	if slow_time_left <= 0.0:
 		slow_multiplier = 1.0
+	var was_bound := bind_time_left > 0.0
 	bind_time_left = maxf(bind_time_left - delta, 0.0)
+	if was_bound and bind_time_left <= 0.0:
+		bind_resistance_left = control_immunity_duration
+	elif not was_bound:
+		bind_resistance_left = maxf(bind_resistance_left - delta, 0.0)
+	pending_combo_wall_time_left = maxf(pending_combo_wall_time_left - delta, 0.0)
+	if pending_combo_wall_time_left <= 0.0:
+		pending_combo_wall_attack_id = 0
 	stun_time_left = maxf(stun_time_left - delta, 0.0)
 	animation_time += delta
 	if not is_instance_valid(target):
@@ -260,15 +278,21 @@ func _process_stunned() -> void:
 	if state != SlimeState.STUNNED:
 		return
 	if stun_time_left <= 0.0:
+		stun_immunity_left = control_immunity_duration
 		_change_state(SlimeState.CHASE if _target_distance() <= disengage_range else SlimeState.WANDER)
 		_choose_idle_duration()
 
 
-func apply_stun(duration: float, resistance_duration: float) -> bool:
-	if state == SlimeState.DEAD or duration <= 0.0 or stun_resistance_left > 0.0:
+func apply_stun(duration: float, immunity_duration: float) -> bool:
+	if (
+		state == SlimeState.DEAD
+		or state == SlimeState.STUNNED
+		or duration <= 0.0
+		or stun_immunity_left > 0.0
+	):
 		return false
 	stun_time_left = duration
-	stun_resistance_left = duration + maxf(resistance_duration, 0.0)
+	control_immunity_duration = maxf(immunity_duration, 0.0)
 	velocity = Vector2.ZERO
 	attack_area.set_deferred("monitoring", false)
 	_change_state(SlimeState.STUNNED)
@@ -296,6 +320,12 @@ func _move_and_check_impacts() -> void:
 			continue
 		if approach_speed >= wall_impact_speed_threshold and wall_impact_cooldown_left <= 0.0:
 			wall_impact_cooldown_left = wall_impact_cooldown
+			if pending_combo_wall_attack_id > 0 and state == SlimeState.HURT:
+				pending_combo_wall_attack_id = 0
+				pending_combo_wall_time_left = 0.0
+				apply_stun(pending_combo_wall_stun_duration, pending_combo_wall_immunity_duration)
+				if state == SlimeState.STUNNED:
+					continue
 			hurt_velocity = incoming_velocity.bounce(collision.get_normal()) * 0.25
 			velocity = hurt_velocity
 			_change_state(SlimeState.HURT)
@@ -402,12 +432,8 @@ func receive_collision_impact(other: Node, approach_speed: float) -> bool:
 
 
 func apply_collision_stun(duration: float) -> void:
-	if state == SlimeState.DEAD:
+	if state == SlimeState.DEAD or not apply_stun(duration, control_immunity_duration):
 		return
-	stun_time_left = maxf(stun_time_left, duration)
-	velocity = Vector2.ZERO
-	attack_area.set_deferred("monitoring", false)
-	_change_state(SlimeState.STUNNED)
 	_play_hit_flash()
 
 
@@ -419,13 +445,55 @@ func apply_yarn_slow(duration: float, multiplier: float) -> void:
 
 
 func apply_yarn_bind(duration: float) -> void:
-	if state == SlimeState.DEAD or duration <= 0.0:
+	if (
+		state == SlimeState.DEAD
+		or duration <= 0.0
+		or bind_time_left > 0.0
+		or bind_resistance_left > 0.0
+	):
 		return
-	bind_time_left = maxf(bind_time_left, duration)
+	bind_time_left = duration
 	attack_area.set_deferred("monitoring", false)
 	if state == SlimeState.WINDUP or state == SlimeState.LUNGE:
 		_change_state(SlimeState.RECOVER)
 		state_time_left = recover_duration
+
+
+func register_combo_finisher(
+	attack_id: int,
+	stun_roll_succeeded: bool,
+	duration: float,
+	immunity_duration: float
+) -> void:
+	if (
+		state == SlimeState.DEAD
+		or attack_id <= 0
+		or handled_combo_attack_ids.has(attack_id)
+	):
+		return
+	handled_combo_attack_ids[attack_id] = true
+	if handled_combo_attack_ids.size() > 64:
+		handled_combo_attack_ids.clear()
+		handled_combo_attack_ids[attack_id] = true
+	if stun_roll_succeeded:
+		apply_stun(duration, immunity_duration)
+	else:
+		pending_combo_wall_attack_id = attack_id
+		pending_combo_wall_time_left = maxf(hurt_duration + 0.35, 0.0)
+		pending_combo_wall_stun_duration = duration
+		pending_combo_wall_immunity_duration = immunity_duration
+
+
+func _apply_combat_tuning() -> void:
+	var tuning := tuning_override if tuning_override != null else CombatBalance.tuning
+	max_health = tuning.slime_base_health
+	attack_damage = tuning.slime_attack_damage
+	windup_duration = tuning.slime_windup_duration
+	recover_duration = tuning.slime_recover_duration
+	collision_stun_duration = tuning.slime_collision_stun_duration
+	collision_stun_cooldown = tuning.slime_collision_stun_cooldown
+	shield_durability_cost = tuning.slime_lunge_shield_cost
+	control_immunity_duration = tuning.control_immunity_duration
 
 
 func is_alive() -> bool:

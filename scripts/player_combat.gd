@@ -6,6 +6,7 @@ const YARN_CONNECTION_SCENE := preload("res://scenes/combat/yarn_connection.tscn
 
 @export_category("Melee")
 @export var melee_damage: int = 2
+@export var first_melee_damage: int = 1
 @export var melee_cooldown: float = 0.45
 @export var melee_duration: float = 0.25
 @export var melee_active_start: float = 0.08
@@ -15,9 +16,11 @@ const YARN_CONNECTION_SCENE := preload("res://scenes/combat/yarn_connection.tscn
 @export_category("Combo")
 @export var combo_window: float = 0.35
 @export var stun_duration: float = 1.0
-@export var stun_resistance_duration: float = 1.0
+@export var control_immunity_duration: float = 1.0
+@export_range(0.0, 1.0) var combo_stun_chance: float = 0.5
 
-const COMBO_STUN_CHANCE: float = 0.5
+static var _next_melee_attack_id: int = 1000000
+var current_melee_attack_id: int = 0
 
 @export_category("Ranged")
 @export var projectile_scene: PackedScene
@@ -72,6 +75,7 @@ var sprite_base_scale: Vector2
 
 
 func _ready() -> void:
+	_apply_combat_tuning()
 	stun_rng.randomize()
 	sprite_base_position = sprite.position
 	sprite_base_rotation = sprite.rotation
@@ -143,6 +147,8 @@ func _is_night_combat_scene() -> bool:
 
 
 func _start_melee(is_second_attack: bool = false) -> void:
+	current_melee_attack_id = _next_melee_attack_id
+	_next_melee_attack_id += 1
 	action_state = ActionState.ATTACK2 if is_second_attack else ActionState.ATTACK1
 	action_time = 0.0
 	melee_cooldown_left = melee_cooldown
@@ -226,18 +232,39 @@ func _try_damage_target(target: Node) -> void:
 	if hit_targets.has(target_id):
 		return
 	hit_targets[target_id] = true
-	var accepted: bool = target.receive_damage(melee_damage, player.global_position, melee_knockback)
+	var is_combo_finisher := action_state == ActionState.ATTACK2
+	var attack_damage: int = melee_damage if is_combo_finisher else first_melee_damage
+	var accepted: bool = target.receive_damage(attack_damage, player.global_position, melee_knockback)
 	if not accepted:
 		return
 	if action_state == ActionState.ATTACK1:
 		if not combo_window_open:
 			combo_window_open = true
 			combo_window_left = combo_window
-	elif action_state == ActionState.ATTACK2 and not combo_stun_targets.has(target_id):
+	elif is_combo_finisher and not combo_stun_targets.has(target_id):
 		combo_stun_targets[target_id] = true
 		combo_hit_feedback_left = 0.65
-		if stun_rng.randf() < COMBO_STUN_CHANCE and target.has_method("apply_stun"):
-			target.apply_stun(stun_duration, stun_resistance_duration)
+		var stun_roll_succeeded := stun_rng.randf() < combo_stun_chance
+		if target.has_method("register_combo_finisher"):
+			target.register_combo_finisher(
+				current_melee_attack_id,
+				stun_roll_succeeded,
+				stun_duration,
+				control_immunity_duration
+			)
+		elif stun_roll_succeeded and target.has_method("apply_stun"):
+			target.apply_stun(stun_duration, control_immunity_duration)
+
+
+func _apply_combat_tuning() -> void:
+	var tuning: CombatV3Tuning = CombatBalance.tuning
+	first_melee_damage = int(tuning.first_claw_damage)
+	melee_damage = int(tuning.second_claw_damage)
+	combo_window = tuning.combo_window
+	melee_cooldown = tuning.melee_recovery
+	stun_duration = tuning.stun_duration
+	control_immunity_duration = tuning.control_immunity_duration
+	combo_stun_chance = tuning.second_claw_stun_chance
 
 
 func _spawn_projectile() -> void:

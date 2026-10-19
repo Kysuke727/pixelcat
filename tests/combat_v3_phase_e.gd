@@ -57,6 +57,8 @@ func _run() -> void:
 
 	slime.state = slime.SlimeState.WINDUP
 	slime.current_attack_id = 990001
+	slime.bind_time_left = 0.0
+	slime.bind_resistance_left = 0.0
 	slime.apply_yarn_bind(2.0)
 	_check(slime.state == slime.SlimeState.RECOVER, "binding cancels an active lunge or windup")
 	_check(not slime.attack_area.monitoring, "bound attack hitbox is disabled")
