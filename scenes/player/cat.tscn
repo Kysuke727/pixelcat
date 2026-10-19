@@ -188,6 +188,7 @@ animations = [{
 [node name="Cat" type="CharacterBody2D" unique_id=211071589]
 collision_layer = 1
 collision_mask = 3
+platform_floor_layers = 1
 script = ExtResource("1_u6cqk")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=782726021]
