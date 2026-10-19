@@ -3,11 +3,12 @@ class_name YarnConnection
 
 @export var slow_multiplier: float = 0.5
 @export var slow_duration: float = 3.0
-@export var bind_duration: float = 2.0
+@export var bind_duration: float = 1.5
 @export var maximum_duration: float = 10.0
-@export var maximum_length: float = 500.0
+@export var maximum_length: float = 0.0 # 0 = no connection-length limit
 @export var sample_distance: float = 6.0
-@export var closure_distance: float = 18.0
+@export_range(180.0, 360.0) var required_loop_angle_degrees: float = 270.0
+@export var minimum_loop_radius: float = 24.0
 @export var minimum_loop_perimeter: float = 120.0
 @export var minimum_loop_area: float = 450.0
 @export var maximum_samples: int = 384
@@ -19,6 +20,7 @@ var combat: Node
 var lifetime_left: float
 var trail_points: Array[Vector2] = []
 var trail_length: float = 0.0
+var accumulated_loop_angle: float = 0.0
 var loop_bound: bool = false
 var cut_reward_claimed: bool = false
 var finished: bool = false
@@ -61,7 +63,7 @@ func _process(delta: float) -> void:
 		_finish()
 		return
 	lifetime_left = maxf(lifetime_left - delta, 0.0)
-	if lifetime_left <= 0.0 or player.global_position.distance_to(target.global_position) > maximum_length:
+	if lifetime_left <= 0.0 or (maximum_length > 0.0 and player.global_position.distance_to(target.global_position) > maximum_length):
 		_finish()
 		return
 	if not _has_clear_line_of_sight():
@@ -83,6 +85,10 @@ func _sample_player_path() -> void:
 		return
 	trail_length += segment_length
 	trail_points.append(current)
+	var previous_offset := previous - target.global_position
+	var current_offset := current - target.global_position
+	if previous_offset.length() >= minimum_loop_radius and current_offset.length() >= minimum_loop_radius:
+		accumulated_loop_angle += rad_to_deg(previous_offset.angle_to(current_offset))
 	_simplify_last_points()
 	while trail_points.size() > maxi(maximum_samples, 3):
 		trail_points.remove_at(1)
@@ -109,8 +115,7 @@ func _simplify_last_points() -> void:
 func _try_close_loop() -> void:
 	if loop_bound or trail_points.size() < 4 or trail_length < minimum_loop_perimeter:
 		return
-	var current := player.global_position
-	if current.distance_to(trail_points.front()) > closure_distance:
+	if absf(accumulated_loop_angle) < required_loop_angle_degrees:
 		return
 	var polygon := PackedVector2Array(trail_points)
 	if absf(_signed_polygon_area(polygon)) < minimum_loop_area:
@@ -118,8 +123,11 @@ func _try_close_loop() -> void:
 	if not Geometry2D.is_point_in_polygon(target.global_position, polygon):
 		return
 	loop_bound = true
-	if target.has_method("apply_yarn_bind"):
-		target.apply_yarn_bind(bind_duration)
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
+			continue
+		if Geometry2D.is_point_in_polygon(enemy.global_position, polygon):
+			enemy.apply_yarn_bind(bind_duration)
 
 
 func _signed_polygon_area(polygon: PackedVector2Array) -> float:

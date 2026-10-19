@@ -25,25 +25,31 @@ var current_melee_attack_id: int = 0
 @export_category("Ranged")
 @export var projectile_scene: PackedScene
 @export var ranged_damage: int = 1
-@export var ranged_cooldown: float = 6.0
+@export var ranged_cooldown: float = 8.0
 @export var ranged_duration: float = 0.30
 @export var ranged_windup: float = 0.12
 @export var projectile_speed: float = 220.0
-@export var projectile_range: float = 220.0
+@export var projectile_range: float = 160.0
 @export var ranged_movement_multiplier: float = 0.8
 
 @export_category("Yarn Connection")
 @export var yarn_slow_multiplier: float = 0.5
 @export var yarn_slow_duration: float = 3.0
-@export var yarn_bind_duration: float = 2.0
+@export var yarn_bind_duration: float = 1.5
 @export var yarn_connection_duration: float = 10.0
-@export var yarn_maximum_length: float = 500.0
+@export var yarn_maximum_length: float = 0.0 # 0 = unlimited connection length
 @export var yarn_sample_distance: float = 6.0
-@export var yarn_closure_distance: float = 18.0
+@export_range(180.0, 360.0) var yarn_required_loop_angle_degrees: float = 270.0
+@export var yarn_minimum_loop_radius: float = 24.0
 @export var yarn_minimum_loop_perimeter: float = 120.0
 @export var yarn_minimum_loop_area: float = 450.0
 @export var yarn_maximum_samples: int = 384
 @export var yarn_cut_cooldown_reduction: float = 1.5
+@export_category("Yarn Skill Interface — Stage 04 can set these bonuses")
+@export_range(0.0, 0.3, 0.01) var yarn_skill_slow_reduction_bonus: float = 0.0
+@export_range(0.0, 5.0, 0.1) var yarn_skill_connection_duration_bonus: float = 0.0
+@export_range(0.0, 1.0, 0.05) var yarn_skill_bind_duration_bonus: float = 0.0
+@export_range(0.0, 30.0, 1.0) var yarn_skill_loop_angle_reduction: float = 0.0
 
 var action_state: int = ActionState.IDLE
 var action_time: float = 0.0
@@ -297,14 +303,16 @@ func on_yarn_hit(target: Node2D) -> bool:
 	):
 		return false
 	var connection = YARN_CONNECTION_SCENE.instantiate()
+	var slow_reduction := clampf(1.0 - yarn_slow_multiplier + yarn_skill_slow_reduction_bonus, 0.0, 0.8)
 	connection.configure(player, target, self, {
-		"slow_multiplier": yarn_slow_multiplier,
+		"slow_multiplier": 1.0 - slow_reduction,
 		"slow_duration": yarn_slow_duration,
-		"bind_duration": yarn_bind_duration,
-		"maximum_duration": yarn_connection_duration,
+		"bind_duration": minf(yarn_bind_duration + yarn_skill_bind_duration_bonus, 2.5),
+		"maximum_duration": minf(yarn_connection_duration + yarn_skill_connection_duration_bonus, 15.0),
 		"maximum_length": yarn_maximum_length,
 		"sample_distance": yarn_sample_distance,
-		"closure_distance": yarn_closure_distance,
+		"required_loop_angle_degrees": maxf(yarn_required_loop_angle_degrees - yarn_skill_loop_angle_reduction, 240.0),
+		"minimum_loop_radius": yarn_minimum_loop_radius,
 		"minimum_loop_perimeter": yarn_minimum_loop_perimeter,
 		"minimum_loop_area": yarn_minimum_loop_area,
 		"maximum_samples": yarn_maximum_samples,
