@@ -1,11 +1,16 @@
-[gd_scene format=3 uid="uid://bxxehv6dlj81a"]
+[gd_scene load_steps=18 format=3 uid="uid://bxxehv6dlj81a"]
 
-[ext_resource type="PackedScene" uid="uid://bty4tdkmvfer2" path="res://scenes/enemies/slime.tscn" id="1_bqfs8"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/slime.tscn" id="1_bqfs8"]
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
 [ext_resource type="AudioStream" uid="uid://c02j4tbrpjcmp" path="res://assets/audio/music/小镇.mp3" id="2_ug1gh"]
 [ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="4_ji3sx"]
 [ext_resource type="PackedScene" uid="uid://crdk4cmg23b4j" path="res://scenes/ui/battle_ui.tscn" id="6_dsh4f"]
 [ext_resource type="Texture2D" path="res://assets/objects/street_lamp.png" id="7_lamp"]
+[ext_resource type="Script" path="res://scripts/progression_panel.gd" id="8_progression"]
+[ext_resource type="Script" path="res://scripts/debug_panel.gd" id="9_debug"]
+[ext_resource type="Script" path="res://scripts/night_run_controller.gd" id="10_run"]
+[ext_resource type="Script" path="res://scripts/night_exit.gd" id="11_exit"]
+[ext_resource type="Script" path="res://scripts/night_safe_point.gd" id="12_safe"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
 size = Vector2(1000, 20)
@@ -18,6 +23,12 @@ size = Vector2(20, 700)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
 size = Vector2(20, 700)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_checkpoint"]
+radius = 24.0
 
 [node name="NightWorld" type="Node2D" unique_id=590361467 groups=["night_exploration"]]
 
@@ -116,3 +127,91 @@ offset_left = -78.0
 offset_top = -4.0
 offset_right = -78.0
 offset_bottom = -4.0
+
+[node name="SafePointPark" type="Area2D" parent="."]
+position = Vector2(300, 470)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("12_safe")
+checkpoint_label = "公园安全点"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SafePointPark"]
+shape = SubResource("CircleShape2D_checkpoint")
+
+[node name="Glow" type="Polygon2D" parent="SafePointPark"]
+color = Color(0.25, 0.72, 1, 0.62)
+polygon = PackedVector2Array(22, 0, 15.556, 15.556, 0, 22, -15.556, 15.556, -22, 0, -15.556, -15.556, 0, -22, 15.556, -15.556)
+
+[node name="Label" type="Label" parent="SafePointPark"]
+offset_left = -48.0
+offset_top = 24.0
+offset_right = 48.0
+offset_bottom = 46.0
+text = "公园安全点"
+horizontal_alignment = 1
+
+[node name="SafePointStreet" type="Area2D" parent="."]
+position = Vector2(700, 590)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("12_safe")
+checkpoint_label = "街道安全点"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SafePointStreet"]
+shape = SubResource("CircleShape2D_checkpoint")
+
+[node name="Glow" type="Polygon2D" parent="SafePointStreet"]
+color = Color(0.25, 0.72, 1, 0.62)
+polygon = PackedVector2Array(22, 0, 15.556, 15.556, 0, 22, -15.556, 15.556, -22, 0, -15.556, -15.556, 0, -22, 15.556, -15.556)
+
+[node name="Label" type="Label" parent="SafePointStreet"]
+offset_left = -48.0
+offset_top = 24.0
+offset_right = 48.0
+offset_bottom = 46.0
+text = "街道安全点"
+horizontal_alignment = 1
+
+[node name="NightExit" type="Area2D" parent="."]
+position = Vector2(920, 350)
+collision_layer = 0
+collision_mask = 1
+monitoring = false
+script = ExtResource("11_exit")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NightExit"]
+shape = SubResource("CircleShape2D_exit")
+
+[node name="GateVisual" type="Polygon2D" parent="NightExit"]
+color = Color(0.25, 0.85, 1, 0.88)
+polygon = PackedVector2Array(-16, -20, 16, -20, 22, 0, 16, 20, -16, 20, -22, 0)
+
+[node name="Label" type="Label" parent="NightExit"]
+offset_left = -38.0
+offset_top = 24.0
+offset_right = 38.0
+offset_bottom = 46.0
+text = "撤离出口"
+horizontal_alignment = 1
+
+[node name="ExpeditionHUD" type="CanvasLayer" parent="."]
+layer = 15
+
+[node name="Panel" type="PanelContainer" parent="ExpeditionHUD"]
+offset_left = 620.0
+offset_top = 18.0
+offset_right = 982.0
+offset_bottom = 74.0
+
+[node name="Status" type="Label" parent="ExpeditionHUD/Panel"]
+layout_mode = 2
+text = "夜晚探索"
+
+[node name="NightRunController" type="Node" parent="."]
+script = ExtResource("10_run")
+
+[node name="ProgressionPanel" type="CanvasLayer" parent="."]
+script = ExtResource("8_progression")
+
+[node name="DebugPanel" type="CanvasLayer" parent="."]
+script = ExtResource("9_debug")

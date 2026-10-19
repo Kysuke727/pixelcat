@@ -3,6 +3,7 @@ extends Control
 @onready var fish_label: Label = $PanelContainer/HBoxContainer/CoinLabel
 @onready var fish_icon: TextureRect = $PanelContainer/HBoxContainer/CoinIcon
 @onready var pickup_sound: AudioStreamPlayer2D = $PickupSound
+var has_received_currency_change: bool = false
 
 
 func _ready() -> void:
@@ -12,8 +13,10 @@ func _ready() -> void:
 
 func _on_fish_changed(amount: int) -> void:
 	fish_label.text = "小鱼干：%d" % amount
-	if is_node_ready():
+	if has_received_currency_change:
 		play_pickup_animation()
+	else:
+		has_received_currency_change = true
 
 
 func play_pickup_animation() -> void:

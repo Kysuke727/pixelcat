@@ -76,16 +76,16 @@ func _update_combat_readout() -> void:
 		yarn_label.text = "毛线：" + yarn_state
 
 
-func _on_player_health_changed(current_health: int, max_health: int) -> void:
+func _on_player_health_changed(current_health: float, max_health: float) -> void:
 	player_hp_bar.max_value = max_health
 	player_hp_bar.value = current_health
 
 
-func show_enemy(enemy: Node, new_name: String, hp: int, hp_max: int) -> void:
+func show_enemy(enemy: Node, new_name: String, hp: float, hp_max: float) -> void:
 	shown_enemy = enemy
 	enemy_name.text = new_name
-	enemy_hp_bar.max_value = maxi(hp_max, 1)
-	enemy_hp_bar.value = clampi(hp, 0, hp_max)
+	enemy_hp_bar.max_value = maxf(hp_max, 1.0)
+	enemy_hp_bar.value = clampf(hp, 0.0, hp_max)
 	enemy_name.visible = true
 	enemy_hp_bar.visible = true
 

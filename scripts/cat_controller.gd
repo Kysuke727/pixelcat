@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
 const SPEED = 200.0
-signal health_changed(current_health: int, max_health: int)
+signal health_changed(current_health: float, max_health: float)
 signal died
 
 @export var max_health: int = 5
@@ -26,7 +26,7 @@ signal died
 @export var perfect_guard_window: float = 0.5
 @export var perfect_guard_pause_duration: float = 1.0
 
-var current_health: int
+var current_health: float
 var nearby_objects: Array[Node] = []
 var last_facing: Vector2 = Vector2.DOWN
 var invincibility_left: float = 0.0
@@ -53,6 +53,7 @@ var attack_block_handler: Callable
 
 func _ready() -> void:
 	_apply_combat_tuning()
+	_apply_progression_stats(true)
 	current_health = max_health
 	shield_durability = shield_max_durability
 	add_to_group("player")
@@ -63,6 +64,10 @@ func _ready() -> void:
 			if enemy.has_method("set_combat_paused"):
 				enemy.set_combat_paused(true)
 	health_changed.emit(current_health, max_health)
+	ProgressionManager.progression_changed.connect(_on_progression_changed)
+	if ExpeditionManager.run_active:
+		ExpeditionManager.restore_player_if_resuming(self)
+		died.connect(func(): ExpeditionManager.on_player_died(self))
 
 
 func _physics_process(delta: float) -> void:
@@ -112,7 +117,7 @@ func _physics_process(delta: float) -> void:
 	var movement_multiplier := defense_movement_multiplier if is_defending else 1.0
 	if combat != null and combat.has_method("get_movement_multiplier"):
 		movement_multiplier *= combat.get_movement_multiplier()
-	velocity = direction * SPEED * movement_multiplier
+	velocity = direction * get_effective_move_speed() * movement_multiplier
 
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
 		update_animation(direction)
@@ -291,11 +296,11 @@ func _break_shield() -> void:
 		combat.cancel_action()
 
 
-func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 120.0) -> bool:
+func receive_damage(amount: float, source_position: Vector2, knockback_force: float = 120.0) -> bool:
 	if dead or guard_break_left > 0.0 or invincibility_left > 0.0 or amount <= 0:
 		return false
 
-	current_health = maxi(current_health - amount, 0)
+	current_health = maxf(current_health - amount, 0.0)
 	invincibility_left = invincibility_duration
 	hitstun_left = hitstun_duration
 	var knockback_direction := (global_position - source_position).normalized()
@@ -314,7 +319,7 @@ func receive_damage(amount: int, source_position: Vector2, knockback_force: floa
 
 func receive_attack_damage(
 	attack_id: int,
-	amount: int,
+	amount: float,
 	source_position: Vector2,
 	knockback_force: float = 120.0,
 	shield_damage: float = 25.0
@@ -366,6 +371,51 @@ func die() -> void:
 	animated_sprite.stop()
 	animated_sprite.modulate = Color(0.45, 0.45, 0.55, 1.0)
 	died.emit()
+
+
+func revive_from_expedition(respawn_position: Vector2) -> void:
+	dead = false
+	global_position = respawn_position
+	velocity = Vector2.ZERO
+	current_health = max_health
+	shield_durability = shield_max_durability * 0.5
+	shield_regen_delay_left = shield_regen_delay
+	invincibility_left = invincibility_duration
+	hitstun_left = 0.0
+	guard_break_left = 0.0
+	is_defending = false
+	if combat != null and combat.has_method("set_combat_enabled"):
+		combat.set_combat_enabled(true)
+	animated_sprite.modulate = Color.WHITE
+	animated_sprite.play("idle")
+	health_changed.emit(current_health, max_health)
+
+
+func restore_expedition_state(health: float, shield: float) -> void:
+	if health >= 0.0:
+		current_health = clampf(health, 1.0, float(max_health))
+	if shield >= 0.0:
+		shield_durability = clampf(shield, 0.0, shield_max_durability)
+	health_changed.emit(current_health, max_health)
+
+
+func get_effective_move_speed() -> float:
+	return SPEED * ProgressionManager.get_movement_multiplier()
+
+
+func _apply_progression_stats(initial: bool = false) -> void:
+	var old_max_health := max_health
+	var old_max_shield := shield_max_durability
+	max_health = ProgressionManager.get_effective_max_health(CombatBalance.tuning.player_base_health)
+	shield_max_durability = CombatBalance.tuning.shield_max_durability * ProgressionManager.get_shield_multiplier()
+	if not initial:
+		current_health = minf(current_health + float(max_health - old_max_health), float(max_health))
+		shield_durability = minf(shield_durability, shield_max_durability)
+	health_changed.emit(current_health, max_health)
+
+
+func _on_progression_changed() -> void:
+	_apply_progression_stats()
 
 
 func _apply_combat_tuning() -> void:

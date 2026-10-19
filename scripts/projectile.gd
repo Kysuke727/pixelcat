@@ -1,6 +1,6 @@
 extends Area2D
 
-@export var damage: int = 1
+@export var damage: float = 1.0
 @export var speed: float = 220.0
 @export var max_range: float = 220.0
 @export var knockback_force: float = 90.0
@@ -20,7 +20,7 @@ func _ready() -> void:
 func setup(
 	new_direction: Vector2,
 	new_source: Node2D,
-	new_damage: int,
+	new_damage: float,
 	new_speed: float,
 	new_max_range: float
 ) -> void:

@@ -8,8 +8,19 @@ var fish_count: int = 0
 func add_fish(amount: int) -> void:
 	if amount <= 0:
 		return
+	if is_instance_valid(ExpeditionManager) and ExpeditionManager.run_active:
+		ExpeditionManager.add_ordinary_fish(amount)
+		return
+	add_permanent_fish(amount)
+
+
+func add_permanent_fish(amount: int) -> void:
+	if amount <= 0:
+		return
 	fish_count += amount
 	fish_changed.emit(fish_count)
+	if is_instance_valid(ProgressionManager):
+		ProgressionManager.save_now()
 
 
 func can_afford(amount: int) -> bool:
@@ -21,6 +32,8 @@ func spend_fish(amount: int) -> bool:
 		return false
 	fish_count -= amount
 	fish_changed.emit(fish_count)
+	if is_instance_valid(ProgressionManager):
+		ProgressionManager.save_now()
 	return true
 
 

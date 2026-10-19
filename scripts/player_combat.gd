@@ -239,7 +239,8 @@ func _try_damage_target(target: Node) -> void:
 		return
 	hit_targets[target_id] = true
 	var is_combo_finisher := action_state == ActionState.ATTACK2
-	var attack_damage: int = melee_damage if is_combo_finisher else first_melee_damage
+	var base_damage: float = float(melee_damage if is_combo_finisher else first_melee_damage)
+	var attack_damage := base_damage * ProgressionManager.get_attack_multiplier()
 	var accepted: bool = target.receive_damage(attack_damage, player.global_position, melee_knockback)
 	if not accepted:
 		return
@@ -286,7 +287,7 @@ func _spawn_projectile() -> void:
 		projectile.setup(
 			facing,
 			player,
-			ranged_damage,
+			float(ranged_damage) * ProgressionManager.get_attack_multiplier(),
 			projectile_speed,
 			projectile_range
 		)
@@ -303,15 +304,16 @@ func on_yarn_hit(target: Node2D) -> bool:
 	):
 		return false
 	var connection = YARN_CONNECTION_SCENE.instantiate()
-	var slow_reduction := clampf(1.0 - yarn_slow_multiplier + yarn_skill_slow_reduction_bonus, 0.0, 0.8)
+	var skill_modifiers := ProgressionManager.get_skill_modifiers()
+	var slow_reduction := clampf(1.0 - yarn_slow_multiplier + yarn_skill_slow_reduction_bonus + float(skill_modifiers["slow_reduction_bonus"]), 0.0, 0.8)
 	connection.configure(player, target, self, {
 		"slow_multiplier": 1.0 - slow_reduction,
 		"slow_duration": yarn_slow_duration,
-		"bind_duration": minf(yarn_bind_duration + yarn_skill_bind_duration_bonus, 2.5),
-		"maximum_duration": minf(yarn_connection_duration + yarn_skill_connection_duration_bonus, 15.0),
+		"bind_duration": minf(yarn_bind_duration + yarn_skill_bind_duration_bonus + float(skill_modifiers["bind_duration_bonus"]), 2.5),
+		"maximum_duration": minf(yarn_connection_duration + yarn_skill_connection_duration_bonus + float(skill_modifiers["connection_duration_bonus"]), 15.0),
 		"maximum_length": yarn_maximum_length,
 		"sample_distance": yarn_sample_distance,
-		"required_loop_angle_degrees": maxf(yarn_required_loop_angle_degrees - yarn_skill_loop_angle_reduction, 240.0),
+		"required_loop_angle_degrees": maxf(yarn_required_loop_angle_degrees - yarn_skill_loop_angle_reduction - float(skill_modifiers["loop_angle_reduction"]), 240.0),
 		"minimum_loop_radius": yarn_minimum_loop_radius,
 		"minimum_loop_perimeter": yarn_minimum_loop_perimeter,
 		"minimum_loop_area": yarn_minimum_loop_area,

@@ -17,10 +17,12 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-DayManager="*uid://b7ucns7eojso8"
+ProgressionManager="*res://scripts/progression_manager.gd"
 CurrencyManager="*res://scripts/currency_manager.gd"
 CombatBalance="*res://scripts/combat_balance.gd"
 CombatTimeController="*res://scripts/combat_time_controller.gd"
+ExpeditionManager="*res://scripts/expedition_manager.gd"
+DayManager="*uid://b7ucns7eojso8"
 
 [display]
 

@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-signal health_changed(current_health: int, max_health: int)
+signal health_changed(current_health: float, max_health: float)
 signal died(enemy: Node)
 
 enum SlimeState {
@@ -34,6 +34,7 @@ static var _next_attack_id: int = 1
 @export var attack_range: float = 25.0
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
+@export var experience_reward: int = 10
 
 @export_category("Lunge")
 @export var windup_duration: float = 0.4
@@ -66,7 +67,7 @@ static var _next_attack_id: int = 1
 @export var fish_drop_max: int = 3
 
 var state: int = SlimeState.IDLE
-var current_health: int
+var current_health: float
 var state_time_left: float = 0.0
 var cooldown_left: float = 0.0
 var stun_time_left: float = 0.0
@@ -522,10 +523,10 @@ func get_control_status() -> Dictionary:
 	}
 
 
-func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 130.0) -> bool:
+func receive_damage(amount: float, source_position: Vector2, knockback_force: float = 130.0) -> bool:
 	if state == SlimeState.DEAD or amount <= 0:
 		return false
-	current_health = maxi(current_health - amount, 0)
+	current_health = maxf(current_health - amount, 0.0)
 	health_changed.emit(current_health, max_health)
 	_show_in_battle_ui()
 	if current_health <= 0:
