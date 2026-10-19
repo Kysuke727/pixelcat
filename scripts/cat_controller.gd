@@ -36,6 +36,7 @@ var dodge_direction: Vector2 = Vector2.ZERO
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
+var position_discontinuity_version: int = 0
 var shield_durability: float = 100.0
 var shield_regen_delay_left: float = 0.0
 var guard_break_left: float = 0.0
@@ -374,6 +375,7 @@ func die() -> void:
 
 
 func revive_from_expedition(respawn_position: Vector2) -> void:
+	mark_position_discontinuity()
 	dead = false
 	global_position = respawn_position
 	velocity = Vector2.ZERO
@@ -389,6 +391,10 @@ func revive_from_expedition(respawn_position: Vector2) -> void:
 	animated_sprite.modulate = Color.WHITE
 	animated_sprite.play("idle")
 	health_changed.emit(current_health, max_health)
+
+
+func mark_position_discontinuity() -> void:
+	position_discontinuity_version += 1
 
 
 func restore_expedition_state(health: float, shield: float) -> void:

@@ -265,26 +265,31 @@ func begin_debug_session() -> void:
 		}
 
 
-func end_debug_session() -> void:
-	if not _debug_snapshot.is_empty():
-		load_save_data(_debug_snapshot)
-		_debug_snapshot.clear()
-		_debug_player_snapshot.clear()
+func restore_debug_expedition_snapshot() -> bool:
+	if _debug_snapshot.is_empty():
+		return _debug_player_snapshot.is_empty()
+	load_save_data(_debug_snapshot)
+	return true
 
 
-func restore_debug_player_snapshot() -> void:
+func complete_debug_session() -> void:
+	_debug_snapshot.clear()
+	_debug_player_snapshot.clear()
+
+
+func restore_debug_player_snapshot() -> bool:
 	if _debug_player_snapshot.is_empty():
-		return
+		return true
 	var scene := get_tree().current_scene
 	if scene == null or scene.scene_file_path != str(_debug_player_snapshot.get("scene_path", "")):
-		_debug_player_snapshot.clear()
-		return
+		return false
 	var player := get_tree().get_first_node_in_group("player")
 	if not is_instance_valid(player):
-		_debug_player_snapshot.clear()
-		return
+		return false
 	if not bool(_debug_player_snapshot["dead"]) and bool(player.get("dead")) and player.has_method("revive_from_expedition"):
 		player.revive_from_expedition(_debug_player_snapshot["position"])
+	elif player.has_method("mark_position_discontinuity"):
+		player.mark_position_discontinuity()
 	player.global_position = _debug_player_snapshot["position"]
 	player.set("current_health", _debug_player_snapshot["health"])
 	player.set("shield_durability", _debug_player_snapshot["shield"])
@@ -294,4 +299,4 @@ func restore_debug_player_snapshot() -> void:
 		combat.set_combat_enabled(not bool(_debug_player_snapshot["dead"]))
 	if player.has_signal("health_changed"):
 		player.health_changed.emit(player.current_health, player.max_health)
-	_debug_player_snapshot.clear()
+	return true

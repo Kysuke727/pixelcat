@@ -24,6 +24,7 @@ var debug_session: bool = false
 var _debug_snapshot: Dictionary = {}
 var _test_mode: bool = false
 var _save_elapsed: float = 0.0
+var _profile_save_blocked_by_newer_version: bool = false
 
 
 func _ready() -> void:
@@ -214,18 +215,27 @@ func begin_debug_session() -> void:
 	debug_session = true
 
 
-func end_debug_session() -> void:
+func restore_debug_session_snapshot() -> bool:
 	if not debug_session:
-		return
+		return true
 	var profile_snapshot: Dictionary = _debug_snapshot.get("profile", {})
 	if profile_snapshot.has("currency"):
 		CurrencyManager.load_save_data(profile_snapshot["currency"])
-	debug_session = false
 	_load_profile_data(profile_snapshot)
 	pending_allocation = _debug_snapshot.get("pending", {}).duplicate(true)
-	_debug_snapshot.clear()
-	_save_profile()
 	progression_changed.emit()
+	return true
+
+
+func commit_debug_session() -> bool:
+	if not debug_session:
+		return true
+	debug_session = false
+	if not _save_profile():
+		debug_session = true
+		return false
+	_debug_snapshot.clear()
+	return true
 
 
 func get_profile_data() -> Dictionary:
@@ -258,22 +268,33 @@ func _profile_data() -> Dictionary:
 func _load_profile() -> void:
 	if _test_mode:
 		return
-	if not FileAccess.file_exists(save_path):
+	_profile_save_blocked_by_newer_version = false
+	var absolute_path := ProjectSettings.globalize_path(save_path)
+	var payload := _read_profile_payload(absolute_path) if FileAccess.file_exists(absolute_path) else {}
+	if _is_newer_profile_payload(payload):
+		_profile_save_blocked_by_newer_version = true
+		push_warning("PixelCat profile version is newer than this build; it was left untouched")
 		return
-	var payload := _read_profile_payload(ProjectSettings.globalize_path(save_path))
-	if payload.is_empty():
-		for backup_path in _list_profile_backups(ProjectSettings.globalize_path(save_path)):
-			payload = _read_profile_payload(backup_path)
-			if not payload.is_empty():
-				_write_profile_atomically(JSON.stringify(payload, "\t"), save_path)
-				push_warning("PixelCat profile save was restored from a verified backup")
+	var source_path := absolute_path if _is_usable_profile_payload(payload) else ""
+	if source_path.is_empty():
+		for candidate_path in _list_profile_recovery_candidates(absolute_path):
+			var candidate := _read_profile_payload(candidate_path)
+			if _is_newer_profile_payload(candidate):
+				_profile_save_blocked_by_newer_version = true
+				push_warning("PixelCat recovery candidate has a newer profile version; it was left untouched")
+				return
+			if _is_usable_profile_payload(candidate):
+				payload = candidate
+				source_path = candidate_path
 				break
-	if payload.is_empty():
-		push_warning("PixelCat profile save is invalid and no verified backup was found; defaults were kept")
+	if source_path.is_empty():
+		push_warning("PixelCat profile and recovery candidates are invalid; defaults were kept")
 		return
-	if int(payload.get("version", 0)) > SAVE_VERSION:
-		push_warning("PixelCat profile version is newer than this build; defaults were kept")
-		return
+	if source_path != absolute_path:
+		if _restore_profile_candidate(payload, absolute_path):
+			push_warning("PixelCat profile save was restored from a verified recovery candidate")
+		else:
+			push_error("PixelCat profile recovery could not install the verified candidate; the source candidate was retained")
 	var profile: Dictionary = payload.get("profile", payload)
 	_load_profile_data(profile)
 	if profile.has("currency"):
@@ -310,6 +331,57 @@ func _list_profile_backups(absolute_path: String) -> Array[String]:
 	return backups
 
 
+func _list_profile_recovery_candidates(absolute_path: String) -> Array[String]:
+	var candidates: Array[String] = []
+	var temporary_path := absolute_path + ".tmp"
+	if FileAccess.file_exists(temporary_path):
+		candidates.append(temporary_path)
+	candidates.append_array(_list_profile_backups(absolute_path))
+	return candidates
+
+
+func _is_usable_profile_payload(payload: Dictionary) -> bool:
+	if payload.is_empty() or _is_newer_profile_payload(payload):
+		return false
+	var profile: Variant = payload.get("profile", payload)
+	return profile is Dictionary and not profile.is_empty()
+
+
+func _is_newer_profile_payload(payload: Dictionary) -> bool:
+	return not payload.is_empty() and int(payload.get("version", 0)) > SAVE_VERSION and payload.get("profile", {}) is Dictionary
+
+
+func _restore_profile_candidate(payload: Dictionary, absolute_path: String) -> bool:
+	var recovery_path := "%s.restore.%d.tmp" % [absolute_path, Time.get_ticks_usec()]
+	var file := FileAccess.open(recovery_path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(JSON.stringify(payload, "\t"))
+	file.flush()
+	var write_error := file.get_error()
+	file.close()
+	if write_error != OK:
+		DirAccess.remove_absolute(recovery_path)
+		return false
+	var verified := _read_profile_payload(recovery_path)
+	if not _is_usable_profile_payload(verified):
+		DirAccess.remove_absolute(recovery_path)
+		return false
+
+	var preserved_path := ""
+	if FileAccess.file_exists(absolute_path):
+		preserved_path = "%s.invalid.%d" % [absolute_path, Time.get_ticks_usec()]
+		if DirAccess.rename_absolute(absolute_path, preserved_path) != OK:
+			DirAccess.remove_absolute(recovery_path)
+			return false
+	if DirAccess.rename_absolute(recovery_path, absolute_path) != OK:
+		if not preserved_path.is_empty():
+			DirAccess.rename_absolute(preserved_path, absolute_path)
+		DirAccess.remove_absolute(recovery_path)
+		return false
+	return true
+
+
 func _load_profile_data(data: Dictionary) -> void:
 	level = maxi(int(data.get("level", 1)), 1)
 	experience = maxi(int(data.get("experience", 0)), 0)
@@ -338,12 +410,16 @@ func _skill_cap(key: String) -> int:
 	return 0
 
 
-func _save_profile() -> void:
+func _save_profile() -> bool:
 	if _test_mode or debug_session:
-		return
+		return true
+	if _profile_save_blocked_by_newer_version:
+		return false
 	var serialized := JSON.stringify(get_save_data(), "\t")
 	if not _write_profile_atomically(serialized, save_path):
 		push_error("PixelCat profile save failed; the previous save was retained")
+		return false
+	return true
 
 
 func _write_profile_atomically(serialized: String, destination: String) -> bool:

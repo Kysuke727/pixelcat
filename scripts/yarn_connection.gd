@@ -61,6 +61,7 @@ var _last_pivot_position: Vector2 = Vector2.ZERO
 var _pending_wrap_angle_degrees: float = 0.0
 var _pending_player_travel: float = 0.0
 var _dynamic_pivot: bool = false
+var _last_player_discontinuity_version: int = -1
 var wrap_side_sign: float = 0.0
 var _wrap_route_seeded: bool = false
 var _wrap_seed_target_side: float = 1.0
@@ -88,6 +89,7 @@ func _ready() -> void:
 	lifetime_left = maximum_duration
 	if is_instance_valid(player):
 		_last_observed_player_position = player.global_position
+		_last_player_discontinuity_version = _get_player_discontinuity_version()
 		trail_points.append(player.global_position)
 	if is_instance_valid(target) and target.has_method("apply_yarn_slow"):
 		target.apply_yarn_slow(slow_duration, slow_multiplier)
@@ -115,8 +117,9 @@ func _process(delta: float) -> void:
 	if not is_wrapped:
 		_try_acquire_support()
 	_update_player_trail()
-	_update_wrap_angle()
-	_update_tension_and_bind()
+	var continuous_player_motion := _update_wrap_angle()
+	if continuous_player_motion:
+		_update_tension_and_bind()
 	_update_visuals()
 
 
@@ -226,10 +229,15 @@ func _history_wrap_angle_degrees() -> float:
 	return total
 
 
-func _update_wrap_angle() -> void:
+func _update_wrap_angle() -> bool:
 	valid_movement_this_frame = false
 	if not is_wrapped or not _is_valid_support(wrap_pivot):
-		return
+		return true
+	var discontinuity_version := _get_player_discontinuity_version()
+	if discontinuity_version != _last_player_discontinuity_version:
+		_last_player_discontinuity_version = discontinuity_version
+		_reset_wrap_state("检测到复活或位置跳转，绕行与张力基准已重置")
+		return false
 	if not _validate_current_path():
 		accumulated_wrap_angle = 0.0
 		_pending_wrap_angle_degrees = 0.0
@@ -242,17 +250,18 @@ func _update_wrap_angle() -> void:
 		tension_value = 0.0
 		last_bind_failure_reason = "毛线路径无效，绕行进度已清除"
 		_last_observed_player_position = player.global_position
-		return
+		return true
 	var current_pivot_position := wrap_pivot.global_position
 	var current_relative := player.global_position - current_pivot_position
 	var player_step := player.global_position.distance_to(_last_observed_player_position)
 	if player_step > maximum_player_sample_step:
-		# Ignore teleports (including respawn) instead of manufacturing a wrap.
-		_pending_player_travel = 0.0
-		_pending_wrap_angle_degrees = 0.0
+		# A discontinuous move invalidates the winding and its tension baseline;
+		# merely skipping this angle sample would leave a stale pull threshold.
+		_reset_wrap_state("检测到非连续位移，绕行与张力基准已重置")
 		_last_pivot_position = current_pivot_position
 		_last_observed_player_position = player.global_position
-		return
+		_last_player_discontinuity_version = discontinuity_version
+		return false
 	# Compare both positions against the pivot's current transform. This filters
 	# pivot-only motion while preserving genuine player movement at any frame rate.
 	var previous_relative := _last_observed_player_position - current_pivot_position
@@ -309,6 +318,14 @@ func _update_wrap_angle() -> void:
 		player_radius_at_wound = player.global_position.distance_to(wrap_pivot.global_position)
 		routed_path_length_at_wound = _routed_path_length()
 		last_bind_failure_reason = "缠绕完成，继续拉紧毛线"
+	return true
+
+
+func _get_player_discontinuity_version() -> int:
+	if not is_instance_valid(player):
+		return -1
+	var value: Variant = player.get("position_discontinuity_version")
+	return int(value) if value != null else 0
 
 
 func _update_tension_and_bind() -> void:
@@ -416,13 +433,15 @@ func _build_routed_path() -> PackedVector2Array:
 	var target_alpha := acos(clampf(radius / target_offset.length(), -1.0, 1.0))
 	var effective_winding := _history_wrap_angle_degrees() + _pending_wrap_angle_degrees
 	if _wrap_route_seeded and absf(effective_winding) > 0.1 and not wrap_contact_history.is_empty():
-		var winding_sign := signf(effective_winding)
-		var current_start_angle := player_phi + _wrap_seed_player_side * player_alpha
-		points.append(center + Vector2.from_angle(current_start_angle) * radius)
+		var initial_player_angle := wrap_contact_history[0].angle()
 		var seed_alpha := acos(clampf(radius / maxf(wrap_player_radius_at_contact, radius + 0.01), -1.0, 1.0))
-		var seed_player_angle := wrap_contact_history[0].angle() + _wrap_seed_player_side * seed_alpha
-		var history_delta := _directed_arc_delta(current_start_angle, seed_player_angle, -winding_sign)
-		history_delta -= winding_sign * TAU * floorf(absf(effective_winding) / 360.0)
+		var seed_player_angle := initial_player_angle + _wrap_seed_player_side * seed_alpha
+		# Unwrap the cat's current polar angle from the stored signed movement
+		# history. Using a shortest-arc remainder here double-counted a full turn
+		# whenever radial movement shifted the tangent angle across the modulo seam.
+		var current_start_angle := initial_player_angle + deg_to_rad(effective_winding) + _wrap_seed_player_side * player_alpha
+		points.append(center + Vector2.from_angle(current_start_angle) * radius)
+		var history_delta := seed_player_angle - current_start_angle
 		var history_subdivisions := maxi(1, ceili(absf(history_delta) / deg_to_rad(12.0)))
 		for step in range(1, history_subdivisions + 1):
 			points.append(center + Vector2.from_angle(current_start_angle + history_delta * float(step) / float(history_subdivisions)) * radius)

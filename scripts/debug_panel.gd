@@ -109,15 +109,28 @@ func _simulate_settlement(success: bool) -> void:
 func _close_debug() -> void:
 	if not active:
 		return
+	if not _restore_debug_session():
+		status.text += "\n调试快照恢复或存档失败；隔离状态仍保留，未写入正式存档。"
+		return
 	active = false
 	panel.visible = false
-	ExpeditionManager.end_debug_session()
-	ProgressionManager.end_debug_session()
-	ExpeditionManager.restore_debug_player_snapshot()
+
+
+func _restore_debug_session() -> bool:
+	# Restore exploration, then growth/currency, then the player (whose caps depend
+	# on progression); persistence remains disabled until the final commit.
+	if not ExpeditionManager.restore_debug_expedition_snapshot():
+		return false
+	if not ProgressionManager.restore_debug_session_snapshot():
+		return false
+	if not ExpeditionManager.restore_debug_player_snapshot():
+		return false
+	if not ProgressionManager.commit_debug_session():
+		return false
+	ExpeditionManager.complete_debug_session()
+	return true
 
 
 func _exit_tree() -> void:
 	if active:
-		ExpeditionManager.end_debug_session()
-		ProgressionManager.end_debug_session()
-		ExpeditionManager.restore_debug_player_snapshot()
+		_restore_debug_session()

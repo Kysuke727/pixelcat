@@ -61,6 +61,80 @@ func _run() -> void:
 	anchor_only.queue_free()
 	await process_frame
 
+	# Reproduce the reviewed 360-degree radial seam case using the routed path
+	# builder itself: one pixel of radius change must not add another whole coil.
+	var seam_pivot_position := Vector2(400.0, 900.0)
+	var seam_target := _spawn_slime(world, seam_pivot_position + Vector2(-200.0, 0.0))
+	var seam_pivot := _add_wrap_point(world, seam_pivot_position, 20.0)
+	player.global_position = seam_pivot_position + Vector2(70.0, 0.0)
+	var seam_connection := _create_connection(combat, player, seam_target)
+	await process_frame
+	seam_connection._process(1.0 / 60.0)
+	seam_connection.wrap_contact_history.clear()
+	seam_connection.wrap_contact_history.append(Vector2.RIGHT)
+	seam_connection.wrap_player_radius_at_contact = 70.0
+	seam_connection.wrap_angle_history.clear()
+	seam_connection.wrap_angle_history.append(360.0)
+	seam_connection.accumulated_wrap_angle = 360.0
+	seam_connection.wrap_side_sign = 1.0
+	seam_connection._wrap_route_seeded = true
+	seam_connection._wrap_seed_player_side = -1.0
+	seam_connection._wrap_seed_target_side = 1.0
+	seam_connection._wrap_seed_arc_direction = -1.0
+	var seam_radius := seam_connection.wrap_contact_radius + seam_connection.path_clearance
+	var legacy_alpha_70 := acos(seam_radius / 70.0)
+	var legacy_alpha_71 := acos(seam_radius / 71.0)
+	var legacy_seed_angle := -legacy_alpha_70
+	var legacy_arc_70 := -fposmod((-legacy_alpha_70) - legacy_seed_angle, TAU) - TAU
+	var legacy_arc_71 := -fposmod((-legacy_alpha_71) - legacy_seed_angle, TAU) - TAU
+	var legacy_formula_jump_degrees := absf(rad_to_deg(legacy_arc_71 - legacy_arc_70))
+	_check(legacy_formula_jump_degrees > 350.0, "reviewed modulo-plus-turn formula reproduces its extra revolution (%.2f degrees)" % legacy_formula_jump_degrees)
+	var seam_length_at_70 := seam_connection._routed_path_length()
+	player.global_position = seam_pivot_position + Vector2(71.0, 0.0)
+	var seam_length_at_71 := seam_connection._routed_path_length()
+	var radial_seam_jump := absf(seam_length_at_71 - seam_length_at_70)
+	_check(radial_seam_jump < 5.0, "360-degree route remains continuous after a 1px radial pull (observed jump %.2f px)" % radial_seam_jump)
+	for seed_side in [-1.0, 1.0]:
+		for winding_sign in [-1.0, 1.0]:
+			var initial_angle := 0.37
+			seam_connection.wrap_contact_history[0] = Vector2.from_angle(initial_angle)
+			seam_connection._wrap_seed_player_side = seed_side
+			seam_connection._wrap_seed_target_side = -seed_side
+			seam_connection._wrap_seed_arc_direction = winding_sign
+			seam_target.global_position = seam_pivot_position + Vector2.from_angle(initial_angle + PI + winding_sign * 0.2) * 210.0
+			var boundary_lengths: Array[float] = []
+			for turn_degrees in [359.0, 360.0, 361.0]:
+				seam_connection.wrap_angle_history.clear()
+				seam_connection.wrap_angle_history.append(winding_sign * turn_degrees)
+				var radius_lengths: Array[float] = []
+				for player_radius in [69.0, 70.0, 71.0]:
+					player.global_position = seam_pivot_position + Vector2.from_angle(initial_angle + deg_to_rad(winding_sign * turn_degrees)) * player_radius
+					radius_lengths.append(seam_connection._routed_path_length())
+				boundary_lengths.append(radius_lengths[1])
+				_check(absf(radius_lengths[1] - radius_lengths[0]) < 5.0 and absf(radius_lengths[2] - radius_lengths[1]) < 5.0, "inward/outward path length stays continuous at %d degrees for seed %s direction %s" % [int(turn_degrees), seed_side, winding_sign])
+			_check(not seam_connection.loop_bound, "geometry-only route changes never bind without an active player pull")
+			_check(absf(boundary_lengths[1] - boundary_lengths[0]) < 5.0 and absf(boundary_lengths[2] - boundary_lengths[1]) < 5.0, "route length is continuous through 359/360/361 degrees for seed %s direction %s" % [seed_side, winding_sign])
+			var unwind_lengths: Array[float] = []
+			for turn_degrees in [361.0, 360.0, 359.0]:
+				seam_connection.wrap_angle_history.clear()
+				seam_connection.wrap_angle_history.append(winding_sign * turn_degrees)
+				player.global_position = seam_pivot_position + Vector2.from_angle(initial_angle + deg_to_rad(winding_sign * turn_degrees)) * 70.0
+				unwind_lengths.append(seam_connection._routed_path_length())
+			_check(absf(unwind_lengths[1] - unwind_lengths[0]) < 5.0 and absf(unwind_lengths[2] - unwind_lengths[1]) < 5.0, "reverse unwrapping remains continuous across a full-turn boundary")
+	seam_connection.winding_complete = true
+	seam_connection.wrap_state = YarnConnection.WrapState.WOUND
+	seam_connection.player_position_at_wound = player.global_position
+	seam_connection.pivot_position_at_wound = seam_pivot_position
+	seam_connection.player_radius_at_wound = player.global_position.distance_to(seam_pivot_position)
+	seam_connection.routed_path_length_at_wound = seam_connection._routed_path_length()
+	player.global_position += (player.global_position - seam_pivot_position).normalized()
+	seam_connection._update_tension_and_bind()
+	_check(not seam_connection.is_taut and not seam_connection.loop_bound, "one-pixel radial change around a full-turn seam cannot satisfy active-pull thresholds")
+	seam_connection.finish_naturally()
+	seam_target.queue_free()
+	seam_pivot.queue_free()
+	await process_frame
+
 	# Rotation alone is not enough: the rope must contact a declared static pivot.
 	var no_contact_target := _spawn_slime(world, Vector2(560.0, 350.0))
 	var off_path_pivot := _add_wrap_point(world, Vector2(500.0, 450.0), 12.0)
@@ -118,6 +192,58 @@ func _run() -> void:
 	_check(static_target.bind_time_left >= 1.5, "static-pivot bind uses the 1.5-second base duration")
 	_check(not static_pivot.is_in_group("enemies"), "static scenery pivot is never treated as an enemy target")
 	static_connection.finish_naturally()
+
+	var teleport_pivot_position := Vector2(780.0, 500.0)
+	var teleport_target := _spawn_slime(world, teleport_pivot_position + Vector2(200.0, 0.0))
+	var teleport_pivot := _add_wrap_point(world, teleport_pivot_position, 20.0)
+	player.global_position = teleport_pivot_position + Vector2(-70.0, 0.0)
+	var teleport_connection := _create_connection(combat, player, teleport_target)
+	await process_frame
+	teleport_connection._process(1.0 / 60.0)
+	for step in range(1, 46):
+		player.global_position = teleport_pivot_position + Vector2.from_angle(PI - deg_to_rad(6.0 * step)) * 70.0
+		teleport_connection._process(1.0 / 60.0)
+	_check(teleport_connection.winding_complete and not teleport_connection.loop_bound, "teleport fixture reaches wound state without tension")
+	var winding_before_teleport := teleport_connection.accumulated_wrap_angle
+	var teleport_radial := (player.global_position - teleport_pivot_position).normalized()
+	player.global_position += teleport_radial * 100.0
+	teleport_connection._process(1.0 / 60.0)
+	_check(not teleport_connection.winding_complete and not teleport_connection.loop_bound and absf(teleport_connection.accumulated_wrap_angle) < absf(winding_before_teleport), "large teleport invalidates completed winding and tension baseline")
+	for _idle_frame in range(5):
+		teleport_connection._process(1.0 / 60.0)
+	_check(not teleport_connection.loop_bound and not teleport_connection.is_taut, "standing still after teleport cannot trigger delayed binding")
+	teleport_connection.finish_naturally()
+	teleport_target.queue_free()
+	teleport_pivot.queue_free()
+	await process_frame
+	var revive_pivot_position := Vector2(500.0, 680.0)
+	var revive_target := _spawn_slime(world, revive_pivot_position + Vector2(200.0, 0.0))
+	var revive_pivot := _add_wrap_point(world, revive_pivot_position, 20.0)
+	player.global_position = revive_pivot_position + Vector2(-70.0, 0.0)
+	var revive_connection := _create_connection(combat, player, revive_target)
+	await process_frame
+	revive_connection._process(1.0 / 60.0)
+	_check(revive_connection.is_wrapped, "short-respawn fixture attaches to a valid support")
+	revive_connection.wrap_angle_history.clear()
+	revive_connection.wrap_angle_history.append(270.0)
+	revive_connection.accumulated_wrap_angle = 270.0
+	revive_connection.winding_complete = true
+	revive_connection.wrap_state = YarnConnection.WrapState.WOUND
+	revive_connection.player_position_at_wound = player.global_position
+	revive_connection.pivot_position_at_wound = revive_pivot.global_position
+	revive_connection.player_radius_at_wound = player.global_position.distance_to(revive_pivot.global_position)
+	revive_connection.routed_path_length_at_wound = revive_connection._routed_path_length()
+	_check(revive_connection.winding_complete, "short-respawn fixture starts in the wound-but-not-taut state")
+	player.revive_from_expedition(player.global_position + Vector2(12.0, 0.0))
+	revive_connection._process(1.0 / 60.0)
+	_check(not revive_connection.winding_complete and not revive_connection.loop_bound, "short respawn teleport invalidates yarn despite being below the distance threshold")
+	for _idle_frame in range(5):
+		revive_connection._process(1.0 / 60.0)
+	_check(not revive_connection.loop_bound, "short respawn followed by stillness cannot reuse the old tension baseline")
+	revive_connection.finish_naturally()
+	revive_target.queue_free()
+	revive_pivot.queue_free()
+	await process_frame
 	static_target.bind_time_left = 0.0
 	static_target.bind_resistance_left = 1.0
 	_check(not static_target.apply_yarn_bind(1.5), "control immunity rejects a new yarn bind")
