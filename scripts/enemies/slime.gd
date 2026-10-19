@@ -451,19 +451,20 @@ func apply_yarn_slow(duration: float, multiplier: float) -> void:
 	slow_multiplier = minf(slow_multiplier, clampf(multiplier, 0.0, 1.0))
 
 
-func apply_yarn_bind(duration: float) -> void:
+func apply_yarn_bind(duration: float) -> bool:
 	if (
 		state == SlimeState.DEAD
 		or duration <= 0.0
 		or bind_time_left > 0.0
 		or bind_resistance_left > 0.0
 	):
-		return
+		return false
 	bind_time_left = duration
 	attack_area.set_deferred("monitoring", false)
 	if state == SlimeState.WINDUP or state == SlimeState.LUNGE:
 		_change_state(SlimeState.RECOVER)
 		state_time_left = recover_duration
+	return true
 
 
 func register_combo_finisher(

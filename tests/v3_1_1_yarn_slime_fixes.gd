@@ -100,6 +100,18 @@ func _run() -> void:
 	_check(jitter_connection.get_debug_status_text().contains("有效轨迹点不足"), "debug display reports why a loop has not triggered")
 	jitter_connection.finish_naturally()
 
+	var immune_target := _spawn_slime(world, Vector2(800.0, 500.0))
+	immune_target.bind_resistance_left = 1.0
+	player.global_position = immune_target.global_position + Vector2(70.0, 0.0)
+	var immune_connection := _create_connection(combat, player, immune_target)
+	await process_frame
+	for step in range(1, 46):
+		player.global_position = immune_target.global_position + Vector2.from_angle(deg_to_rad(-6.0 * step)) * 70.0
+		immune_connection._process(1.0 / 60.0)
+	_check(not immune_connection.loop_bound, "binding immunity does not report a false-success loop")
+	_check(immune_connection.get_debug_status_text().contains("束缚免疫期"), "debug reason identifies target bind immunity")
+	immune_connection.finish_naturally()
+
 	# Connection expiration yields a concrete debug reason.
 	var timeout_target := _spawn_slime(world, Vector2(500.0, 350.0))
 	player.global_position = timeout_target.global_position + Vector2(70.0, 0.0)

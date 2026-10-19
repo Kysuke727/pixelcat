@@ -142,19 +142,22 @@ func _try_close_loop() -> void:
 	if absf(_signed_polygon_area(polygon)) < minimum_loop_area:
 		last_bind_failure_reason = "闭合区域面积不足（%.0f/%.0f px²）" % [absf(_signed_polygon_area(polygon)), minimum_loop_area]
 		return
-	loop_bound = true
-	last_bind_failure_reason = ""
 	var bound_count := 0
+	var attempted_bind_count := 0
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
 			continue
 		# The tethered target is always a valid bind candidate: at 270° the
 		# auto-closing chord can leave the orbit center outside the polygon.
 		if enemy == target or Geometry2D.is_point_in_polygon(enemy.global_position, polygon):
-			enemy.apply_yarn_bind(bind_duration)
-			bound_count += 1
+			attempted_bind_count += 1
+			if bool(enemy.apply_yarn_bind(bind_duration)):
+				bound_count += 1
 	if bound_count == 0:
-		last_bind_failure_reason = "闭合区域内没有可束缚敌人"
+		last_bind_failure_reason = "闭合区域内没有可束缚敌人" if attempted_bind_count == 0 else "敌人处于束缚免疫期或已被束缚"
+		return
+	loop_bound = true
+	last_bind_failure_reason = ""
 
 
 func _signed_polygon_area(polygon: PackedVector2Array) -> float:
