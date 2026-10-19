@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://bxxehv6dlj81a"]
 
-[ext_resource type="PackedScene" uid="uid://bty4tdkmvfer2" path="res://scenes/enemies/enemy_basic.tscn" id="1_bqfs8"]
+[ext_resource type="PackedScene" uid="uid://bty4tdkmvfer2" path="res://scenes/enemies/slime.tscn" id="1_bqfs8"]
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
 [ext_resource type="AudioStream" uid="uid://c02j4tbrpjcmp" path="res://assets/audio/music/小镇.mp3" id="2_ug1gh"]
 [ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="4_ji3sx"]
-[ext_resource type="PackedScene" uid="uid://bnmkuv58727s1" path="res://scenes/interactables/coin.tscn" id="5_s2u0w"]
 [ext_resource type="PackedScene" uid="uid://crdk4cmg23b4j" path="res://scenes/ui/battle_ui.tscn" id="6_dsh4f"]
+[ext_resource type="Texture2D" path="res://assets/objects/street_lamp.png" id="7_lamp"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
 size = Vector2(1000, 20)
@@ -19,7 +19,7 @@ size = Vector2(20, 700)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
 size = Vector2(20, 700)
 
-[node name="NightWorld" type="Node2D" unique_id=590361467]
+[node name="NightWorld" type="Node2D" unique_id=590361467 groups=["night_exploration"]]
 
 [node name="Groud" type="Node2D" parent="." unique_id=1226507053]
 
@@ -63,20 +63,20 @@ shape = SubResource("RectangleShape2D_fojya")
 
 [node name="Decorations" type="Node2D" parent="." unique_id=1352625751]
 
-[node name="StreetLamp1" type="Polygon2D" parent="Decorations" unique_id=1692922329]
-position = Vector2(680, 180)
-color = Color(0.40784314, 0.4392157, 0.5019608, 1)
-polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+[node name="StreetLamp1" type="Sprite2D" parent="Decorations" unique_id=1692922329]
+position = Vector2(686, 210)
+texture = ExtResource("7_lamp")
+scale = Vector2(0.75, 0.75)
 
-[node name="StreetLamp2D2" type="Polygon2D" parent="Decorations" unique_id=14542261]
-position = Vector2(680, 360)
-color = Color(0.40784314, 0.4392157, 0.5019608, 1)
-polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+[node name="StreetLamp2D2" type="Sprite2D" parent="Decorations" unique_id=14542261]
+position = Vector2(686, 390)
+texture = ExtResource("7_lamp")
+scale = Vector2(0.75, 0.75)
 
-[node name="StreetLamp2D3" type="Polygon2D" parent="Decorations" unique_id=184136245]
-position = Vector2(680, 540)
-color = Color(0.40784314, 0.4392157, 0.5019608, 1)
-polygon = PackedVector2Array(0, 0, 12, 0, 12, 60, 0, 60)
+[node name="StreetLamp2D3" type="Sprite2D" parent="Decorations" unique_id=184136245]
+position = Vector2(686, 570)
+texture = ExtResource("7_lamp")
+scale = Vector2(0.75, 0.75)
 
 [node name="Tree1" type="Polygon2D" parent="Decorations" unique_id=1516793081]
 color = Color(0.09411765, 0.22745098, 0.19215687, 1)
@@ -96,17 +96,20 @@ polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_gnfau")]
 position = Vector2(500, 350)
 
-[node name="EnemyBasic" parent="." unique_id=1446444493 instance=ExtResource("1_bqfs8")]
-position = Vector2(350, 350)
+[node name="SlimeA" parent="." unique_id=1446444493 instance=ExtResource("1_bqfs8")]
+position = Vector2(275, 280)
+
+[node name="SlimeB" parent="." instance=ExtResource("1_bqfs8")]
+position = Vector2(760, 260)
+
+[node name="SlimeC" parent="." instance=ExtResource("1_bqfs8")]
+position = Vector2(735, 520)
 
 [node name="NightMusic" type="AudioStreamPlayer2D" parent="." unique_id=381423912]
 stream = ExtResource("2_ug1gh")
 autoplay = true
 
 [node name="CoinUI" parent="." unique_id=1943915820 instance=ExtResource("4_ji3sx")]
-
-[node name="Coin" parent="." unique_id=369757548 instance=ExtResource("5_s2u0w")]
-position = Vector2(600, 350)
 
 [node name="BattleUI" parent="." unique_id=1765966774 instance=ExtResource("6_dsh4f")]
 offset_left = -78.0

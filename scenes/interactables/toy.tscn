@@ -1,21 +1,19 @@
 [gd_scene format=3 uid="uid://dj8kto7fttbet"]
 
-[ext_resource type="Texture2D" uid="uid://bw1xuw636yq36" path="res://icon.svg" id="1_bwicb"]
+[ext_resource type="Texture2D" path="res://assets/objects/toys/pink_yarn_ball.png" id="1_bwicb"]
 [ext_resource type="Script" uid="uid://codbx140qi4cu" path="res://scripts/toy.gd" id="1_cwhcr"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ynyhv"]
-radius = 43.416588
+radius = 18.0
 
 [node name="Toy" type="Area2D" unique_id=567461969]
 script = ExtResource("1_cwhcr")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1213585035]
-position = Vector2(582, 492.00003)
-scale = Vector2(0.6640625, 0.7421875)
 texture = ExtResource("1_bwicb")
+scale = Vector2(0.7, 0.7)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=973894976]
-position = Vector2(579, 488)
 shape = SubResource("CircleShape2D_ynyhv")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]

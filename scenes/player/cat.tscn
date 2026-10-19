@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://cryd2b1lnjw3x"]
+[gd_scene load_steps=27 format=3 uid="uid://cryd2b1lnjw3x"]
 
 [ext_resource type="Script" uid="uid://cghaa230a28" path="res://scripts/cat_controller.gd" id="1_u6cqk"]
 [ext_resource type="Texture2D" uid="uid://cblwyhj6xjqy2" path="res://assets/characters/cat/first_cat.png" id="2_m24ub"]
@@ -8,9 +8,14 @@
 [ext_resource type="Texture2D" uid="uid://co6wqujk8ui1l" path="res://assets/characters/cat/walk_right_temp.png" id="6_8pl4k"]
 [ext_resource type="Texture2D" uid="uid://dtk486wxgd3yj" path="res://assets/characters/cat/walk_up.png" id="7_pqgx7"]
 [ext_resource type="Script" uid="uid://bi17c5p1b3uar" path="res://scripts/cat_stats.gd" id="8_go1w6"]
+[ext_resource type="Script" path="res://scripts/player_combat.gd" id="9_combat"]
+[ext_resource type="PackedScene" path="res://scenes/combat/yarn_projectile.tscn" id="10_projectile"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o5qli"]
 size = Vector2(21, 15)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_melee"]
+size = Vector2(24, 20)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_1nr4i"]
 atlas = ExtResource("3_fvnai")
@@ -181,6 +186,8 @@ animations = [{
 }]
 
 [node name="Cat" type="CharacterBody2D" unique_id=211071589]
+collision_layer = 1
+collision_mask = 3
 script = ExtResource("1_u6cqk")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=782726021]
@@ -198,3 +205,23 @@ animation = &"walk_down"
 
 [node name="Stats" type="Node" parent="." unique_id=681362496]
 script = ExtResource("8_go1w6")
+
+[node name="PlayerCombat" type="Node2D" parent="."]
+script = ExtResource("9_combat")
+projectile_scene = ExtResource("10_projectile")
+
+[node name="MeleeHitbox" type="Area2D" parent="PlayerCombat"]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerCombat/MeleeHitbox"]
+shape = SubResource("RectangleShape2D_melee")
+
+[node name="AttackArc" type="Line2D" parent="PlayerCombat"]
+visible = false
+width = 3.0
+default_color = Color(1, 0.82, 0.42, 0.9)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
