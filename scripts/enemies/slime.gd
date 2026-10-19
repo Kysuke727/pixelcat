@@ -29,9 +29,9 @@ static var _next_attack_id: int = 1
 @export_category("Stats")
 @export var max_health: int = 5
 @export var move_speed: float = 35.0
-@export var chase_range: float = 120.0
-@export var disengage_range: float = 180.0
-@export var attack_range: float = 25.0
+@export var chase_range: float = 250.0
+@export var disengage_range: float = 300.0
+@export var attack_range: float = 30.0
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
@@ -113,6 +113,7 @@ func _ready() -> void:
 	add_to_group("enemies")
 	add_to_group("damageable")
 	attack_area.set_deferred("monitoring", false)
+	attack_area.body_entered.connect(_on_attack_area_body_entered)
 	_choose_idle_duration()
 	_find_player()
 	if is_instance_valid(CombatTimeController) and CombatTimeController.is_enemy_side_paused():
@@ -348,6 +349,11 @@ func _try_lunge_hit(body: Node) -> void:
 		)
 	elif body.has_method("receive_damage"):
 		body.receive_damage(attack_damage, global_position, attack_knockback)
+
+
+func _on_attack_area_body_entered(body: Node2D) -> void:
+	if state == SlimeState.LUNGE:
+		_try_lunge_hit(body)
 
 
 func get_attack_eta_for(candidate: Node2D, max_window: float = 0.7) -> float:
@@ -625,12 +631,15 @@ func _update_sprite() -> void:
 	else:
 		sprite.texture = FRONT_TEXTURE
 	if state == SlimeState.WINDUP:
+		sprite.modulate = Color(1.0, 0.58, 0.42, 1.0)
 		sprite.frame = 0
 		sprite.scale = Vector2(1.08, 0.86)
 	elif state == SlimeState.LUNGE:
+		sprite.modulate = Color(1.0, 0.82, 0.68, 1.0)
 		sprite.frame = 3
 		sprite.scale = Vector2(0.92, 1.12)
 	else:
+		sprite.modulate = Color.WHITE
 		sprite.frame = int(animation_time * 8.0) % 4
 		sprite.scale = Vector2.ONE
 	if state == SlimeState.DEAD:

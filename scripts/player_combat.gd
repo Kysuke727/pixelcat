@@ -25,7 +25,7 @@ var current_melee_attack_id: int = 0
 @export_category("Ranged")
 @export var projectile_scene: PackedScene
 @export var ranged_damage: int = 1
-@export var ranged_cooldown: float = 8.0
+@export var ranged_cooldown: float = 4.0
 @export var ranged_duration: float = 0.30
 @export var ranged_windup: float = 0.12
 @export var projectile_speed: float = 220.0
@@ -272,6 +272,7 @@ func _apply_combat_tuning() -> void:
 	stun_duration = tuning.stun_duration
 	control_immunity_duration = tuning.control_immunity_duration
 	combo_stun_chance = tuning.second_claw_stun_chance
+	ranged_cooldown = tuning.yarn_cooldown
 
 
 func _spawn_projectile() -> void:

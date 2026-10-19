@@ -14,6 +14,9 @@ class_name CombatV3Tuning
 @export var player_invulnerability_duration: float = 1.0
 @export var player_knockback_force: float = 60.0
 
+@export_category("毛线技能")
+@export var yarn_cooldown: float = 4.0
+
 @export_category("闪避")
 @export var dodge_distance: float = 55.0
 @export var dodge_invulnerability_duration: float = 0.15

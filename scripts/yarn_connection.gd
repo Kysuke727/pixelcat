@@ -19,15 +19,20 @@ var target: Node2D
 var combat: Node
 var lifetime_left: float
 var trail_points: Array[Vector2] = []
+var trail_offsets: Array[Vector2] = []
 var trail_length: float = 0.0
 var accumulated_loop_angle: float = 0.0
 var loop_bound: bool = false
 var cut_reward_claimed: bool = false
 var finished: bool = false
 var owner_scene: Node
+var last_bind_failure_reason: String = "等待有效移动轨迹"
+
+@export var show_debug_status: bool = true
 
 @onready var tether_line: Line2D = $TetherLine
 @onready var trail_line: Line2D = $TrailLine
+@onready var debug_status: Label = $DebugStatus
 
 
 func configure(new_player: Node2D, new_target: Node2D, new_combat: Node, settings: Dictionary = {}) -> void:
@@ -44,6 +49,8 @@ func _ready() -> void:
 	lifetime_left = maximum_duration
 	if is_instance_valid(player):
 		trail_points.append(player.global_position)
+	if is_instance_valid(player) and is_instance_valid(target):
+		trail_offsets.append(player.global_position - target.global_position)
 	if is_instance_valid(target) and target.has_method("apply_yarn_slow"):
 		target.apply_yarn_slow(slow_duration, slow_multiplier)
 	_update_lines()
@@ -64,46 +71,51 @@ func _process(delta: float) -> void:
 		return
 	lifetime_left = maxf(lifetime_left - delta, 0.0)
 	if lifetime_left <= 0.0 or (maximum_length > 0.0 and player.global_position.distance_to(target.global_position) > maximum_length):
+		last_bind_failure_reason = "连接超时" if lifetime_left <= 0.0 else "超过连接最大距离"
 		_finish()
 		return
 	if not _has_clear_line_of_sight():
+		last_bind_failure_reason = "目标与玩家之间被障碍物遮挡"
 		_finish()
 		return
 	_sample_player_path()
-	_update_lines()
 	_try_close_loop()
+	_update_lines()
 
 
 func _sample_player_path() -> void:
-	if trail_points.is_empty():
+	if trail_offsets.is_empty():
 		trail_points.append(player.global_position)
+		trail_offsets.append(player.global_position - target.global_position)
 		return
 	var current := player.global_position
-	var previous: Vector2 = trail_points.back()
-	var segment_length := previous.distance_to(current)
+	var current_offset := current - target.global_position
+	var previous_offset: Vector2 = trail_offsets.back()
+	var segment_length := previous_offset.distance_to(current_offset)
 	if segment_length < sample_distance:
 		return
 	trail_length += segment_length
 	trail_points.append(current)
-	var previous_offset := previous - target.global_position
-	var current_offset := current - target.global_position
+	trail_offsets.append(current_offset)
 	if previous_offset.length() >= minimum_loop_radius and current_offset.length() >= minimum_loop_radius:
 		accumulated_loop_angle += rad_to_deg(previous_offset.angle_to(current_offset))
 	_simplify_last_points()
-	while trail_points.size() > maxi(maximum_samples, 3):
+	while trail_offsets.size() > maxi(maximum_samples, 3):
 		trail_points.remove_at(1)
+		trail_offsets.remove_at(1)
 
 
 func _simplify_last_points() -> void:
-	while trail_points.size() >= 3:
-		var count := trail_points.size()
-		var first: Vector2 = trail_points[count - 3]
-		var middle: Vector2 = trail_points[count - 2]
-		var last: Vector2 = trail_points[count - 1]
+	while trail_offsets.size() >= 3:
+		var count := trail_offsets.size()
+		var first: Vector2 = trail_offsets[count - 3]
+		var middle: Vector2 = trail_offsets[count - 2]
+		var last: Vector2 = trail_offsets[count - 1]
 		var first_leg := middle - first
 		var second_leg := last - middle
 		if first_leg.length_squared() == 0.0 or second_leg.length_squared() == 0.0:
 			trail_points.remove_at(count - 2)
+			trail_offsets.remove_at(count - 2)
 			continue
 		var normalized_cross := absf(first_leg.normalized().cross(second_leg.normalized()))
 		if normalized_cross < 0.035 and first_leg.dot(second_leg) > 0.0:
@@ -113,21 +125,36 @@ func _simplify_last_points() -> void:
 
 
 func _try_close_loop() -> void:
-	if loop_bound or trail_points.size() < 4 or trail_length < minimum_loop_perimeter:
+	if loop_bound:
+		return
+	if trail_offsets.size() < 4:
+		last_bind_failure_reason = "有效轨迹点不足（%d/4）" % trail_offsets.size()
+		return
+	if trail_length < minimum_loop_perimeter:
+		last_bind_failure_reason = "有效轨迹周长不足（%.0f/%.0f px）" % [trail_length, minimum_loop_perimeter]
 		return
 	if absf(accumulated_loop_angle) < required_loop_angle_degrees:
+		last_bind_failure_reason = "绕行角度不足（%.0f°/%.0f°）" % [absf(accumulated_loop_angle), required_loop_angle_degrees]
 		return
-	var polygon := PackedVector2Array(trail_points)
+	var polygon := PackedVector2Array()
+	for offset in trail_offsets:
+		polygon.append(target.global_position + offset)
 	if absf(_signed_polygon_area(polygon)) < minimum_loop_area:
-		return
-	if not Geometry2D.is_point_in_polygon(target.global_position, polygon):
+		last_bind_failure_reason = "闭合区域面积不足（%.0f/%.0f px²）" % [absf(_signed_polygon_area(polygon)), minimum_loop_area]
 		return
 	loop_bound = true
+	last_bind_failure_reason = ""
+	var bound_count := 0
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
 			continue
-		if Geometry2D.is_point_in_polygon(enemy.global_position, polygon):
+		# The tethered target is always a valid bind candidate: at 270° the
+		# auto-closing chord can leave the orbit center outside the polygon.
+		if enemy == target or Geometry2D.is_point_in_polygon(enemy.global_position, polygon):
 			enemy.apply_yarn_bind(bind_duration)
+			bound_count += 1
+	if bound_count == 0:
+		last_bind_failure_reason = "闭合区域内没有可束缚敌人"
 
 
 func _signed_polygon_area(polygon: PackedVector2Array) -> float:
@@ -146,10 +173,38 @@ func _update_lines() -> void:
 			to_local(target.global_position)
 	])
 	var local_trail := PackedVector2Array()
-	for point in trail_points:
-		local_trail.append(to_local(point))
+	for offset in trail_offsets:
+		local_trail.append(to_local(target.global_position + offset))
 	trail_line.points = local_trail
 	trail_line.visible = local_trail.size() > 1
+	if is_instance_valid(debug_status):
+		debug_status.visible = show_debug_status
+		debug_status.position = to_local(player.global_position) + Vector2(-75.0, -50.0)
+		var target_name: String = str(target.name) if is_instance_valid(target) else "无"
+		var loop_ready := (
+			trail_offsets.size() >= 4
+			and trail_length >= minimum_loop_perimeter
+			and absf(accumulated_loop_angle) >= required_loop_angle_degrees
+			and absf(_signed_polygon_area(_current_polygon())) >= minimum_loop_area
+		)
+		var status_text := "连接：成功 | 目标：%s\n角度：%.0f° | 轨迹点：%d\n可触发：%s" % [target_name, absf(accumulated_loop_angle), trail_offsets.size(), "是" if loop_ready else "否"]
+		if not loop_bound and not last_bind_failure_reason.is_empty():
+			status_text += "\n原因：" + last_bind_failure_reason
+		debug_status.text = status_text
+		debug_status.add_theme_color_override("font_color", Color(1.0, 0.92, 0.65))
+		debug_status.add_theme_font_size_override("font_size", 10)
+		debug_status.z_index = 20
+
+
+func _current_polygon() -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for offset in trail_offsets:
+		polygon.append(target.global_position + offset)
+	return polygon
+
+
+func get_debug_status_text() -> String:
+	return debug_status.text if is_instance_valid(debug_status) else ""
 
 
 func _has_clear_line_of_sight() -> bool:

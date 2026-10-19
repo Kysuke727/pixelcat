@@ -110,7 +110,7 @@ func _run() -> void:
 		var angle := TAU * float(index) / 24.0
 		player.global_position = outside_center + Vector2.from_angle(angle) * 60.0
 		outside_connection._process(1.0 / 60.0)
-	_check(not outside_connection.loop_bound, "a closed polygon that excludes the slime does not bind it")
+	_check(not outside_connection.loop_bound, "moving around a different center does not count as orbiting the connected slime")
 
 	var expiring_connection := _create_connection(combat, player, outside_target)
 	combat.ranged_cooldown_left = 2.0
