@@ -31,6 +31,7 @@ func _run() -> void:
 			"objectives_total": 4,
 			"objectives_completed": 2,
 			"defeated_enemy_ids": ["BootA", "BootB"],
+			"fish_drops": {"BootA:fish:0": {"id": "BootA:fish:0", "position": [321.0, 456.0], "amount": 2}},
 		})
 		progression.save_now()
 		print("PROFILE_FIXTURE_WRITTEN")
@@ -40,6 +41,8 @@ func _run() -> void:
 		_check(currency.fish_count == 31, "restart restores permanent currency after all autoloads initialize")
 		_check(expedition.run_active and expedition.lives_left == 1, "restart restores active expedition and lives")
 		_check(expedition.ordinary_fish == 5 and expedition.defeated_enemy_ids.size() == 2, "restart restores expedition resources and defeats")
+		_check(expedition.fish_drops.has("BootA:fish:0"), "restart restores an unclaimed fish drop record")
+		_check(int(expedition.fish_drops["BootA:fish:0"].get("amount", 0)) == 2, "restart preserves drop quantity and pickup identity")
 	else:
 		failures.append("Unknown profile bootstrap mode: " + mode)
 	if failures.is_empty():
