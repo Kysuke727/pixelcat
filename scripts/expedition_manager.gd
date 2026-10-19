@@ -14,6 +14,7 @@ var ordinary_fish: int = 0
 var objectives_total: int = 0
 var objectives_completed: int = 0
 var defeated_enemy_ids: Array[String] = []
+var fish_drops: Dictionary = {}
 var exploration_reward_claimed: bool = false
 var active_safe_position: Vector2 = Vector2(500.0, 350.0)
 var saved_player_position: Vector2 = Vector2(500.0, 350.0)
@@ -26,12 +27,15 @@ var _debug_player_snapshot: Dictionary = {}
 
 
 func begin_run() -> void:
+	if ProgressionManager.debug_session:
+		return
 	run_active = true
 	lives_left = starting_lives
 	ordinary_fish = 0
 	objectives_total = 0
 	objectives_completed = 0
 	defeated_enemy_ids.clear()
+	fish_drops.clear()
 	exploration_reward_claimed = false
 	active_safe_position = Vector2(500.0, 350.0)
 	saved_player_position = active_safe_position
@@ -72,7 +76,7 @@ func set_objectives(enemy_ids: Array[String]) -> void:
 
 
 func complete_enemy_objective(enemy_id: String, experience_reward: int = 0) -> void:
-	if not run_active or enemy_id.is_empty() or defeated_enemy_ids.has(enemy_id):
+	if not run_active or ProgressionManager.debug_session or enemy_id.is_empty() or defeated_enemy_ids.has(enemy_id):
 		return
 	defeated_enemy_ids.append(enemy_id)
 	objectives_completed = mini(objectives_completed + 1, objectives_total)
@@ -84,6 +88,36 @@ func complete_enemy_objective(enemy_id: String, experience_reward: int = 0) -> v
 	expedition_changed.emit()
 
 
+func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: Array[Dictionary]) -> void:
+	if not run_active or ProgressionManager.debug_session or enemy_id.is_empty() or defeated_enemy_ids.has(enemy_id):
+		return
+	for drop in drops:
+		var drop_id := str(drop.get("id", ""))
+		if drop_id.is_empty():
+			continue
+		fish_drops[drop_id] = drop.duplicate(true)
+	defeated_enemy_ids.append(enemy_id)
+	objectives_completed = mini(objectives_completed + 1, objectives_total)
+	ProgressionManager.add_experience(maxi(experience_reward, 0))
+	if objectives_complete() and not exploration_reward_claimed:
+		exploration_reward_claimed = true
+		ProgressionManager.add_experience(exploration_clear_experience)
+	ProgressionManager.save_now()
+	expedition_changed.emit()
+
+
+func collect_saved_fish_drop(drop_id: String) -> bool:
+	if ProgressionManager.debug_session or not run_active or not fish_drops.has(drop_id):
+		return false
+	var record: Dictionary = fish_drops[drop_id]
+	var amount := maxi(int(record.get("amount", 1)), 1)
+	fish_drops.erase(drop_id)
+	ordinary_fish += amount
+	ProgressionManager.save_now()
+	expedition_changed.emit()
+	return true
+
+
 func objectives_complete() -> bool:
 	return run_active and objectives_total > 0 and objectives_completed >= objectives_total
 
@@ -93,7 +127,7 @@ func award_quest_experience(amount: int) -> int:
 
 
 func on_player_died(player: Node) -> void:
-	if not run_active:
+	if not run_active or ProgressionManager.debug_session:
 		return
 	lives_left = maxi(lives_left - 1, 0)
 	if lives_left > 0 and is_instance_valid(player):
@@ -121,7 +155,7 @@ func _respawn_player(player: Node) -> void:
 
 
 func finish_run(success: bool, transition_to_day: bool = true) -> void:
-	if not run_active:
+	if not run_active or ProgressionManager.debug_session:
 		return
 	var before := ordinary_fish
 	var lost := 0
@@ -182,6 +216,7 @@ func get_save_data() -> Dictionary:
 		"objectives_total": objectives_total,
 		"objectives_completed": objectives_completed,
 		"defeated_enemy_ids": defeated_enemy_ids.duplicate(),
+		"fish_drops": fish_drops.duplicate(true),
 		"exploration_reward_claimed": exploration_reward_claimed,
 		"safe_position": [active_safe_position.x, active_safe_position.y],
 		"player_position": [saved_player_position.x, saved_player_position.y],
@@ -200,6 +235,7 @@ func load_save_data(data: Dictionary) -> void:
 	defeated_enemy_ids.clear()
 	for enemy_id in data.get("defeated_enemy_ids", []):
 		defeated_enemy_ids.append(str(enemy_id))
+	fish_drops = data.get("fish_drops", {}).duplicate(true)
 	exploration_reward_claimed = bool(data.get("exploration_reward_claimed", objectives_completed >= objectives_total and objectives_total > 0))
 	active_safe_position = _vector_from_data(data.get("safe_position", [500.0, 350.0]))
 	saved_player_position = _vector_from_data(data.get("player_position", [500.0, 350.0]))
@@ -233,6 +269,7 @@ func end_debug_session() -> void:
 	if not _debug_snapshot.is_empty():
 		load_save_data(_debug_snapshot)
 		_debug_snapshot.clear()
+		_debug_player_snapshot.clear()
 
 
 func restore_debug_player_snapshot() -> void:

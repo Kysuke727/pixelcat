@@ -20,6 +20,12 @@ func _run() -> void:
 	for enemy in get_nodes_in_group("enemies"):
 		enemy.set_physics_process(false)
 		enemy.global_position = Vector2(930.0, 650.0)
+	var lamp_point := world.get_node("Decorations/LampWrapPoint1") as Node2D
+	var lamp_collision := lamp_point.get_node("StaticBody2D/CollisionShape2D") as CollisionShape2D
+	_check(lamp_point.get_node("StaticBody2D") is StaticBody2D, "street lamp has a physical blocker separate from its wrap marker")
+	_check(is_equal_approx((lamp_collision.shape as CircleShape2D).radius, 10.0) and is_equal_approx(float(lamp_point.get("yarn_wrap_radius")), 11.0), "lamp body radius and yarn-routing radius remain distinct")
+	player.global_position = Vector2(656.0, 210.0)
+	_check(player.test_move(player.global_transform, Vector2(40.0, 0.0)), "player movement query collides with the physical lamp body")
 
 	_check(is_equal_approx(combat.ranged_cooldown, 4.0), "central yarn cooldown defaults to four seconds")
 	_check(is_equal_approx(combat.yarn_connection_duration, 10.0), "base connection duration remains ten seconds")
@@ -77,14 +83,30 @@ func _run() -> void:
 	var static_connection := _create_connection(combat, player, static_target)
 	await process_frame
 	static_connection._process(1.0 / 60.0)
+	var previous_route_length: float = static_connection._routed_path_length()
+	var initial_route_length: float = previous_route_length
+	var maximum_route_length_step := 0.0
 	_check(static_connection.is_wrapped and static_connection.wrap_pivot == static_pivot, "rope contact selects the declared static support")
 	for step in range(1, 46):
 		player.global_position = static_pivot_position + Vector2.from_angle(PI - deg_to_rad(6.0 * step)) * 70.0
 		static_connection._process(1.0 / 60.0)
+		var route_length: float = static_connection._routed_path_length()
+		maximum_route_length_step = maxf(maximum_route_length_step, absf(route_length - previous_route_length))
+		previous_route_length = route_length
 	_check(static_connection.winding_complete, "270 degrees around static pivot completes winding")
+	_check(maximum_route_length_step < 40.0, "routed yarn topology changes continuously without a sudden wrap jump")
 	_check(not static_connection.is_taut and static_target.bind_time_left <= 0.0, "winding without tension does not bind")
 	_check(static_connection.path_points.size() >= 5, "visual yarn route bends around the support edge instead of through its center")
 	_check(_path_clears_circle(static_connection.path_points, static_pivot_position, 20.0), "static yarn path stays outside the support surface")
+	_check(absf(_path_oriented_arc_degrees(static_connection.path_points, static_pivot_position)) >= 180.0, "rendered yarn route preserves the major wrap topology")
+	for step in range(46, 61):
+		player.global_position = static_pivot_position + Vector2.from_angle(PI - deg_to_rad(6.0 * step)) * 70.0
+		static_connection._process(1.0 / 60.0)
+	_check(static_connection._routed_path_length() > initial_route_length + 100.0, "same endpoints after one full orbit retain a distinct rope coil")
+	for step in range(59, 44, -1):
+		player.global_position = static_pivot_position + Vector2.from_angle(PI - deg_to_rad(6.0 * step)) * 70.0
+		static_connection._process(1.0 / 60.0)
+	_check(static_connection.winding_complete, "reversing a full coil unwinds continuously back to the bind threshold")
 	_check(static_connection.get_node("AnchorKnot").visible, "connected target displays the attached yarn knot")
 	_check(static_connection.get_node("PivotMarker").visible, "active support has a visible debug marker")
 	_check(static_connection.get_debug_status_text().contains("张力"), "debug display reports tension and wrap state")
@@ -170,6 +192,44 @@ func _run() -> void:
 	_check(anchor_bait.bind_time_left > 0.0 and dynamic_pivot.bind_time_left > 0.0, "enemy pivot wrap binds both A and B")
 	dynamic_connection.finish_naturally()
 
+	var motion_target := _spawn_slime(world, Vector2(700.0, 700.0))
+	var motion_pivot := _add_wrap_point(world, Vector2(500.0, 700.0), 20.0)
+	player.global_position = Vector2(430.0, 700.0)
+	var motion_connection := _create_connection(combat, player, motion_target)
+	await process_frame
+	motion_connection._process(1.0 / 60.0)
+	for _frame in range(49):
+		motion_pivot.global_position += Vector2(0.0, 1.0)
+		motion_connection._process(1.0 / 60.0)
+	_check(absf(motion_connection.accumulated_wrap_angle) < 0.1, "moving support alone cannot count as player winding")
+	player.global_position += Vector2(1000.0, 0.0)
+	motion_connection._process(1.0 / 60.0)
+	_check(absf(motion_connection.accumulated_wrap_angle) < 0.1, "teleport-sized movement is discarded as a winding sample")
+	motion_connection.finish_naturally()
+	motion_target.queue_free()
+	motion_pivot.queue_free()
+
+	for render_rate in [30, 60, 120, 144]:
+		for physics_rate in [30, 60, 120, 240]:
+			var rate_pivot_position := Vector2(500.0, 800.0 + float(render_rate + physics_rate))
+			var rate_target := _spawn_slime(world, rate_pivot_position + Vector2(200.0, 0.0))
+			var rate_pivot := _add_wrap_point(world, rate_pivot_position, 20.0)
+			player.global_position = rate_pivot_position + Vector2(-70.0, 0.0)
+			var rate_connection := _create_connection(combat, player, rate_target)
+			await process_frame
+			var elapsed := 0.0
+			while elapsed < 1.8:
+				elapsed = minf(elapsed + 1.0 / float(render_rate), 1.8)
+				var physics_steps := int(floor(elapsed * float(physics_rate)))
+				var simulated_physics_time := float(physics_steps) / float(physics_rate)
+				var angle := PI - 200.0 * simulated_physics_time / 70.0
+				player.global_position = rate_pivot_position + Vector2.from_angle(angle) * 70.0
+				rate_connection._process(1.0 / float(render_rate))
+			_check(rate_connection.winding_complete, "200 px/s winds at render %d / physics %d Hz" % [render_rate, physics_rate])
+			rate_connection.finish_naturally()
+			rate_target.queue_free()
+			rate_pivot.queue_free()
+
 	# Unsupported collision blocks the line; a marked wall may be routed around.
 	var blocked_target := _spawn_slime(world, Vector2(600.0, 400.0))
 	var wall := _create_wall(world, Vector2(510.0, 400.0), Vector2(20.0, 100.0))
@@ -235,6 +295,7 @@ func _run() -> void:
 		world.queue_free()
 	await process_frame
 	await process_frame
+	await create_timer(0.25).timeout
 	if failures.is_empty():
 		print("V3_1_1_YARN_PHYSICS_PASSED")
 		quit(0)
@@ -286,6 +347,23 @@ func _path_clears_circle(points: Array[Vector2], center: Vector2, radius: float)
 		if _distance_to_segment(center, points[index], points[index + 1]) < radius - 0.5:
 			return false
 	return true
+
+
+func _path_oriented_arc_degrees(points: Array[Vector2], center: Vector2) -> float:
+	var total := 0.0
+	for index in range(points.size() - 1):
+		var from_vector := points[index] - center
+		var to_vector := points[index + 1] - center
+		if from_vector.length() >= 18.0 and from_vector.length() <= 24.0 and to_vector.length() >= 18.0 and to_vector.length() <= 24.0:
+			total += rad_to_deg(from_vector.angle_to(to_vector))
+	return total
+
+
+func _minimum_path_radius(points: Array[Vector2], center: Vector2) -> float:
+	var minimum := INF
+	for index in range(points.size() - 1):
+		minimum = minf(minimum, _distance_to_segment(center, points[index], points[index + 1]))
+	return minimum
 
 
 func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float:

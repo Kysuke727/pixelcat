@@ -21,6 +21,7 @@ const LEFT_TEXTURE := preload("res://assets/characters/slime/slime_left.png")
 const RIGHT_TEXTURE := preload("res://assets/characters/slime/slime_right.png")
 const FISH_PICKUP_SCENE := preload("res://scenes/pickups/dried_fish_pickup.tscn")
 static var _next_attack_id: int = 1
+const HIT_FLASH_DURATION := 0.14
 
 @export_category("Identity")
 @export var display_name: String = "史莱姆"
@@ -36,6 +37,7 @@ static var _next_attack_id: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
 @export_range(8.0, 32.0, 1.0) var yarn_wrap_radius: float = 14.0
+var hit_flash_time_left: float = 0.0
 
 @export_category("Lunge")
 @export var windup_duration: float = 0.4
@@ -149,7 +151,7 @@ func _physics_process(delta: float) -> void:
 	if bind_time_left > 0.0 and state != SlimeState.HURT and state != SlimeState.STUNNED:
 		velocity = Vector2.ZERO
 		_move_and_check_impacts()
-		_update_sprite()
+		_update_sprite(delta)
 		return
 	state_time_left = maxf(state_time_left - delta, 0.0)
 
@@ -171,7 +173,7 @@ func _physics_process(delta: float) -> void:
 		SlimeState.STUNNED:
 			_process_stunned()
 
-	_update_sprite()
+	_update_sprite(delta)
 
 
 func _find_player() -> void:
@@ -336,6 +338,8 @@ func _move_and_check_impacts() -> void:
 
 
 func _try_lunge_hit(body: Node) -> void:
+	if combat_paused or state != SlimeState.LUNGE or current_attack_parried:
+		return
 	var body_id := body.get_instance_id()
 	if current_attack_parried or attacked_targets.has(body_id):
 		return
@@ -353,7 +357,7 @@ func _try_lunge_hit(body: Node) -> void:
 
 
 func _on_attack_area_body_entered(body: Node2D) -> void:
-	if state == SlimeState.LUNGE:
+	if state == SlimeState.LUNGE and not combat_paused:
 		_try_lunge_hit(body)
 
 
@@ -419,6 +423,18 @@ func parry_attack(attack_id: int) -> bool:
 
 func set_combat_paused(paused: bool) -> void:
 	combat_paused = paused
+	attack_area.set_deferred("monitoring", not paused and state == SlimeState.LUNGE and not current_attack_parried)
+	if not paused and state == SlimeState.LUNGE and not current_attack_parried:
+		call_deferred("_recheck_lunge_overlap")
+
+
+func _recheck_lunge_overlap() -> void:
+	await get_tree().physics_frame
+	if combat_paused or state != SlimeState.LUNGE or current_attack_parried or not attack_area.monitoring:
+		return
+	for body in attack_area.get_overlapping_bodies():
+		if is_instance_valid(body):
+			_try_lunge_hit(body)
 
 
 func receive_collision_impact(other: Node, approach_speed: float) -> bool:
@@ -534,6 +550,9 @@ func get_control_status() -> Dictionary:
 func receive_damage(amount: float, source_position: Vector2, knockback_force: float = 130.0) -> bool:
 	if state == SlimeState.DEAD or amount <= 0:
 		return false
+	if ProgressionManager.debug_session:
+		_play_hit_flash()
+		return true
 	current_health = maxf(current_health - amount, 0.0)
 	health_changed.emit(current_health, max_health)
 	_show_in_battle_ui()
@@ -564,7 +583,10 @@ func _die() -> void:
 	velocity = Vector2.ZERO
 	attack_area.set_deferred("monitoring", false)
 	body_collision.set_deferred("disabled", true)
-	call_deferred("_drop_fish")
+	var drops := _prepare_fish_drop_records()
+	if ExpeditionManager.run_active:
+		ExpeditionManager.complete_enemy_with_drops(String(name), experience_reward, drops)
+	call_deferred("_drop_fish", drops)
 	if death_sound.stream != null:
 		death_sound.play()
 	died.emit(self)
@@ -579,13 +601,26 @@ func _die() -> void:
 	queue_free()
 
 
-func _drop_fish() -> void:
+func _prepare_fish_drop_records() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
 	var drop_count := randi_range(fish_drop_min, fish_drop_max)
 	for index in range(drop_count):
-		var pickup = FISH_PICKUP_SCENE.instantiate()
-		get_parent().add_child(pickup)
 		var angle := TAU * float(index) / float(maxi(drop_count, 1)) + randf_range(-0.25, 0.25)
-		pickup.global_position = global_position + Vector2.from_angle(angle) * randf_range(8.0, 16.0)
+		var drop_position := global_position + Vector2.from_angle(angle) * randf_range(8.0, 16.0)
+		records.append({"id": "%s:fish:%d" % [String(name), index], "position": [drop_position.x, drop_position.y], "amount": 1})
+	return records
+
+
+func _drop_fish(records: Array[Dictionary]) -> void:
+	if ProgressionManager.debug_session:
+		return
+	for record in records:
+		var pickup: Area2D = FISH_PICKUP_SCENE.instantiate()
+		if pickup.has_method("setup_saved_drop"):
+			pickup.setup_saved_drop(str(record.get("id", "")), int(record.get("amount", 1)))
+		get_parent().add_child(pickup)
+		var position_data: Array = record.get("position", [global_position.x, global_position.y])
+		pickup.global_position = Vector2(float(position_data[0]), float(position_data[1]))
 
 
 func _show_in_battle_ui() -> void:
@@ -595,9 +630,7 @@ func _show_in_battle_ui() -> void:
 
 
 func _play_hit_flash() -> void:
-	sprite.modulate = Color(3.0, 3.0, 3.0, 1.0)
-	var tween := create_tween()
-	tween.tween_property(sprite, "modulate", Color.WHITE, 0.14)
+	hit_flash_time_left = HIT_FLASH_DURATION
 
 
 func _change_state(new_state: int) -> void:
@@ -623,7 +656,7 @@ func _update_facing(movement: Vector2) -> void:
 		facing = Vector2.DOWN if movement.y > 0.0 else Vector2.UP
 
 
-func _update_sprite() -> void:
+func _update_sprite(delta: float) -> void:
 	if facing == Vector2.UP:
 		sprite.texture = BACK_TEXTURE
 	elif facing == Vector2.LEFT:
@@ -632,18 +665,21 @@ func _update_sprite() -> void:
 		sprite.texture = RIGHT_TEXTURE
 	else:
 		sprite.texture = FRONT_TEXTURE
+	var state_color := Color.WHITE
 	if state == SlimeState.WINDUP:
-		sprite.modulate = Color(1.0, 0.58, 0.42, 1.0)
+		state_color = Color(1.0, 0.58, 0.42, 1.0)
 		sprite.frame = 0
 		sprite.scale = Vector2(1.08, 0.86)
 	elif state == SlimeState.LUNGE:
-		sprite.modulate = Color(1.0, 0.82, 0.68, 1.0)
+		state_color = Color(1.0, 0.82, 0.68, 1.0)
 		sprite.frame = 3
 		sprite.scale = Vector2(0.92, 1.12)
 	else:
-		sprite.modulate = Color.WHITE
 		sprite.frame = int(animation_time * 8.0) % 4
 		sprite.scale = Vector2.ONE
+	var flash_strength := clampf(hit_flash_time_left / HIT_FLASH_DURATION, 0.0, 1.0)
+	sprite.modulate = state_color.lerp(Color(3.0, 3.0, 3.0, 1.0), flash_strength)
+	hit_flash_time_left = maxf(hit_flash_time_left - delta, 0.0)
 	if state == SlimeState.DEAD:
 		status_feedback.visible = false
 	elif state == SlimeState.STUNNED:

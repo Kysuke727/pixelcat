@@ -34,7 +34,7 @@ func _build_ui() -> void:
 	var column := VBoxContainer.new()
 	panel.add_child(column)
 	var title := Label.new()
-	title.text = "开发调试 · F3"
+	title.text = "开发调试 · F3（隔离模式）"
 	title.add_theme_font_size_override("font_size", 18)
 	column.add_child(title)
 	status = Label.new()
@@ -79,7 +79,7 @@ func _refresh() -> void:
 	var cooldown_text := ""
 	if is_instance_valid(player_combat):
 		cooldown_text = "\n冷却：J %.1fs · K %.1fs · 闪避 %.1fs" % [float(player_combat.get("melee_cooldown_left")), float(player_combat.get("ranged_cooldown_left")), float(player.get("dodge_cooldown_left"))]
-	details.text = "技巧：减速%d · 连接%d · 束缚%d · 绕圈%d\n" % [ProgressionManager.skill_points["slow"], ProgressionManager.skill_points["connection"], ProgressionManager.skill_points["bind"], ProgressionManager.skill_points["loop"]] + "敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
+	details.text = "调试隔离：不会保存改动；击杀、拾取与场景切换已禁用。\n技巧：减速%d · 连接%d · 束缚%d · 绕圈%d\n" % [ProgressionManager.skill_points["slow"], ProgressionManager.skill_points["connection"], ProgressionManager.skill_points["bind"], ProgressionManager.skill_points["loop"]] + "敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
 
 
 func _change_player(property: String, amount: float) -> void:

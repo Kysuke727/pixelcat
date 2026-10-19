@@ -31,21 +31,7 @@ func interact() -> void:
 	if cat_nearby == null:
 		return
 
-	var coin_ui = get_tree().current_scene.find_child(
-		"CoinUI",
-		true,
-		false
-	)
-
-	if coin_ui == null:
-		print("没有找到 CoinUI，请检查金币 UI 是否已加入当前场景")
-		return
-
-	if not coin_ui.has_method("add_coins"):
-		print("CoinUI 没有 add_coins 方法")
-		return
-
-	coin_ui.add_coins(1)
+	CurrencyManager.add_fish(1)
 	collected = true
 
 	var cat = cat_nearby

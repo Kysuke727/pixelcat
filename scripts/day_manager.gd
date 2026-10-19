@@ -14,12 +14,14 @@ const NIGHT_SCENE = "res://scenes/worlds/night_world.tscn"
 var saved_hunger: float = 100.0
 var saved_mood: float = 100.0
 var saved_energy: float = 100.0
+var scene_change_override: Callable
 
 
 
 func switch_to_night():
-	if current_state == TimeState.NIGHT:
+	if current_state == TimeState.NIGHT or ProgressionManager.debug_session:
 		return
+	var expedition_before := ExpeditionManager.get_save_data().duplicate(true)
 	if not ExpeditionManager.run_active:
 		ExpeditionManager.begin_run()
 
@@ -28,10 +30,12 @@ func switch_to_night():
 
 	print("现在进入夜晚了！")
 
-	var error = get_tree().change_scene_to_file(NIGHT_SCENE)
+	var error: Error = _request_scene_change(NIGHT_SCENE)
 	if error != OK:
 		print("夜晚场景切换失败：", error)
 		current_state = TimeState.DAY
+		ExpeditionManager.load_save_data(expedition_before)
+		ProgressionManager.save_now()
 		return
 	await get_tree().scene_changed
 	restore_cat_stats(get_tree().current_scene)
@@ -43,7 +47,7 @@ func switch_to_night():
 
 
 func switch_to_day():
-	if current_state == TimeState.DAY:
+	if current_state == TimeState.DAY or ProgressionManager.debug_session:
 		return
 	if ExpeditionManager.run_active:
 		ExpeditionManager.finish_run(false)
@@ -54,7 +58,7 @@ func switch_to_day():
 
 	print("现在回到白天了！")
 
-	var error = get_tree().change_scene_to_file(DAY_SCENE)
+	var error: Error = _request_scene_change(DAY_SCENE)
 	if error != OK:
 		print("白天场景切换失败：", error)
 		current_state = TimeState.NIGHT
@@ -125,6 +129,12 @@ func restore_cat_stats(scene):
 	print("Energy: ", stats.energy)
 
 
+func _request_scene_change(scene_path: String) -> Error:
+	if scene_change_override.is_valid():
+		return int(scene_change_override.call(scene_path))
+	return get_tree().change_scene_to_file(scene_path)
+
+
 
 
 func _input(event):
@@ -143,9 +153,9 @@ func _ready():
 
 
 func _resume_saved_expedition() -> void:
-	if ExpeditionManager.run_active and current_state == TimeState.DAY:
+	if ExpeditionManager.run_active and current_state == TimeState.DAY and not ProgressionManager.debug_session:
 		current_state = TimeState.NIGHT
-		var error := get_tree().change_scene_to_file(NIGHT_SCENE)
+		var error: Error = _request_scene_change(NIGHT_SCENE)
 		if error != OK:
 			current_state = TimeState.DAY
 			push_error("保存的夜晚探索无法恢复；保留存档并回到白天")

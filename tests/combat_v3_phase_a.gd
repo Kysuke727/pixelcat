@@ -76,6 +76,19 @@ func _run() -> void:
 	_check(not combat.combo_window_open, "missed Attack1 does not open a combo window")
 	_check(combat.stun_rng.state == rng_state_before_miss, "missed attack does not consume a stun roll")
 
+	# A frame hitch can jump across the whole active interval; perform one exact
+	# shape query for that crossed interval and retain per-attack deduplication.
+	enemy.global_position = player.global_position + Vector2(17.0, 0.0)
+	await physics_frame
+	combat.melee_cooldown_left = 0.0
+	var health_before_hitch: float = enemy.current_health
+	combat._start_melee(false)
+	combat.action_time = combat.melee_active_end + 0.02
+	combat._update_action(0.0)
+	combat._update_action(combat.action_time)
+	_check(enemy.current_health == health_before_hitch - 1, "one-frame hitch across the full melee window still hits")
+	_check(combat.hit_targets.size() == 1, "hitch catch-up still damages a target only once")
+
 	# Exercise the other deterministic RNG outcome so a successful stun is covered too.
 	var success_seed := 1
 	var success_rng := RandomNumberGenerator.new()
@@ -141,8 +154,9 @@ func _advance_action(combat: Node, duration: float) -> void:
 	var elapsed := 0.0
 	while elapsed < duration:
 		var step: float = minf(1.0 / 60.0, duration - elapsed)
+		var previous_time: float = combat.action_time
 		combat.action_time += step
-		combat._update_action()
+		combat._update_action(previous_time)
 		elapsed += step
 
 
