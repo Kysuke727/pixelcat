@@ -47,6 +47,7 @@ func _physics_process(delta: float) -> void:
 	distance_travelled += movement.length()
 	$Sprite2D.rotation += delta * 8.0
 	if distance_travelled >= max_range:
+		_notify_yarn_miss()
 		_consume()
 
 
@@ -61,9 +62,28 @@ func _handle_hit(body: Node2D) -> void:
 	if hit_targets.has(body_id):
 		return
 	hit_targets[body_id] = true
+	var yarn_connected := false
 	if body.has_method("receive_damage"):
-		body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
+		var accepted: bool = body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
+		if accepted and body.is_in_group("enemies"):
+			var combat := _get_source_combat()
+			if is_instance_valid(combat) and combat.has_method("on_yarn_hit"):
+				yarn_connected = combat.on_yarn_hit(body)
+	if not yarn_connected:
+		_notify_yarn_miss()
 	_consume()
+
+
+func _get_source_combat() -> Node:
+	if not is_instance_valid(source):
+		return null
+	return source.get_node_or_null("PlayerCombat")
+
+
+func _notify_yarn_miss() -> void:
+	var combat := _get_source_combat()
+	if is_instance_valid(combat) and combat.has_method("on_yarn_miss"):
+		combat.on_yarn_miss()
 
 
 func _consume() -> void:

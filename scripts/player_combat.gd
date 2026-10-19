@@ -2,6 +2,8 @@ extends Node2D
 
 enum ActionState { IDLE, ATTACK1, ATTACK2, RECOVERY, RANGED }
 
+const YARN_CONNECTION_SCENE := preload("res://scenes/combat/yarn_connection.tscn")
+
 @export_category("Melee")
 @export var melee_damage: int = 2
 @export var melee_cooldown: float = 0.45
@@ -20,12 +22,25 @@ const COMBO_STUN_CHANCE: float = 0.5
 @export_category("Ranged")
 @export var projectile_scene: PackedScene
 @export var ranged_damage: int = 1
-@export var ranged_cooldown: float = 0.8
+@export var ranged_cooldown: float = 6.0
 @export var ranged_duration: float = 0.30
 @export var ranged_windup: float = 0.12
 @export var projectile_speed: float = 220.0
 @export var projectile_range: float = 220.0
 @export var ranged_movement_multiplier: float = 0.8
+
+@export_category("Yarn Connection")
+@export var yarn_slow_multiplier: float = 0.5
+@export var yarn_slow_duration: float = 3.0
+@export var yarn_bind_duration: float = 2.0
+@export var yarn_connection_duration: float = 10.0
+@export var yarn_maximum_length: float = 500.0
+@export var yarn_sample_distance: float = 6.0
+@export var yarn_closure_distance: float = 18.0
+@export var yarn_minimum_loop_perimeter: float = 120.0
+@export var yarn_minimum_loop_area: float = 450.0
+@export var yarn_maximum_samples: int = 384
+@export var yarn_cut_cooldown_reduction: float = 1.5
 
 var action_state: int = ActionState.IDLE
 var action_time: float = 0.0
@@ -38,6 +53,8 @@ var combo_stun_targets: Dictionary = {}
 var stun_rng := RandomNumberGenerator.new()
 var combat_enabled: bool = true
 var projectile_fired: bool = false
+var yarn_projectile_in_flight: bool = false
+var active_yarn_connections: Array[Node2D] = []
 var melee_window_open: bool = false
 var hit_targets: Dictionary = {}
 var facing: Vector2 = Vector2.DOWN
@@ -71,6 +88,8 @@ func _process(delta: float) -> void:
 		if combo_window_left <= 0.0:
 			combo_window_open = false
 			buffered_combo = false
+	if Input.is_action_just_pressed("yarn_cut"):
+		_cut_all_yarn_connections()
 
 	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		if action_state == ActionState.ATTACK1 and combo_window_open and Input.is_action_just_pressed("melee_attack"):
@@ -92,7 +111,11 @@ func _process(delta: float) -> void:
 			_start_melee(true)
 		elif action_state == ActionState.IDLE and melee_cooldown_left <= 0.0:
 			_start_melee(false)
-	elif Input.is_action_just_pressed("ranged_attack") and ranged_cooldown_left <= 0.0:
+	elif (
+		Input.is_action_just_pressed("ranged_attack")
+		and ranged_cooldown_left <= 0.0
+		and not yarn_projectile_in_flight
+	):
 		_start_ranged()
 
 
@@ -132,7 +155,6 @@ func _start_melee(is_second_attack: bool = false) -> void:
 func _start_ranged() -> void:
 	action_state = ActionState.RANGED
 	action_time = 0.0
-	ranged_cooldown_left = ranged_cooldown
 	projectile_fired = false
 	combo_window_open = false
 	combo_window_left = 0.0
@@ -215,6 +237,8 @@ func _spawn_projectile() -> void:
 		return
 	var projectile = projectile_scene.instantiate()
 	get_tree().current_scene.add_child(projectile)
+	yarn_projectile_in_flight = true
+	ranged_cooldown_left = ranged_cooldown
 	projectile.global_position = player.global_position + facing * 20.0
 	if projectile.has_method("setup"):
 		projectile.setup(
@@ -224,6 +248,53 @@ func _spawn_projectile() -> void:
 			projectile_speed,
 			projectile_range
 		)
+
+
+func on_yarn_hit(target: Node2D) -> bool:
+	yarn_projectile_in_flight = false
+	if (
+		not is_instance_valid(target)
+		or not target.is_in_group("enemies")
+		or not target.has_method("apply_yarn_slow")
+		or not target.has_method("apply_yarn_bind")
+		or not _is_night_combat_scene()
+	):
+		return false
+	var connection = YARN_CONNECTION_SCENE.instantiate()
+	connection.configure(player, target, self, {
+		"slow_multiplier": yarn_slow_multiplier,
+		"slow_duration": yarn_slow_duration,
+		"bind_duration": yarn_bind_duration,
+		"maximum_duration": yarn_connection_duration,
+		"maximum_length": yarn_maximum_length,
+		"sample_distance": yarn_sample_distance,
+		"closure_distance": yarn_closure_distance,
+		"minimum_loop_perimeter": yarn_minimum_loop_perimeter,
+		"minimum_loop_area": yarn_minimum_loop_area,
+		"maximum_samples": yarn_maximum_samples,
+		"cooldown_reduction_on_cut": yarn_cut_cooldown_reduction
+	})
+	get_tree().current_scene.add_child(connection)
+	active_yarn_connections.append(connection)
+	return true
+
+
+func on_yarn_miss() -> void:
+	yarn_projectile_in_flight = false
+
+
+func on_yarn_cut_reward(cooldown_reduction: float) -> void:
+	ranged_cooldown_left = maxf(ranged_cooldown_left - maxf(cooldown_reduction, 0.0), 0.0)
+
+
+func on_yarn_connection_finished(connection: Node) -> void:
+	active_yarn_connections.erase(connection)
+
+
+func _cut_all_yarn_connections() -> void:
+	for connection in active_yarn_connections.duplicate():
+		if is_instance_valid(connection) and connection.has_method("cut_by_player"):
+			connection.cut_by_player()
 
 
 func _get_facing() -> Vector2:

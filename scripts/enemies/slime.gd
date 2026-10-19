@@ -70,6 +70,9 @@ var stun_time_left: float = 0.0
 var stun_resistance_left: float = 0.0
 var collision_stun_cooldown_left: float = 0.0
 var wall_impact_cooldown_left: float = 0.0
+var slow_time_left: float = 0.0
+var slow_multiplier: float = 1.0
+var bind_time_left: float = 0.0
 var spawn_position: Vector2
 var wander_direction: Vector2 = Vector2.ZERO
 var locked_target_position: Vector2
@@ -107,11 +110,20 @@ func _physics_process(delta: float) -> void:
 	stun_resistance_left = maxf(stun_resistance_left - delta, 0.0)
 	collision_stun_cooldown_left = maxf(collision_stun_cooldown_left - delta, 0.0)
 	wall_impact_cooldown_left = maxf(wall_impact_cooldown_left - delta, 0.0)
+	slow_time_left = maxf(slow_time_left - delta, 0.0)
+	if slow_time_left <= 0.0:
+		slow_multiplier = 1.0
+	bind_time_left = maxf(bind_time_left - delta, 0.0)
 	stun_time_left = maxf(stun_time_left - delta, 0.0)
-	state_time_left = maxf(state_time_left - delta, 0.0)
 	animation_time += delta
 	if not is_instance_valid(target):
 		_find_player()
+	if bind_time_left > 0.0:
+		velocity = Vector2.ZERO
+		_move_and_check_impacts()
+		_update_sprite()
+		return
+	state_time_left = maxf(state_time_left - delta, 0.0)
 
 	match state:
 		SlimeState.IDLE:
@@ -158,7 +170,7 @@ func _process_wander() -> void:
 		return
 	if global_position.distance_to(spawn_position) > wander_radius:
 		wander_direction = global_position.direction_to(spawn_position)
-	velocity = wander_direction * move_speed * 0.55
+	velocity = wander_direction * move_speed * slow_multiplier * 0.55
 	_update_facing(velocity)
 	_move_and_check_impacts()
 	if state != SlimeState.WANDER:
@@ -184,7 +196,7 @@ func _process_chase() -> void:
 		state_time_left = windup_duration
 		return
 	if is_instance_valid(target):
-		velocity = global_position.direction_to(target.global_position) * move_speed
+		velocity = global_position.direction_to(target.global_position) * move_speed * slow_multiplier
 		_update_facing(velocity)
 		_move_and_check_impacts()
 
@@ -207,7 +219,7 @@ func _process_windup() -> void:
 
 
 func _process_lunge() -> void:
-	velocity = lunge_direction * lunge_speed
+	velocity = lunge_direction * lunge_speed * slow_multiplier
 	_move_and_check_impacts()
 	if state != SlimeState.LUNGE:
 		return
@@ -319,6 +331,27 @@ func apply_collision_stun(duration: float) -> void:
 	attack_area.set_deferred("monitoring", false)
 	_change_state(SlimeState.STUNNED)
 	_play_hit_flash()
+
+
+func apply_yarn_slow(duration: float, multiplier: float) -> void:
+	if state == SlimeState.DEAD or duration <= 0.0:
+		return
+	slow_time_left = maxf(slow_time_left, duration)
+	slow_multiplier = minf(slow_multiplier, clampf(multiplier, 0.0, 1.0))
+
+
+func apply_yarn_bind(duration: float) -> void:
+	if state == SlimeState.DEAD or duration <= 0.0:
+		return
+	bind_time_left = maxf(bind_time_left, duration)
+	attack_area.set_deferred("monitoring", false)
+	if state == SlimeState.WINDUP or state == SlimeState.LUNGE:
+		_change_state(SlimeState.RECOVER)
+		state_time_left = recover_duration
+
+
+func is_alive() -> bool:
+	return state != SlimeState.DEAD
 
 
 func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 130.0) -> bool:
