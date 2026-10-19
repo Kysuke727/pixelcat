@@ -94,6 +94,7 @@ var combat_paused: bool = false
 @onready var attack_sound: AudioStreamPlayer2D = $AttackSound
 @onready var hit_sound: AudioStreamPlayer2D = $HitSound
 @onready var death_sound: AudioStreamPlayer2D = $DeathSound
+@onready var status_feedback: Label = $StatusFeedback
 
 
 func _ready() -> void:
@@ -563,3 +564,23 @@ func _update_sprite() -> void:
 	else:
 		sprite.frame = int(animation_time * 8.0) % 4
 		sprite.scale = Vector2.ONE
+	if state == SlimeState.DEAD:
+		status_feedback.visible = false
+	elif state == SlimeState.STUNNED:
+		status_feedback.text = "✦  ✦  ✦"
+		status_feedback.add_theme_color_override("font_color", Color(1.0, 0.88, 0.42))
+		status_feedback.visible = true
+	elif bind_time_left > 0.0:
+		status_feedback.text = "束缚"
+		status_feedback.add_theme_color_override("font_color", Color(0.45, 0.88, 1.0))
+		status_feedback.visible = true
+	elif state == SlimeState.HURT:
+		status_feedback.text = "受击"
+		status_feedback.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5))
+		status_feedback.visible = true
+	elif slow_time_left > 0.0:
+		status_feedback.text = "减速"
+		status_feedback.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+		status_feedback.visible = true
+	else:
+		status_feedback.visible = false

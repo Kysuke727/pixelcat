@@ -21,6 +21,20 @@ script = ExtResource("1_script")
 texture = ExtResource("2_texture")
 hframes = 4
 
+[node name="StatusFeedback" type="Label" parent="."]
+visible = false
+offset_left = -24.0
+offset_top = -30.0
+offset_right = 24.0
+offset_bottom = -16.0
+theme_override_colors/font_color = Color(1, 0.88, 0.42, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 10
+text = "✦  ✦  ✦"
+horizontal_alignment = 1
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, 7)
 shape = SubResource("CircleShape2D_body")

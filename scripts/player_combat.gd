@@ -48,6 +48,7 @@ var melee_cooldown_left: float = 0.0
 var ranged_cooldown_left: float = 0.0
 var combo_window_left: float = 0.0
 var combo_window_open: bool = false
+var combo_hit_feedback_left: float = 0.0
 var buffered_combo: bool = false
 var combo_stun_targets: Dictionary = {}
 var stun_rng := RandomNumberGenerator.new()
@@ -83,6 +84,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	melee_cooldown_left = maxf(melee_cooldown_left - delta, 0.0)
 	ranged_cooldown_left = maxf(ranged_cooldown_left - delta, 0.0)
+	combo_hit_feedback_left = maxf(combo_hit_feedback_left - delta, 0.0)
 	if combo_window_open:
 		combo_window_left = maxf(combo_window_left - delta, 0.0)
 		if combo_window_left <= 0.0:
@@ -233,6 +235,7 @@ func _try_damage_target(target: Node) -> void:
 			combo_window_left = combo_window
 	elif action_state == ActionState.ATTACK2 and not combo_stun_targets.has(target_id):
 		combo_stun_targets[target_id] = true
+		combo_hit_feedback_left = 0.65
 		if stun_rng.randf() < COMBO_STUN_CHANCE and target.has_method("apply_stun"):
 			target.apply_stun(stun_duration, stun_resistance_duration)
 

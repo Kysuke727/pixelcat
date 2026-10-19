@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/worlds/night_world.tscn" id="1_night"]
+[ext_resource type="Script" path="res://scripts/combat_v3_test.gd" id="2_script"]
+
+[node name="CombatV3Test" type="Node2D" groups=["night_exploration"]]
+script = ExtResource("2_script")
+
+[node name="NightWorld" parent="." instance=ExtResource("1_night")]
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="Panel" type="PanelContainer" parent="DebugLayer"]
+offset_left = 660.0
+offset_top = 18.0
+offset_right = 980.0
+offset_bottom = 104.0
+
+[node name="DebugLabel" type="Label" parent="DebugLayer/Panel"]
+layout_mode = 2
+text = "COMBAT V3 TEST"
