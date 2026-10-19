@@ -122,6 +122,8 @@ func _process(delta: float) -> void:
 func _can_start_action() -> bool:
 	if not combat_enabled or not _is_night_combat_scene():
 		return false
+	if player.has_method("can_perform_combat_action"):
+		return player.can_perform_combat_action()
 	if player.has_method("is_alive") and not player.is_alive():
 		return false
 	if player.has_method("is_in_hitstun") and player.is_in_hitstun():

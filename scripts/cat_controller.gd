@@ -140,6 +140,15 @@ func is_in_hitstun() -> bool:
 	return hitstun_left > 0.0
 
 
+func can_perform_combat_action() -> bool:
+	return (
+		not dead
+		and hitstun_left <= 0.0
+		and guard_break_left <= 0.0
+		and not is_defending
+	)
+
+
 func is_guard_broken() -> bool:
 	return guard_break_left > 0.0
 

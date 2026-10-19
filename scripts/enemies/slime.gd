@@ -124,7 +124,7 @@ func _physics_process(delta: float) -> void:
 	animation_time += delta
 	if not is_instance_valid(target):
 		_find_player()
-	if bind_time_left > 0.0:
+	if bind_time_left > 0.0 and state != SlimeState.HURT and state != SlimeState.STUNNED:
 		velocity = Vector2.ZERO
 		_move_and_check_impacts()
 		_update_sprite()
@@ -429,6 +429,28 @@ func apply_yarn_bind(duration: float) -> void:
 
 func is_alive() -> bool:
 	return state != SlimeState.DEAD
+
+
+func can_perform_attack() -> bool:
+	return (
+		state != SlimeState.DEAD
+		and state != SlimeState.HURT
+		and state != SlimeState.STUNNED
+		and bind_time_left <= 0.0
+		and not combat_paused
+	)
+
+
+func get_control_status() -> Dictionary:
+	return {
+		"dead": state == SlimeState.DEAD,
+		"stunned": state == SlimeState.STUNNED or stun_time_left > 0.0,
+		"bound": bind_time_left > 0.0,
+		"slowed": slow_time_left > 0.0,
+		"knocked_back": state == SlimeState.HURT and hurt_velocity.length_squared() > 0.0,
+		"time_paused": combat_paused,
+		"can_attack": can_perform_attack(),
+	}
 
 
 func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 130.0) -> bool:
