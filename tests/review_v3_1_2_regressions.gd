@@ -105,6 +105,45 @@ func _test_profile_recovery(progression: Node, expedition: Node, currency: Node)
 	progression._load_profile_data({})
 	progression._load_profile()
 	_check(progression.level == 2 and currency.fish_count == 12, "valid formal profile is loaded before recovery candidates")
+	_check(progression._is_usable_profile_payload(progression._read_profile_payload(absolute_path)), "valid current-version profile passes structural validation")
+
+	# A nonempty JSON object is not a legacy save. It must not outrank a valid
+	# backup or reset the player's growth/currency to defaults.
+	_clear_profile_candidates(progression, absolute_path)
+	var malformed_backup := _profile_payload(progression, 9, 29)
+	_write_text(absolute_path, JSON.stringify({"unexpected": true}))
+	_write_text(absolute_path + ".bak", JSON.stringify(malformed_backup))
+	_check(not progression._is_usable_profile_payload(progression._read_profile_payload(absolute_path)), "unrelated nonempty dictionary is rejected as a save")
+	progression._load_profile_data({})
+	currency.load_save_data({"fish_count": 0})
+	progression._load_profile()
+	_check(progression.level == 9 and currency.fish_count == 29, "invalid formal dictionary does not mask a valid backup")
+
+	var invalid_nested := _profile_payload(progression, 4, 14)
+	var broken := invalid_nested.duplicate(true)
+	broken["profile"]["attributes"] = "not a dictionary"
+	_check(not progression._is_usable_profile_payload(broken), "attributes with the wrong nested type are rejected")
+	broken = invalid_nested.duplicate(true)
+	broken["profile"]["currency"] = []
+	_check(not progression._is_usable_profile_payload(broken), "currency with the wrong nested type is rejected")
+	broken = invalid_nested.duplicate(true)
+	broken["expedition"] = []
+	_check(not progression._is_usable_profile_payload(broken), "expedition with the wrong type is rejected")
+	broken = invalid_nested.duplicate(true)
+	broken["expedition"] = {"fish_drops": []}
+	_check(not progression._is_usable_profile_payload(broken), "fish-drop records with the wrong nested type are rejected")
+	_check(not progression._is_usable_profile_payload({}), "empty JSON object is rejected as a save")
+
+	# Version 0 is the concrete legacy format: the old raw profile dictionary.
+	_clear_profile_candidates(progression, absolute_path)
+	var legacy_profile: Dictionary = progression._profile_data().duplicate(true)
+	legacy_profile["level"] = 5
+	legacy_profile["currency"] = {"fish_count": 25}
+	_write_text(absolute_path, JSON.stringify(legacy_profile))
+	progression._load_profile_data({})
+	currency.load_save_data({"fish_count": 0})
+	progression._load_profile()
+	_check(progression.level == 5 and currency.fish_count == 25, "supported raw legacy profile loads with its currency")
 
 	_clear_profile_candidates(progression, absolute_path)
 	var profile_3 := _profile_payload(progression, 3, 13)

@@ -295,11 +295,13 @@ func _load_profile() -> void:
 			push_warning("PixelCat profile save was restored from a verified recovery candidate")
 		else:
 			push_error("PixelCat profile recovery could not install the verified candidate; the source candidate was retained")
-	var profile: Dictionary = payload.get("profile", payload)
+	var profile: Dictionary = payload.get("profile", {})
 	_load_profile_data(profile)
-	if profile.has("currency"):
+	if profile.get("currency", {}) is Dictionary and profile.has("currency"):
 		CurrencyManager.load_save_data(profile["currency"])
-	ExpeditionManager.load_save_data(payload.get("expedition", {}))
+	var expedition_data: Variant = payload.get("expedition", {})
+	if expedition_data is Dictionary:
+		ExpeditionManager.load_save_data(expedition_data)
 
 
 func _read_profile_payload(absolute_path: String) -> Dictionary:
@@ -313,6 +315,8 @@ func _read_profile_payload(absolute_path: String) -> Dictionary:
 		return {}
 	var payload: Dictionary = parser.data
 	if not payload.has("profile"):
+		# The only supported legacy shape is the pre-envelope profile dictionary.
+		# Structural validation below rejects arbitrary JSON objects.
 		return {"version": 0, "profile": payload, "expedition": {}}
 	return payload
 
@@ -343,12 +347,108 @@ func _list_profile_recovery_candidates(absolute_path: String) -> Array[String]:
 func _is_usable_profile_payload(payload: Dictionary) -> bool:
 	if payload.is_empty() or _is_newer_profile_payload(payload):
 		return false
-	var profile: Variant = payload.get("profile", payload)
-	return profile is Dictionary and not profile.is_empty()
+	if not payload.has("version"):
+		return false
+	var version: Variant = payload.get("version", 0)
+	if not _is_number(version) or not is_equal_approx(float(version), roundf(float(version))):
+		return false
+	var profile: Variant = payload.get("profile", null)
+	if not profile is Dictionary or profile.is_empty():
+		return false
+	if int(version) == 0:
+		return _is_usable_legacy_profile(profile)
+	if int(version) != SAVE_VERSION:
+		return false
+	if not payload.get("expedition", null) is Dictionary:
+		return false
+	return _is_usable_current_profile(profile) and _is_valid_expedition_data(payload["expedition"])
+
+
+func _is_usable_legacy_profile(profile: Dictionary) -> bool:
+	# Legacy files were raw profile objects before the version/profile envelope.
+	# Require stable identifiers and validate every nested value the loader reads.
+	if not _has_number(profile, "level") or not _has_number(profile, "experience"):
+		return false
+	if not profile.get("attributes", null) is Dictionary:
+		return false
+	return _is_valid_profile_fields(profile, false)
+
+
+func _is_usable_current_profile(profile: Dictionary) -> bool:
+	for required_key in ["level", "experience", "attributes", "skill_points", "currency"]:
+		if not profile.has(required_key):
+			return false
+	return _has_number(profile, "level") and _has_number(profile, "experience") and _is_valid_profile_fields(profile, true)
+
+
+func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool:
+	for key in ["level", "experience", "available_points", "permanent_hp_bonus"]:
+		if profile.has(key) and not _is_number(profile[key]):
+			return false
+	for key in ["attributes", "skill_points"]:
+		if profile.has(key):
+			if not profile[key] is Dictionary:
+				return false
+			for value in profile[key].values():
+				if not _is_number(value):
+					return false
+	if profile.has("permanent_items"):
+		if not profile["permanent_items"] is Array:
+			return false
+		for item in profile["permanent_items"]:
+			if not item is String:
+				return false
+	if profile.has("currency"):
+		if not profile["currency"] is Dictionary or not _has_number(profile["currency"], "fish_count"):
+			return false
+	if current_format and (not profile["attributes"] is Dictionary or not profile["skill_points"] is Dictionary):
+		return false
+	return true
+
+
+func _is_valid_expedition_data(data: Dictionary) -> bool:
+	for key in ["lives_left", "ordinary_fish", "objectives_total", "objectives_completed", "health", "shield"]:
+		if data.has(key) and not _is_number(data[key]):
+			return false
+	for key in ["run_active", "exploration_reward_claimed"]:
+		if data.has(key) and not data[key] is bool:
+			return false
+	if data.has("defeated_enemy_ids"):
+		if not data["defeated_enemy_ids"] is Array:
+			return false
+		for enemy_id in data["defeated_enemy_ids"]:
+			if not enemy_id is String:
+				return false
+	if data.has("fish_drops"):
+		if not data["fish_drops"] is Dictionary:
+			return false
+		for drop in data["fish_drops"].values():
+			if not drop is Dictionary or not drop.get("id", null) is String or not _has_number(drop, "amount"):
+				return false
+			var drop_position: Variant = drop.get("position", null)
+			if not drop_position is Array or drop_position.size() < 2 or not _is_number(drop_position[0]) or not _is_number(drop_position[1]):
+				return false
+	if data.has("last_outcome") and not data["last_outcome"] is String:
+		return false
+	for key in ["safe_position", "player_position"]:
+		if data.has(key):
+			var position: Variant = data[key]
+			if not position is Array or position.size() < 2 or not _is_number(position[0]) or not _is_number(position[1]):
+				return false
+	return true
+
+
+func _has_number(data: Dictionary, key: String) -> bool:
+	return data.has(key) and _is_number(data[key])
+
+
+func _is_number(value: Variant) -> bool:
+	return typeof(value) in [TYPE_INT, TYPE_FLOAT]
 
 
 func _is_newer_profile_payload(payload: Dictionary) -> bool:
-	return not payload.is_empty() and int(payload.get("version", 0)) > SAVE_VERSION and payload.get("profile", {}) is Dictionary
+	var version: Variant = payload.get("version", null)
+	return not payload.is_empty() and _is_number(version) and int(version) > SAVE_VERSION
 
 
 func _restore_profile_candidate(payload: Dictionary, absolute_path: String) -> bool:

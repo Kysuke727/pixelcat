@@ -148,6 +148,8 @@ func _run() -> void:
 	_check(not no_contact_connection.loop_bound, "angle without real rope-to-pivot contact cannot bind")
 	no_contact_connection.finish_naturally()
 	off_path_pivot.queue_free()
+	no_contact_target.queue_free()
+	await process_frame
 
 	# Static support: 270 degrees only enters wound state; pulling tight binds A.
 	var static_pivot_position := Vector2(500.0, 350.0)
@@ -248,6 +250,7 @@ func _run() -> void:
 	static_target.bind_resistance_left = 1.0
 	_check(not static_target.apply_yarn_bind(1.5), "control immunity rejects a new yarn bind")
 	static_pivot.queue_free()
+	static_target.queue_free()
 	await process_frame
 
 	var counterclockwise_pivot_position := Vector2(500.0, 350.0)
@@ -293,6 +296,7 @@ func _run() -> void:
 	_check(not reverse_connection.loop_bound, "micro jitter cannot trigger binding")
 	reverse_connection.finish_naturally()
 	reverse_pivot.queue_free()
+	reverse_target.queue_free()
 
 	# Dynamic enemy B is an explicit pivot; a taut wrap binds both A and B.
 	var dynamic_pivot_position := Vector2(400.0, 200.0)
@@ -303,11 +307,13 @@ func _run() -> void:
 	await process_frame
 	dynamic_connection._process(1.0 / 60.0)
 	_check(dynamic_connection.is_wrapped and dynamic_connection.wrap_pivot == dynamic_pivot, "enemy B is detected as a dynamic pivot, not anchor A")
+	dynamic_connection.set_process(false)
 	for step in range(1, 46):
 		var orbit := Vector2.from_angle(PI - deg_to_rad(6.0 * step)) * 70.0
 		dynamic_pivot.global_position = dynamic_pivot_position + Vector2(0.1 * step, 0.0)
 		anchor_bait.global_position = Vector2(600.0, 200.0) + Vector2(0.0, 0.1 * step)
 		player.global_position = dynamic_pivot.global_position + orbit
+		await physics_frame
 		dynamic_connection._process(1.0 / 60.0)
 	_check(dynamic_connection.winding_complete, "dynamic pivot motion does not erase cat winding")
 	_check(not dynamic_connection.loop_bound, "dynamic pivot winding still waits for tension")
@@ -317,6 +323,100 @@ func _run() -> void:
 	_check(dynamic_connection.loop_bound, "tight dynamic-pivot yarn triggers binding")
 	_check(anchor_bait.bind_time_left > 0.0 and dynamic_pivot.bind_time_left > 0.0, "enemy pivot wrap binds both A and B")
 	dynamic_connection.finish_naturally()
+	anchor_bait.queue_free()
+	dynamic_pivot.queue_free()
+	await process_frame
+
+	# Moving enemy B must change the current tangent geometry without counting
+	# B's movement as cat winding. The slime's collision circle is offset from
+	# its CharacterBody2D origin, so validate against the actual shape center.
+	var moving_support := _spawn_slime(world, Vector2(700.0, 300.0))
+	var moving_anchor := _spawn_slime(world, Vector2(900.0, 300.0))
+	var support_shape := moving_support.get_node("CollisionShape2D") as CollisionShape2D
+	# Re-run the reviewed pre-fix endpoint-angle formula with its supplied
+	# geometry. Its tangent matches the review's point, but is not tangent to the
+	# player's current direction after B moves; this is the reproducible defect.
+	var legacy_player := Vector2(-40.0, 70.0)
+	var legacy_radius := 15.0
+	var legacy_current_relative := legacy_player
+	var legacy_alpha := acos(legacy_radius / legacy_current_relative.length())
+	var legacy_tangent_angle := PI + deg_to_rad(270.0) - legacy_alpha
+	var legacy_tangent := Vector2.from_angle(legacy_tangent_angle) * legacy_radius
+	var legacy_collision_center := Vector2(0.0, 7.0)
+	var legacy_clearance := _distance_to_segment(legacy_collision_center, legacy_player, legacy_tangent)
+	var current_phi := legacy_current_relative.angle()
+	var current_alpha := acos(legacy_radius / legacy_current_relative.length())
+	var current_tangent_angle := current_phi - current_alpha
+	var stale_tangent_error := absf(rad_to_deg(wrapf(legacy_tangent_angle - current_tangent_angle, -PI, PI)))
+	_check(legacy_tangent.distance_to(Vector2(14.7381, 2.7908)) < 0.01, "reviewed old formula reproduces its stale endpoint tangent")
+	_check(stale_tangent_error > 20.0, "old formula's endpoint tangent is not tangent to the current player position (%.2f degrees; finite segment clearance %.2fpx)" % [stale_tangent_error, legacy_clearance])
+	var physical_support_center := support_shape.global_position
+	player.global_position = physical_support_center + Vector2(-70.0, 0.0)
+	var moving_connection := _create_connection(combat, player, moving_anchor)
+	await physics_frame
+	moving_connection.set_process(false)
+	moving_connection.wrap_pivot = moving_support
+	moving_connection._dynamic_pivot = true
+	moving_connection.is_wrapped = true
+	moving_connection.wrap_state = YarnConnection.WrapState.WOUND
+	moving_connection.wrap_contact_radius = 14.0
+	moving_connection.wrap_player_radius_at_contact = 70.0
+	moving_connection.wrap_contact_history = [Vector2.LEFT]
+	moving_connection.wrap_angle_history = [270.0]
+	moving_connection.accumulated_wrap_angle = 270.0
+	moving_connection.winding_complete = true
+	moving_connection.wrap_side_sign = 1.0
+	moving_connection._wrap_route_seeded = true
+	moving_connection._wrap_seed_player_side = -1.0
+	moving_connection._wrap_seed_target_side = 1.0
+	moving_connection._wrap_seed_arc_direction = 1.0
+	player.global_position = physical_support_center + Vector2(0.0, 70.0)
+	moving_connection._last_observed_player_position = player.global_position
+	moving_connection._last_pivot_position = physical_support_center
+	moving_connection.player_position_at_wound = player.global_position
+	moving_connection.pivot_position_at_wound = physical_support_center
+	moving_connection.player_radius_at_wound = player.global_position.distance_to(physical_support_center)
+	moving_connection.routed_path_length_at_wound = moving_connection._routed_path_length()
+	var winding_before_pivot_motion := moving_connection.accumulated_wrap_angle
+	moving_support.global_position += Vector2(40.0, 0.0)
+	await physics_frame
+	var moving_path := moving_connection._build_routed_path()
+	var current_shape_center := support_shape.global_position
+	var minimum_actual_clearance := INF
+	for segment_index in range(moving_path.size() - 1):
+		minimum_actual_clearance = minf(minimum_actual_clearance, _distance_to_segment(current_shape_center, moving_path[segment_index], moving_path[segment_index + 1]))
+	_check(is_equal_approx(moving_connection._get_support_center(moving_support).y, current_shape_center.y), "dynamic support routing uses the offset physical collision center")
+	_check(minimum_actual_clearance >= 12.0, "moving enemy pivot route stays outside its actual 12px collision circle (%.2fpx)" % minimum_actual_clearance)
+	_check(moving_connection._validate_current_path(), "dynamic pivot collision layer participates in routed-path validation")
+	for seed_side in [-1.0, 1.0]:
+		for winding_sign in [-1.0, 1.0]:
+			moving_connection.wrap_angle_history.clear()
+			moving_connection.wrap_angle_history.append(winding_sign * 270.0)
+			moving_connection._wrap_seed_player_side = seed_side
+			moving_connection._wrap_seed_target_side = -seed_side
+			moving_connection._wrap_seed_arc_direction = winding_sign
+			var variant_path := moving_connection._build_routed_path()
+			var variant_clearance := INF
+			for segment_index in range(variant_path.size() - 1):
+				variant_clearance = minf(variant_clearance, _distance_to_segment(current_shape_center, variant_path[segment_index], variant_path[segment_index + 1]))
+			_check(variant_clearance >= 12.0, "dynamic route for seed side %s and winding %s clears the physical slime collider" % [seed_side, winding_sign])
+			_check(moving_connection._validate_current_path(), "dynamic route remains collision-valid for both winding directions and seed sides")
+	moving_connection.wrap_angle_history.clear()
+	moving_connection.wrap_angle_history.append(270.0)
+	moving_connection._wrap_seed_player_side = -1.0
+	moving_connection._wrap_seed_target_side = 1.0
+	moving_connection._wrap_seed_arc_direction = 1.0
+	moving_connection._process(1.0 / 60.0)
+	_check(is_equal_approx(moving_connection.accumulated_wrap_angle, winding_before_pivot_motion), "stationary cat gains no active winding when enemy B moves")
+	_check(not moving_connection.loop_bound, "stationary cat cannot trigger active tension from enemy B movement")
+	moving_support.global_position += Vector2(0.0, 30.0)
+	await physics_frame
+	moving_connection._process(1.0 / 60.0)
+	_check(is_equal_approx(moving_connection.accumulated_wrap_angle, winding_before_pivot_motion) and not moving_connection.loop_bound, "radial movement of B alone cannot add winding or trigger tension")
+	moving_connection.finish_naturally()
+	moving_support.queue_free()
+	moving_anchor.queue_free()
+	await process_frame
 
 	var motion_target := _spawn_slime(world, Vector2(700.0, 700.0))
 	var motion_pivot := _add_wrap_point(world, Vector2(500.0, 700.0), 20.0)

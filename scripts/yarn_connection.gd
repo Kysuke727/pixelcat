@@ -157,7 +157,7 @@ func _try_acquire_support() -> void:
 	var nearest_distance := INF
 	for candidate in candidates:
 		var radius := _get_support_radius(candidate)
-		var distance := _distance_to_segment(candidate.global_position, rope_start, rope_end)
+		var distance := _distance_to_segment(_get_support_center(candidate), rope_start, rope_end)
 		if distance <= radius and distance < nearest_distance:
 			nearest_support = candidate
 			nearest_distance = distance
@@ -167,7 +167,7 @@ func _try_acquire_support() -> void:
 		wrap_contact_radius = _get_support_radius(nearest_support)
 		is_wrapped = true
 		wrap_state = WrapState.WRAPPED
-		_last_pivot_position = wrap_pivot.global_position
+		_last_pivot_position = _get_support_center(wrap_pivot)
 		_pending_wrap_angle_degrees = 0.0
 		_pending_player_travel = 0.0
 		wrap_side_sign = 0.0
@@ -200,9 +200,30 @@ func _is_valid_support(candidate: Node2D) -> bool:
 
 func _get_support_radius(candidate: Node2D) -> float:
 	var radius_variant: Variant = candidate.get("yarn_wrap_radius")
+	var configured_radius := minimum_pivot_contact_radius
 	if radius_variant != null and typeof(radius_variant) in [TYPE_FLOAT, TYPE_INT]:
-		return maxf(float(radius_variant), 1.0)
-	return minimum_pivot_contact_radius
+		configured_radius = maxf(float(radius_variant), 1.0)
+	for shape_node in candidate.find_children("*", "CollisionShape2D", true, false):
+		var collision_shape := shape_node as CollisionShape2D
+		if collision_shape == null or collision_shape.disabled or not collision_shape.get_parent() is PhysicsBody2D:
+			continue
+		if collision_shape.shape is CircleShape2D:
+			var scale := collision_shape.global_scale.abs()
+			var physical_radius := (collision_shape.shape as CircleShape2D).radius * maxf(scale.x, scale.y)
+			configured_radius = maxf(configured_radius, physical_radius)
+	return configured_radius
+
+
+func _get_support_center(candidate: Node2D) -> Vector2:
+	# Collision shapes can be offset from their owning node. Use the physical
+	# obstacle center consistently for routing, winding, and tension geometry.
+	if not is_instance_valid(candidate):
+		return Vector2.ZERO
+	for shape_node in candidate.find_children("*", "CollisionShape2D", true, false):
+		var shape := shape_node as CollisionShape2D
+		if shape != null and not shape.disabled and shape.shape is CircleShape2D and shape.get_parent() is PhysicsBody2D:
+			return shape.global_position
+	return candidate.global_position
 
 
 func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float:
@@ -251,7 +272,7 @@ func _update_wrap_angle() -> bool:
 		last_bind_failure_reason = "毛线路径无效，绕行进度已清除"
 		_last_observed_player_position = player.global_position
 		return true
-	var current_pivot_position := wrap_pivot.global_position
+	var current_pivot_position := _get_support_center(wrap_pivot)
 	var current_relative := player.global_position - current_pivot_position
 	var player_step := player.global_position.distance_to(_last_observed_player_position)
 	if player_step > maximum_player_sample_step:
@@ -314,8 +335,8 @@ func _update_wrap_angle() -> bool:
 		winding_complete = true
 		wrap_state = WrapState.WOUND
 		player_position_at_wound = player.global_position
-		pivot_position_at_wound = wrap_pivot.global_position
-		player_radius_at_wound = player.global_position.distance_to(wrap_pivot.global_position)
+		pivot_position_at_wound = _get_support_center(wrap_pivot)
+		player_radius_at_wound = player.global_position.distance_to(pivot_position_at_wound)
 		routed_path_length_at_wound = _routed_path_length()
 		last_bind_failure_reason = "缠绕完成，继续拉紧毛线"
 	return true
@@ -337,7 +358,7 @@ func _update_tension_and_bind() -> void:
 	if not winding_complete or not is_wrapped:
 		return
 	var route_extension := _routed_path_length() - routed_path_length_at_wound
-	var radial_pull := player.global_position.distance_to(wrap_pivot.global_position) - player_radius_at_wound
+	var radial_pull := player.global_position.distance_to(_get_support_center(wrap_pivot)) - player_radius_at_wound
 	var pull_vector := player.global_position - player_position_at_wound
 	var away_from_pivot := (player_position_at_wound - pivot_position_at_wound).normalized()
 	var effective_pull := pull_vector.dot(away_from_pivot)
@@ -378,9 +399,10 @@ func _validate_current_path() -> bool:
 			return true
 		return false
 	var excluded: Array[Node] = [player, target]
-	if player.global_position.distance_to(wrap_pivot.global_position) <= wrap_contact_radius:
+	var support_center := _get_support_center(wrap_pivot)
+	if player.global_position.distance_to(support_center) <= wrap_contact_radius:
 		return false
-	if target.global_position.distance_to(wrap_pivot.global_position) <= wrap_contact_radius:
+	if target.global_position.distance_to(support_center) <= wrap_contact_radius:
 		return false
 	var path := _build_routed_path()
 	if path.size() < 2:
@@ -395,7 +417,9 @@ func _ray_hit(start: Vector2, end: Vector2, exclude_nodes: Array[Node]) -> Dicti
 	if start.distance_squared_to(end) <= 0.001:
 		return {}
 	var query := PhysicsRayQueryParameters2D.create(start, end)
-	query.collision_mask = 1
+	# Check both world geometry (layer 1) and enemy bodies (layer 2); keep the
+	# support collider in the query so a bad routed segment cannot pass through it.
+	query.collision_mask = 3
 	var exclusions: Array[RID] = []
 	for node in exclude_nodes:
 		if node is CollisionObject2D and is_instance_valid(node):
@@ -420,7 +444,7 @@ func _build_routed_path() -> PackedVector2Array:
 	if not is_wrapped or not _is_valid_support(wrap_pivot):
 		points.append(target.global_position)
 		return points
-	var center := wrap_pivot.global_position
+	var center := _get_support_center(wrap_pivot)
 	var radius := wrap_contact_radius + maxf(path_clearance, 0.0)
 	var player_offset := player.global_position - center
 	var target_offset := target.global_position - center
@@ -439,7 +463,12 @@ func _build_routed_path() -> PackedVector2Array:
 		# Unwrap the cat's current polar angle from the stored signed movement
 		# history. Using a shortest-arc remainder here double-counted a full turn
 		# whenever radial movement shifted the tangent angle across the modulo seam.
-		var current_start_angle := initial_player_angle + deg_to_rad(effective_winding) + _wrap_seed_player_side * player_alpha
+		var unwrapped_player_angle := initial_player_angle + deg_to_rad(effective_winding)
+		var expected_polar_angle := wrapf(unwrapped_player_angle, -PI, PI)
+		var geometry_correction := wrapf(player_phi - expected_polar_angle, -PI, PI)
+		# Preserve complete active turns but align the tangent with the current
+		# endpoint geometry after a dynamic support has moved.
+		var current_start_angle := unwrapped_player_angle + geometry_correction + _wrap_seed_player_side * player_alpha
 		points.append(center + Vector2.from_angle(current_start_angle) * radius)
 		var history_delta := seed_player_angle - current_start_angle
 		var history_subdivisions := maxi(1, ceili(absf(history_delta) / deg_to_rad(12.0)))
@@ -525,7 +554,7 @@ func _update_visuals() -> void:
 	trail_line.visible = show_debug_status and is_wrapped and local_trail.size() > 1
 	pivot_marker.visible = show_debug_status and is_wrapped and is_instance_valid(wrap_pivot)
 	if pivot_marker.visible:
-		pivot_marker.position = to_local(wrap_pivot.global_position)
+		pivot_marker.position = to_local(_get_support_center(wrap_pivot))
 	if not is_instance_valid(debug_status) or not is_instance_valid(player):
 		return
 	debug_status.visible = show_debug_status
