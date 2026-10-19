@@ -7,6 +7,7 @@ signal died
 @export var max_health: int = 6
 @export var invincibility_duration: float = 0.8
 @export var hitstun_duration: float = 0.22
+@export var player_hit_stagger_duration: float = 0.5
 @export var received_knockback_decay: float = 700.0
 
 var current_health: int
@@ -16,6 +17,9 @@ var invincibility_left: float = 0.0
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
+var received_attack_ids: Dictionary = {}
+var received_attack_id_order: Array[int] = []
+var attack_block_handler: Callable
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var combat = get_node_or_null("PlayerCombat")
@@ -126,6 +130,34 @@ func receive_damage(amount: int, source_position: Vector2, knockback_force: floa
 	if current_health <= 0:
 		die()
 	return true
+
+
+func receive_attack_damage(
+	attack_id: int,
+	amount: int,
+	source_position: Vector2,
+	knockback_force: float = 120.0
+) -> bool:
+	if attack_id <= 0 or received_attack_ids.has(attack_id):
+		return false
+	received_attack_ids[attack_id] = true
+	received_attack_id_order.append(attack_id)
+	if received_attack_id_order.size() > 128:
+		var expired_id: int = received_attack_id_order.pop_front()
+		received_attack_ids.erase(expired_id)
+	if try_block_attack(attack_id):
+		return true
+	var accepted := receive_damage(amount, source_position, knockback_force)
+	if accepted and not dead:
+		hitstun_left = player_hit_stagger_duration
+	return accepted
+
+
+func try_block_attack(_attack_id: int) -> bool:
+	# Stage D adds the shield and perfect-guard decision here.
+	if attack_block_handler.is_valid():
+		return bool(attack_block_handler.call(_attack_id))
+	return false
 
 
 func play_hit_feedback() -> void:

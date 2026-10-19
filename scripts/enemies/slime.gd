@@ -20,6 +20,7 @@ const BACK_TEXTURE := preload("res://assets/characters/slime/slime_back.png")
 const LEFT_TEXTURE := preload("res://assets/characters/slime/slime_left.png")
 const RIGHT_TEXTURE := preload("res://assets/characters/slime/slime_right.png")
 const FISH_PICKUP_SCENE := preload("res://scenes/pickups/dried_fish_pickup.tscn")
+static var _next_attack_id: int = 1
 
 @export_category("Identity")
 @export var display_name: String = "史莱姆"
@@ -40,6 +41,14 @@ const FISH_PICKUP_SCENE := preload("res://scenes/pickups/dried_fish_pickup.tscn"
 @export var recover_duration: float = 0.45
 @export var attack_knockback: float = 135.0
 
+@export_category("Collision Stun")
+@export var collision_stun_duration: float = 1.0
+@export var collision_stun_cooldown: float = 0.8
+@export var collision_speed_threshold: float = 75.0
+@export var wall_impact_speed_threshold: float = 90.0
+@export var wall_impact_stun_duration: float = 0.20
+@export var wall_impact_cooldown: float = 0.8
+
 @export_category("Wander")
 @export var wander_radius: float = 72.0
 @export var idle_duration_min: float = 0.7
@@ -59,6 +68,8 @@ var state_time_left: float = 0.0
 var cooldown_left: float = 0.0
 var stun_time_left: float = 0.0
 var stun_resistance_left: float = 0.0
+var collision_stun_cooldown_left: float = 0.0
+var wall_impact_cooldown_left: float = 0.0
 var spawn_position: Vector2
 var wander_direction: Vector2 = Vector2.ZERO
 var locked_target_position: Vector2
@@ -68,6 +79,7 @@ var attacked_targets: Dictionary = {}
 var target: Node2D
 var animation_time: float = 0.0
 var facing: Vector2 = Vector2.DOWN
+var current_attack_id: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var body_collision: CollisionShape2D = $CollisionShape2D
@@ -93,6 +105,8 @@ func _physics_process(delta: float) -> void:
 		return
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
 	stun_resistance_left = maxf(stun_resistance_left - delta, 0.0)
+	collision_stun_cooldown_left = maxf(collision_stun_cooldown_left - delta, 0.0)
+	wall_impact_cooldown_left = maxf(wall_impact_cooldown_left - delta, 0.0)
 	stun_time_left = maxf(stun_time_left - delta, 0.0)
 	state_time_left = maxf(state_time_left - delta, 0.0)
 	animation_time += delta
@@ -146,7 +160,9 @@ func _process_wander() -> void:
 		wander_direction = global_position.direction_to(spawn_position)
 	velocity = wander_direction * move_speed * 0.55
 	_update_facing(velocity)
-	move_and_slide()
+	_move_and_check_impacts()
+	if state != SlimeState.WANDER:
+		return
 	if get_slide_collision_count() > 0:
 		wander_direction = wander_direction.rotated(randf_range(1.7, 3.8))
 	if state_time_left <= 0.0:
@@ -170,7 +186,7 @@ func _process_chase() -> void:
 	if is_instance_valid(target):
 		velocity = global_position.direction_to(target.global_position) * move_speed
 		_update_facing(velocity)
-		move_and_slide()
+		_move_and_check_impacts()
 
 
 func _process_windup() -> void:
@@ -181,6 +197,8 @@ func _process_windup() -> void:
 			lunge_direction = facing
 		_update_facing(lunge_direction)
 		attacked_targets.clear()
+		current_attack_id = _next_attack_id
+		_next_attack_id += 1
 		attack_area.monitoring = true
 		if attack_sound.stream != null:
 			attack_sound.play()
@@ -190,8 +208,9 @@ func _process_windup() -> void:
 
 func _process_lunge() -> void:
 	velocity = lunge_direction * lunge_speed
-	move_and_slide()
-	_apply_lunge_hits()
+	_move_and_check_impacts()
+	if state != SlimeState.LUNGE:
+		return
 	if state_time_left <= 0.0:
 		attack_area.monitoring = false
 		cooldown_left = attack_cooldown
@@ -208,14 +227,18 @@ func _process_recover() -> void:
 func _process_hurt(delta: float) -> void:
 	velocity = hurt_velocity
 	hurt_velocity = hurt_velocity.move_toward(Vector2.ZERO, hurt_knockback_decay * delta)
-	move_and_slide()
+	_move_and_check_impacts()
+	if state != SlimeState.HURT:
+		return
 	if state_time_left <= 0.0:
 		_change_state(SlimeState.CHASE if _target_distance() <= disengage_range else SlimeState.WANDER)
 
 
 func _process_stunned() -> void:
 	velocity = Vector2.ZERO
-	move_and_slide()
+	_move_and_check_impacts()
+	if state != SlimeState.STUNNED:
+		return
 	if stun_time_left <= 0.0:
 		_change_state(SlimeState.CHASE if _target_distance() <= disengage_range else SlimeState.WANDER)
 		_choose_idle_duration()
@@ -233,15 +256,69 @@ func apply_stun(duration: float, resistance_duration: float) -> bool:
 	return true
 
 
-func _apply_lunge_hits() -> void:
-	for body in attack_area.get_overlapping_bodies():
-		if not body.is_in_group("player") or not body.has_method("receive_damage"):
+func _move_and_check_impacts() -> void:
+	var incoming_velocity := velocity
+	move_and_slide()
+	for index in range(get_slide_collision_count()):
+		var collision := get_slide_collision(index)
+		var collider := collision.get_collider()
+		if not collider is Node:
 			continue
-		var body_id := body.get_instance_id()
-		if attacked_targets.has(body_id):
+		var relative_velocity := incoming_velocity - collision.get_collider_velocity()
+		var approach_speed := maxf(0.0, -relative_velocity.dot(collision.get_normal()))
+		if collider.is_in_group("player"):
+			if state == SlimeState.LUNGE:
+				_try_lunge_hit(collider)
 			continue
-		attacked_targets[body_id] = true
+		if collider.is_in_group("enemies") and collider.has_method("receive_collision_impact"):
+			if approach_speed >= collision_speed_threshold:
+				receive_collision_impact(collider, approach_speed)
+			continue
+		if approach_speed >= wall_impact_speed_threshold and wall_impact_cooldown_left <= 0.0:
+			wall_impact_cooldown_left = wall_impact_cooldown
+			hurt_velocity = incoming_velocity.bounce(collision.get_normal()) * 0.25
+			velocity = hurt_velocity
+			_change_state(SlimeState.HURT)
+			state_time_left = wall_impact_stun_duration
+
+
+func _try_lunge_hit(body: Node) -> void:
+	var body_id := body.get_instance_id()
+	if attacked_targets.has(body_id):
+		return
+	attacked_targets[body_id] = true
+	if body.has_method("receive_attack_damage"):
+		body.receive_attack_damage(current_attack_id, attack_damage, global_position, attack_knockback)
+	elif body.has_method("receive_damage"):
 		body.receive_damage(attack_damage, global_position, attack_knockback)
+
+
+func receive_collision_impact(other: Node, approach_speed: float) -> bool:
+	if (
+		state == SlimeState.DEAD
+		or not is_instance_valid(other)
+		or not other.is_in_group("enemies")
+		or not other.has_method("apply_collision_stun")
+		or approach_speed < collision_speed_threshold
+		or collision_stun_cooldown_left > 0.0
+		or float(other.get("collision_stun_cooldown_left")) > 0.0
+	):
+		return false
+	collision_stun_cooldown_left = collision_stun_cooldown
+	other.set("collision_stun_cooldown_left", collision_stun_cooldown)
+	apply_collision_stun(collision_stun_duration)
+	other.call("apply_collision_stun", float(other.get("collision_stun_duration")))
+	return true
+
+
+func apply_collision_stun(duration: float) -> void:
+	if state == SlimeState.DEAD:
+		return
+	stun_time_left = maxf(stun_time_left, duration)
+	velocity = Vector2.ZERO
+	attack_area.set_deferred("monitoring", false)
+	_change_state(SlimeState.STUNNED)
+	_play_hit_flash()
 
 
 func receive_damage(amount: int, source_position: Vector2, knockback_force: float = 130.0) -> bool:
