@@ -4,6 +4,7 @@ class_name YarnConnection
 enum WrapState { SEEKING_SUPPORT, WRAPPED, WOUND, TAUT, BOUND }
 
 const WRAP_ANGLE_EPSILON_DEGREES: float = 0.00001
+static var _next_debug_connection_id: int = 1
 
 @export_category("Connection")
 @export var slow_multiplier: float = 0.5
@@ -34,6 +35,7 @@ var target: Node2D
 var combat: Node
 var lifetime_left: float = 0.0
 var wrap_pivot: Node2D
+var wrap_supports: Array[Node2D] = []
 var wrap_state: WrapState = WrapState.SEEKING_SUPPORT
 var trail_points: Array[Vector2] = []
 var path_points: Array[Vector2] = []
@@ -69,6 +71,9 @@ var _wrap_route_seeded: bool = false
 var _wrap_seed_target_side: float = 1.0
 var _wrap_seed_player_side: float = 1.0
 var _wrap_seed_arc_direction: float = 1.0
+var _secondary_support_arc_directions: Dictionary = {}
+var _bound_target_ids: Dictionary = {}
+var debug_connection_id: int = 0
 
 @onready var tether_line: Line2D = $TetherLine
 @onready var trail_line: Line2D = $TrailLine
@@ -86,6 +91,8 @@ func configure(new_player: Node2D, new_target: Node2D, new_combat: Node, setting
 
 
 func _ready() -> void:
+	debug_connection_id = _next_debug_connection_id
+	_next_debug_connection_id += 1
 	add_to_group("yarn_connections")
 	owner_scene = get_tree().current_scene
 	lifetime_left = maximum_duration
@@ -95,6 +102,7 @@ func _ready() -> void:
 		trail_points.append(player.global_position)
 	if is_instance_valid(target) and target.has_method("apply_yarn_slow"):
 		target.apply_yarn_slow(slow_duration, slow_multiplier)
+	print("[Yarn #%d] started anchor=%s" % [debug_connection_id, str(target.name) if is_instance_valid(target) else "<invalid>"])
 	_update_visuals()
 
 
@@ -114,10 +122,13 @@ func _process(delta: float) -> void:
 		last_bind_failure_reason = "超过连接最大距离"
 		_finish()
 		return
-	if is_wrapped and not _is_valid_support(wrap_pivot):
+	if is_wrapped and (not is_instance_valid(wrap_pivot) or not _is_valid_support(wrap_pivot)):
+		_log_connection_state("primary pivot %s became invalid; winding reset" % (str(wrap_pivot.name) if is_instance_valid(wrap_pivot) else "<removed>"))
 		_reset_wrap_state("动态支点已死亡或静态支点已移除")
 	if not is_wrapped:
 		_try_acquire_support()
+	if is_wrapped:
+		_add_contacted_supports()
 	_update_player_trail()
 	var continuous_player_motion := _update_wrap_angle()
 	if continuous_player_motion:
@@ -149,10 +160,10 @@ func _try_acquire_support() -> void:
 	var rope_end := target.global_position
 	var candidates: Array[Node2D] = []
 	for candidate in get_tree().get_nodes_in_group("yarn_wrap_points"):
-		if candidate is Node2D and _is_valid_support(candidate):
+		if is_instance_valid(candidate) and candidate is Node2D and _is_valid_support(candidate):
 			candidates.append(candidate)
 	for candidate in get_tree().get_nodes_in_group("enemies"):
-		if candidate is Node2D and candidate != target and _is_valid_support(candidate):
+		if is_instance_valid(candidate) and candidate is Node2D and candidate != target and _is_valid_support(candidate):
 			candidates.append(candidate)
 
 	var nearest_support: Node2D
@@ -165,6 +176,9 @@ func _try_acquire_support() -> void:
 			nearest_distance = distance
 	if is_instance_valid(nearest_support):
 		wrap_pivot = nearest_support
+		wrap_supports.clear()
+		wrap_supports.append(nearest_support)
+		_secondary_support_arc_directions.clear()
 		_dynamic_pivot = nearest_support.is_in_group("enemies")
 		wrap_contact_radius = _get_support_radius(nearest_support)
 		is_wrapped = true
@@ -176,11 +190,11 @@ func _try_acquire_support() -> void:
 		_wrap_route_seeded = false
 		wrap_contact_history.clear()
 		wrap_angle_history.clear()
-		_wrap_route_seeded = false
 		wrap_contact_history.append((player.global_position - _last_pivot_position).normalized())
 		wrap_player_radius_at_contact = player.global_position.distance_to(_last_pivot_position)
 		wrap_path_length_at_contact = _routed_path_length()
 		last_bind_failure_reason = "已接触支点，继续绕支点移动"
+		_log_connection_state("acquired primary pivot %s" % str(nearest_support.name))
 		return
 
 	var obstruction := _ray_hit(rope_start, rope_end, [player, target])
@@ -190,6 +204,56 @@ func _try_acquire_support() -> void:
 	else:
 		path_valid = false
 		last_bind_failure_reason = "毛线被未配置为支点的障碍物挡住"
+
+
+func _get_support_candidates() -> Array[Node2D]:
+	var candidates: Array[Node2D] = []
+	for candidate in get_tree().get_nodes_in_group("yarn_wrap_points"):
+		if is_instance_valid(candidate) and candidate is Node2D and _is_valid_support(candidate):
+			candidates.append(candidate)
+	for candidate in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(candidate) and candidate is Node2D and _is_valid_support(candidate):
+			candidates.append(candidate)
+	return candidates
+
+
+func _add_contacted_supports() -> void:
+	var current_path := _build_routed_path()
+	if current_path.size() < 2:
+		return
+	for candidate in _get_support_candidates():
+		if wrap_supports.has(candidate):
+			continue
+		var candidate_center := _get_support_center(candidate)
+		var candidate_radius := _get_support_radius(candidate)
+		var contacted := false
+		for index in range(current_path.size() - 1):
+			if _distance_to_segment(candidate_center, current_path[index], current_path[index + 1]) > candidate_radius:
+				continue
+			contacted = true
+			break
+		if not contacted:
+			continue
+		wrap_supports.append(candidate)
+		_secondary_support_arc_directions[candidate.get_instance_id()] = 0.0
+		_log_connection_state("added contacted support %s without resetting winding" % str(candidate.name))
+		current_path = _build_routed_path()
+		break
+
+
+func _log_connection_state(reason: String) -> void:
+	var pivot_name := str(wrap_pivot.name) if is_instance_valid(wrap_pivot) else "none"
+	print("[Yarn #%d] %s | anchor=%s primary=%s state=%s angle=%.2f winding=%s taut=%s supports=%d" % [
+		debug_connection_id,
+		reason,
+		str(target.name) if is_instance_valid(target) else "<invalid>",
+		pivot_name,
+		str(WrapState.keys()[wrap_state]),
+		accumulated_wrap_angle,
+		str(winding_complete),
+		str(is_taut),
+		wrap_supports.size()
+	])
 
 
 func _is_valid_support(candidate: Node2D) -> bool:
@@ -258,7 +322,7 @@ func _wrap_angle_reaches_threshold(angle_degrees: float) -> bool:
 
 func _update_wrap_angle() -> bool:
 	valid_movement_this_frame = false
-	if not is_wrapped or not _is_valid_support(wrap_pivot):
+	if not is_wrapped or not is_instance_valid(wrap_pivot) or not _is_valid_support(wrap_pivot):
 		return true
 	var discontinuity_version := _get_player_discontinuity_version()
 	if discontinuity_version != _last_player_discontinuity_version:
@@ -332,6 +396,7 @@ func _update_wrap_angle() -> bool:
 		_pending_player_travel = 0.0
 		wrap_side_sign = signf(accumulated_wrap_angle)
 	if winding_complete and not _wrap_angle_reaches_threshold(effective_wrap_angle):
+		_log_connection_state("reverse movement unwound below the threshold")
 		winding_complete = false
 		is_taut = false
 		tension_value = 0.0
@@ -345,6 +410,7 @@ func _update_wrap_angle() -> bool:
 		player_radius_at_wound = player.global_position.distance_to(pivot_position_at_wound)
 		routed_path_length_at_wound = _routed_path_length()
 		last_bind_failure_reason = "缠绕完成，继续拉紧毛线"
+		_log_connection_state("winding threshold reached; waiting for active pull")
 	return true
 
 
@@ -369,33 +435,71 @@ func _update_tension_and_bind() -> void:
 	var away_from_pivot := (player_position_at_wound - pivot_position_at_wound).normalized()
 	var effective_pull := pull_vector.dot(away_from_pivot)
 	tension_value = maxf(maxf(route_extension, radial_pull), 0.0)
+	var was_taut := is_taut
 	is_taut = tension_value >= required_tension_extension and radial_pull >= required_pull_distance and effective_pull >= required_pull_distance
 	if not is_taut:
 		wrap_state = WrapState.WOUND
 		last_bind_failure_reason = "已缠绕，等待拉紧（张力 %.1f/%.1f px）" % [tension_value, required_tension_extension]
 		return
-	wrap_state = WrapState.TAUT
+	var taut_started := not was_taut
+	wrap_state = WrapState.BOUND if loop_bound else WrapState.TAUT
+	if taut_started:
+		_log_connection_state("active pull reached tension threshold")
 	_bind_wrapped_targets()
 
 
 func _bind_wrapped_targets() -> void:
-	if loop_bound:
-		return
-	var targets: Array[Node2D] = [target]
-	if _dynamic_pivot and wrap_pivot != target:
-		targets.append(wrap_pivot)
+	var targets := _collect_enclosed_targets()
 	var bound_count := 0
+	var eligible_count := 0
 	for enemy in targets:
-		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
+		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind") or _bound_target_ids.has(enemy.get_instance_id()):
 			continue
+		eligible_count += 1
 		if bool(enemy.apply_yarn_bind(bind_duration)):
 			bound_count += 1
-	loop_bound = bound_count > 0
+			_bound_target_ids[enemy.get_instance_id()] = true
+			_log_connection_state("bound enclosed target %s" % str(enemy.name))
+	loop_bound = loop_bound or bound_count > 0
 	if loop_bound:
 		wrap_state = WrapState.BOUND
-		last_bind_failure_reason = "束缚已触发" if bound_count == targets.size() else "部分目标处于束缚免疫期"
+		last_bind_failure_reason = "束缚已触发 %d/%d 个有效目标" % [_bound_target_ids.size(), targets.size()]
 	else:
-		last_bind_failure_reason = "目标处于束缚免疫期或已被束缚"
+		last_bind_failure_reason = "没有可结算目标（免疫或已被其他毛线束缚；候选 %d）" % eligible_count
+
+
+func _collect_enclosed_targets() -> Array[Node2D]:
+	var result: Array[Node2D] = []
+	if is_instance_valid(target) and target.is_in_group("enemies"):
+		result.append(target)
+	for support in wrap_supports:
+		if is_instance_valid(support) and support.is_in_group("enemies") and not result.has(support):
+			result.append(support)
+	var routed_path := _build_routed_path()
+	if routed_path.size() < 3:
+		return result
+	for candidate in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(candidate) or not candidate is Node2D or result.has(candidate) or not _is_valid_support(candidate):
+			continue
+		if _point_is_inside_routed_loop((candidate as Node2D).global_position, routed_path):
+			result.append(candidate)
+	return result
+
+
+func _point_is_inside_routed_loop(point: Vector2, open_path: PackedVector2Array) -> bool:
+	# The real, collision-validated yarn route is closed only by the taut endpoint
+	# chord. The cat's historical movement trail is deliberately not consulted.
+	var inside := false
+	var previous := open_path.size() - 1
+	for current in range(open_path.size()):
+		var a := open_path[current]
+		var b := open_path[previous]
+		if (a.y > point.y) != (b.y > point.y):
+			var crossing_x := (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x
+			if point.x < crossing_x:
+				inside = not inside
+		previous = current
+	return inside
 
 
 func _validate_current_path() -> bool:
@@ -447,7 +551,7 @@ func _build_routed_path() -> PackedVector2Array:
 	if not is_instance_valid(player) or not is_instance_valid(target):
 		return points
 	points.append(player.global_position)
-	if not is_wrapped or not _is_valid_support(wrap_pivot):
+	if not is_wrapped or not is_instance_valid(wrap_pivot) or not _is_valid_support(wrap_pivot):
 		points.append(target.global_position)
 		return points
 	var center := _get_support_center(wrap_pivot)
@@ -486,7 +590,7 @@ func _build_routed_path() -> PackedVector2Array:
 		for step in range(1, base_subdivisions + 1):
 			points.append(center + Vector2.from_angle(seed_player_angle + base_delta * float(step) / float(base_subdivisions)) * radius)
 		points.append(target.global_position)
-		return points
+		return _route_through_secondary_supports(points)
 	var best_start := Vector2.ZERO
 	var best_end := Vector2.ZERO
 	var best_side := 1.0
@@ -528,7 +632,85 @@ func _build_routed_path() -> PackedVector2Array:
 		points.append(center + Vector2.from_angle(start_angle + arc_delta * float(arc_step) / float(arc_subdivisions)) * radius)
 	points.append(best_end)
 	points.append(target.global_position)
-	return points
+	return _route_through_secondary_supports(points)
+
+
+func _route_through_secondary_supports(base_path: PackedVector2Array) -> PackedVector2Array:
+	var routed := base_path
+	for support_index in range(1, wrap_supports.size()):
+		var support := wrap_supports[support_index]
+		if not is_instance_valid(support) or not _is_valid_support(support):
+			continue
+		var center := _get_support_center(support)
+		var radius := _get_support_radius(support) + maxf(path_clearance, 0.0)
+		for segment_index in range(routed.size() - 1):
+			if _distance_to_segment(center, routed[segment_index], routed[segment_index + 1]) >= radius:
+				continue
+			var key := support.get_instance_id()
+			var preferred_direction := float(_secondary_support_arc_directions.get(key, 0.0))
+			var route_result := _route_segment_around_circle(
+				routed[segment_index], routed[segment_index + 1], center, radius, preferred_direction
+			)
+			var detour: PackedVector2Array = route_result.get("points", PackedVector2Array())
+			if detour.size() < 3:
+				continue
+			var replacement := PackedVector2Array()
+			for prefix_index in range(segment_index + 1):
+				replacement.append(routed[prefix_index])
+			for detour_index in range(1, detour.size() - 1):
+				replacement.append(detour[detour_index])
+			for suffix_index in range(segment_index + 1, routed.size()):
+				replacement.append(routed[suffix_index])
+			routed = replacement
+			if preferred_direction == 0.0:
+				_secondary_support_arc_directions[key] = float(route_result.get("direction", 0.0))
+			break
+	return routed
+
+
+func _route_segment_around_circle(
+	start: Vector2,
+	end: Vector2,
+	center: Vector2,
+	radius: float,
+	preferred_direction: float
+) -> Dictionary:
+	var start_offset := start - center
+	var end_offset := end - center
+	if start_offset.length() <= radius or end_offset.length() <= radius:
+		return {}
+	var start_alpha := acos(clampf(radius / start_offset.length(), -1.0, 1.0))
+	var end_alpha := acos(clampf(radius / end_offset.length(), -1.0, 1.0))
+	var directions: Array[float] = []
+	if absf(preferred_direction) > 0.1:
+		directions.append(preferred_direction)
+	else:
+		directions.append(-1.0)
+		directions.append(1.0)
+	var best_path := PackedVector2Array()
+	var best_length := INF
+	var best_direction := 0.0
+	for start_side in [-1.0, 1.0]:
+		var start_angle: float = start_offset.angle() + float(start_side) * start_alpha
+		var start_tangent := center + Vector2.from_angle(start_angle) * radius
+		for end_side in [-1.0, 1.0]:
+			var end_angle: float = end_offset.angle() + float(end_side) * end_alpha
+			var end_tangent := center + Vector2.from_angle(end_angle) * radius
+			for direction in directions:
+				var arc := _directed_arc_delta(start_angle, end_angle, float(direction))
+				var candidate_length := start.distance_to(start_tangent) + absf(arc) * radius + end_tangent.distance_to(end)
+				if candidate_length >= best_length:
+					continue
+				best_length = candidate_length
+				best_direction = float(direction)
+				best_path.clear()
+				best_path.append(start)
+				best_path.append(start_tangent)
+				var subdivisions := maxi(1, ceili(absf(arc) / deg_to_rad(10.0)))
+				for subdivision in range(1, subdivisions + 1):
+					best_path.append(center + Vector2.from_angle(start_angle + arc * float(subdivision) / float(subdivisions)) * radius)
+				best_path.append(end)
+	return {"points": best_path, "direction": best_direction}
 
 
 func _update_visuals() -> void:
@@ -545,7 +727,7 @@ func _update_visuals() -> void:
 			if not obstruction.is_empty():
 				path_points.append(obstruction["position"])
 				break
-		if path_points.size() == full_path.size():
+		if not full_path.is_empty() and path_points.size() == full_path.size():
 			path_points.append(full_path[full_path.size() - 1])
 	var local_path := PackedVector2Array()
 	for point in path_points:
@@ -564,14 +746,27 @@ func _update_visuals() -> void:
 	if not is_instance_valid(debug_status) or not is_instance_valid(player):
 		return
 	debug_status.visible = show_debug_status
-	debug_status.position = to_local(player.global_position) + Vector2(-85.0, -68.0)
+	var debug_row := 0
+	for connection in get_tree().get_nodes_in_group("yarn_connections"):
+		if connection == self:
+			continue
+		if connection is YarnConnection and (connection as YarnConnection).debug_connection_id < debug_connection_id:
+			debug_row += 1
+	debug_status.position = to_local(player.global_position) + Vector2(-85.0, -68.0 - float(debug_row) * 42.0)
 	var target_name := str(target.name) if is_instance_valid(target) else "无"
 	var pivot_name := str(wrap_pivot.name) if is_wrapped and is_instance_valid(wrap_pivot) else "未接触"
+	var support_names := PackedStringArray()
+	for support in wrap_supports:
+		if is_instance_valid(support):
+			support_names.append(str(support.name))
+	var support_summary := ", ".join(support_names) if not support_names.is_empty() else "无"
 	var state_names: Array[String] = ["寻找支点", "已接触支点", "已缠绕·等待拉紧", "拉紧中", "束缚触发"]
 	var status_name: String = state_names[wrap_state]
-	var status_text := "锚定：%s | 支点：%s\n路径节点：%d | 角度：%.0f°/%.0f°\n有效移动：%s | 已缠绕：%s\n已拉紧：%s | 张力：%.1f/%.1f px\n状态：%s" % [
+	var status_text := "#%d 锚定：%s | 主支点：%s\n路径支点：%s\n路径节点：%d | 角度：%.0f°/%.0f°\n有效移动：%s | 已缠绕：%s\n已拉紧：%s | 张力：%.1f/%.1f px\n状态：%s" % [
+		debug_connection_id,
 		target_name,
 		pivot_name,
+		support_summary,
 		path_points.size(),
 		absf(accumulated_wrap_angle),
 		required_wrap_angle_degrees,
@@ -610,7 +805,10 @@ func finish_naturally() -> void:
 
 
 func _reset_wrap_state(reason: String) -> void:
+	_log_connection_state("wrap state reset: %s" % reason)
 	wrap_pivot = null
+	wrap_supports.clear()
+	_secondary_support_arc_directions.clear()
 	_dynamic_pivot = false
 	is_wrapped = false
 	wrap_state = WrapState.SEEKING_SUPPORT
