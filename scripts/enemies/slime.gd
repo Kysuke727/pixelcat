@@ -313,6 +313,14 @@ func _move_and_check_impacts() -> void:
 		var collider := collision.get_collider()
 		if not collider is Node:
 			continue
+		if collider.is_in_group("yarn_barriers"):
+			if state == SlimeState.LUNGE:
+				attack_area.set_deferred("monitoring", false)
+				cooldown_left = attack_cooldown
+				velocity = Vector2.ZERO
+				_change_state(SlimeState.RECOVER)
+				state_time_left = recover_duration
+			continue
 		var relative_velocity := incoming_velocity - collision.get_collider_velocity()
 		var approach_speed := maxf(0.0, -relative_velocity.dot(collision.get_normal()))
 		if collider.is_in_group("player"):

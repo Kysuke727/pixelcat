@@ -218,6 +218,7 @@ func _run() -> void:
 	_check(static_connection.get_node("AnchorKnot").visible, "connected target displays the attached yarn knot")
 	_check(static_connection.get_node("PivotMarker").visible, "active support has a visible debug marker")
 	_check(static_connection.get_debug_status_text().contains("张力"), "debug display reports tension and wrap state")
+	static_connection.stop_feeding()
 	var final_radial := (player.global_position - static_pivot_position).normalized()
 	player.global_position += final_radial * 30.0
 	static_connection._process(1.0 / 60.0)
@@ -296,6 +297,7 @@ func _run() -> void:
 		player.global_position = counterclockwise_pivot_position + Vector2.from_angle(PI + deg_to_rad(6.0 * step)) * 70.0
 		counterclockwise_connection._process(1.0 / 60.0)
 	_check(counterclockwise_connection.winding_complete, "counterclockwise pivot winding reaches 270 degrees")
+	counterclockwise_connection.stop_feeding()
 	var counterclockwise_radial := (player.global_position - counterclockwise_pivot_position).normalized()
 	player.global_position += counterclockwise_radial * 30.0
 	counterclockwise_connection._process(1.0 / 60.0)
@@ -349,6 +351,7 @@ func _run() -> void:
 		dynamic_connection._process(1.0 / 60.0)
 	_check(dynamic_connection.winding_complete, "dynamic pivot motion does not erase cat winding")
 	_check(not dynamic_connection.loop_bound, "dynamic pivot winding still waits for tension")
+	dynamic_connection.stop_feeding()
 	var dynamic_radial := (player.global_position - dynamic_pivot.global_position).normalized()
 	player.global_position += dynamic_radial * 30.0
 	dynamic_connection._process(1.0 / 60.0)

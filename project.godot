@@ -86,6 +86,11 @@ dodge={
 
 3d/physics_engine="Jolt Physics"
 
+[layer_names]
+
+2d_physics/layer_4="Active taut yarn"
+2d_physics/layer_8="Persistent yarn loop"
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"

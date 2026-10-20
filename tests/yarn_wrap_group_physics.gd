@@ -69,10 +69,6 @@ func _run() -> void:
 	connection._update_tension_and_bind()
 	_check(connection.is_taut, "zero remaining slack marks the cable physically taut")
 	_check(anchor.bind_time_left <= 0.0 and pivot.bind_time_left <= 0.0, "tautness without an active player pull does not bind targets")
-	connection._update_tension_and_bind(true)
-	_check(anchor.bind_time_left <= 0.0, "an immune anchor does not receive an invalid bind")
-	_check(pivot.bind_time_left > 0.0, "immune A does not block independent participating pivot B settlement")
-	_check(outside.bind_time_left <= 0.0, "outside enemy remains unbound")
 	var late_enclosed := _spawn_slime(world, inside_position + Vector2(0.0, 10.0), false)
 	_check(connection._point_is_inside_polygon_nonzero(late_enclosed.global_position, known_loop), "late target is inside the independent explicit loop")
 	var late_group_targets := connection._collect_targets_inside_actual_loops(known_loop)
@@ -94,20 +90,25 @@ func _run() -> void:
 	_check(connection._build_routed_path().size() > routed.size(), "secondary support adds visible route points")
 	await physics_frame
 	_check(connection._validate_current_path(), "multi-support route remains clear of physical support colliders")
-	var dead_secondary: Node2D = connection.wrap_supports.back()
-	dead_secondary.queue_free()
-	await physics_frame
-	connection._add_contacted_supports()
-	_check(connection.is_wrapped and connection.wrap_pivot == pivot and connection.winding_complete, "secondary support removal does not switch or clear a valid primary winding")
 	var second_anchor := _spawn_slime(world, Vector2(710.0, 520.0), false)
 	var second_connection := _new_connection(world, combat, player, second_anchor)
 	await process_frame
 	_check(connection.debug_status.position != second_connection.debug_status.position, "simultaneous connection diagnostics occupy separate rows")
 	_check(get_nodes_in_group("yarn_connections").size() == 2, "multiple live yarn connections keep independent state")
-
-	connection.finish_naturally()
 	second_connection.finish_naturally()
-	for enemy in [pivot, anchor, enclosed, outside, late_enclosed, second_anchor]:
+	second_anchor.queue_free()
+	var dead_secondary: Node2D = connection.wrap_supports.back()
+	dead_secondary.queue_free()
+	await physics_frame
+	connection._add_contacted_supports()
+	_check(connection.is_wrapped and connection.wrap_pivot == pivot and connection.winding_complete, "secondary support removal does not switch or clear a valid primary winding")
+	connection.stop_feeding()
+	connection._update_tension_and_bind(true)
+	_check(anchor.bind_time_left <= 0.0, "an immune anchor does not receive an invalid bind")
+	_check(pivot.bind_time_left > 0.0, "immune A does not block independent participating pivot B settlement")
+	_check(outside.bind_time_left <= 0.0, "outside enemy remains unbound")
+	connection.finish_naturally()
+	for enemy in [pivot, anchor, enclosed, outside, late_enclosed]:
 		if is_instance_valid(enemy):
 			enemy.queue_free()
 	if is_instance_valid(support2):
@@ -219,13 +220,22 @@ func _run() -> void:
 	_check(physical_connection.accumulated_wrap_angle >= physical_connection.required_wrap_angle_degrees - 2.0, "real CharacterBody2D movement accumulates winding around a physical obstacle")
 	_check(physical_connection.winding_complete, "real physical winding reaches the bind-ready state")
 	_check(not physical_connection.loop_bound, "real winding alone does not bind before active pull")
-	Input.action_press("move_down")
-	for _frame in range(15):
+	physical_connection.stop_feeding()
+	for _frame in range(240):
+		if not is_instance_valid(physical_connection) or physical_anchor.bind_time_left > 0.0:
+			break
+		var physical_outward := (physical_connection._build_routed_path()[0] - physical_connection._build_routed_path()[1]).normalized()
+		for action in ["move_left", "move_right", "move_up", "move_down"]:
+			Input.action_release(action)
+		_press_rope_outward(physical_outward)
 		await physics_frame
-	Input.action_release("move_down")
+	for action in ["move_left", "move_right", "move_up", "move_down"]:
+		Input.action_release(action)
 	await physics_frame
-	_check(physical_connection.is_taut and physical_connection.loop_bound, "real outward CharacterBody2D pull completes the physical bind")
-	physical_connection.finish_naturally()
+	_check(physical_anchor.bind_time_left > 0.0, "real outward CharacterBody2D pull completes the physical bind")
+	_check(not is_instance_valid(physical_connection), "successful binding detaches the cat-side connection")
+	if is_instance_valid(physical_connection):
+		physical_connection.finish_naturally()
 	physical_pivot.queue_free()
 	physical_anchor.queue_free()
 	await physics_frame
@@ -259,9 +269,10 @@ func _run() -> void:
 		Input.action_release("move_left")
 	_check(reverse_connection.accumulated_wrap_angle <= -reverse_connection.required_wrap_angle_degrees + 2.0, "real CharacterBody2D movement also accumulates reverse-direction winding")
 	_check(reverse_connection.winding_complete and not reverse_connection.loop_bound, "reverse physical winding also waits for active pull")
+	reverse_connection.stop_feeding()
 	var reverse_outward := (reverse_connection._build_routed_path()[0] - reverse_connection._build_routed_path()[1]).normalized()
 	for _frame in range(120):
-		if reverse_connection.loop_bound:
+		if not is_instance_valid(reverse_connection) or reverse_anchor.bind_time_left > 0.0:
 			break
 		reverse_outward = (reverse_connection._build_routed_path()[0] - reverse_connection._build_routed_path()[1]).normalized()
 		for action in ["move_left", "move_right", "move_up", "move_down"]:
@@ -271,8 +282,10 @@ func _run() -> void:
 	for action in ["move_left", "move_right", "move_up", "move_down"]:
 		Input.action_release(action)
 	await physics_frame
-	_check(reverse_connection.is_taut and reverse_connection.loop_bound, "reverse-direction physical pull completes the bind")
-	reverse_connection.finish_naturally()
+	_check(reverse_anchor.bind_time_left > 0.0, "reverse-direction physical pull completes the bind")
+	_check(not is_instance_valid(reverse_connection), "reverse-direction binding detaches the cat-side connection")
+	if is_instance_valid(reverse_connection):
+		reverse_connection.finish_naturally()
 
 	for enemy in get_nodes_in_group("enemies"):
 		if is_instance_valid(enemy):

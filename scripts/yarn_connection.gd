@@ -68,6 +68,7 @@ var path_resolution_complete: bool = true
 var effective_rope_length: float = 0.0
 var actual_routed_length: float = 0.0
 var remaining_slack: float = 0.0
+var feeding_enabled: bool = true
 var cut_reward_claimed: bool = false
 var finished: bool = false
 var owner_scene: Node
@@ -94,6 +95,11 @@ var _active_pull_distance: float = 0.0
 var _wound_endpoint_segment_length: float = 0.0
 var _player_requested_outward_pull: bool = false
 var _player_slack_before_step: float = 0.0
+var _feed_step_valid: bool = false
+var _feed_step_route_length: float = 0.0
+var _feed_step_support_ids: Array[int] = []
+var _feed_step_support_centers: Dictionary = {}
+var _feed_step_anchor_position: Vector2 = Vector2.ZERO
 var _rope_barrier_shapes: Array[CollisionShape2D] = []
 var _rope_barrier_body: StaticBody2D
 
@@ -137,6 +143,7 @@ func _ready() -> void:
 	_rope_barrier_body.collision_layer = 4
 	_rope_barrier_body.collision_mask = 0
 	_rope_barrier_body.set_meta("yarn_connection_id", debug_connection_id)
+	_rope_barrier_body.add_to_group("yarn_barriers")
 	add_child(_rope_barrier_body)
 	print("[Yarn #%d] started anchor=%s" % [debug_connection_id, str(target.name) if is_instance_valid(target) else "<invalid>"])
 	_update_visuals()
@@ -636,6 +643,9 @@ func _update_tension_and_bind(allow_bind: bool = false) -> void:
 	if not winding_complete or not is_wrapped:
 		last_bind_failure_reason = "绳长已受限，但尚无有效缠绕；只阻挡，不束缚"
 		return
+	if allow_bind and feeding_enabled:
+		last_bind_failure_reason = "仍在放线；停止放线后再主动外拉才能束缚"
+		return
 	wrap_state = WrapState.BOUND if loop_bound else WrapState.TAUT
 	last_bind_failure_reason = "毛线绷紧；等待玩家主动外拉" if not allow_bind else "玩家主动拉紧毛线"
 	if allow_bind:
@@ -664,6 +674,7 @@ func constrain_player_velocity(requested_velocity: Vector2, delta: float) -> Vec
 	if route.size() < 2:
 		return requested_velocity
 	_update_rope_lengths_and_barrier()
+	_capture_feed_step(route)
 	_player_slack_before_step = remaining_slack
 	var outward := (route[0] - route[1]).normalized()
 	var outward_speed := requested_velocity.dot(outward)
@@ -691,8 +702,12 @@ func on_player_physics_moved(old_position: Vector2, new_position: Vector2) -> vo
 		if path_resolution_complete:
 			_remove_released_secondary_supports()
 	if not path_resolution_complete or not _validate_current_path():
+		_feed_step_valid = false
 		return
+	var discontinuity_before := _get_player_discontinuity_version()
 	var continuous_motion := _update_wrap_angle(requested_pull)
+	if continuous_motion:
+		_pay_out_for_player_route_growth(old_position, new_position)
 	_update_rope_lengths_and_barrier()
 	var movement := new_position - old_position
 	var route := _build_routed_path()
@@ -700,19 +715,85 @@ func on_player_physics_moved(old_position: Vector2, new_position: Vector2) -> vo
 	var actively_pulled := requested_pull and (
 		movement.dot(outward) > 0.1 or _player_slack_before_step <= LOOP_GEOMETRY_EPSILON
 	)
-	if continuous_motion and remaining_slack <= LOOP_GEOMETRY_EPSILON and winding_complete and is_wrapped and actively_pulled:
+	# At the leash, CharacterBody2D correctly clamps the cat's outward velocity
+	# to zero. A real outward input at an already taut leash is still the final
+	# active pull; do not require another physical pixel after the hard limit.
+	# A teleport/respawn is excluded by the discontinuity version check.
+	var requested_at_taut_leash := (
+		requested_pull
+		and _player_slack_before_step <= LOOP_GEOMETRY_EPSILON
+		and old_position.distance_to(new_position) <= 0.1
+		and discontinuity_before == _get_player_discontinuity_version()
+	)
+	if (continuous_motion or requested_at_taut_leash) and not feeding_enabled and remaining_slack <= LOOP_GEOMETRY_EPSILON and winding_complete and is_wrapped and actively_pulled:
 		_update_tension_and_bind(true)
 	elif requested_pull:
 		last_bind_failure_reason = "玩家外拉正在消耗松弛（%.1f px）" % remaining_slack
+	_feed_step_valid = false
+
+
+func _capture_feed_step(route: PackedVector2Array) -> void:
+	_feed_step_valid = route.size() >= 2 and is_instance_valid(player) and is_instance_valid(target)
+	_feed_step_route_length = _path_length(route)
+	_feed_step_support_ids.clear()
+	_feed_step_support_centers.clear()
+	_feed_step_anchor_position = target.global_position if is_instance_valid(target) else Vector2.ZERO
+	for support in wrap_supports:
+		if not is_instance_valid(support):
+			continue
+		var support_id := support.get_instance_id()
+		_feed_step_support_ids.append(support_id)
+		_feed_step_support_centers[support_id] = _get_support_center(support)
+
+
+func _pay_out_for_player_route_growth(old_position: Vector2, new_position: Vector2) -> void:
+	if not feeding_enabled or not _feed_step_valid or not is_instance_valid(target):
+		return
+	var player_step := old_position.distance_to(new_position)
+	if player_step <= 0.1 or player_step > maximum_player_sample_step:
+		return
+	if target.global_position.distance_to(_feed_step_anchor_position) > 0.05:
+		return
+	if wrap_supports.size() != _feed_step_support_ids.size():
+		return
+	for index in range(wrap_supports.size()):
+		var support := wrap_supports[index]
+		if not is_instance_valid(support) or support.get_instance_id() != _feed_step_support_ids[index]:
+			return
+		var old_center: Vector2 = _feed_step_support_centers.get(support.get_instance_id(), _get_support_center(support))
+		if _get_support_center(support).distance_to(old_center) > 0.05:
+			return
+	var current_route_length := _routed_path_length()
+	var player_caused_growth := current_route_length - _feed_step_route_length
+	if player_caused_growth <= 0.001:
+		return
+	effective_rope_length += player_caused_growth
+	last_bind_failure_reason = "正在放线 +%.1f px（玩家造成的路径增长）" % player_caused_growth
+
+
+func stop_feeding() -> bool:
+	if finished or not feeding_enabled:
+		return false
+	_update_rope_lengths_and_barrier()
+	feeding_enabled = false
+	last_bind_failure_reason = "已停止放线，锁定有效绳长；剩余松弛 %.1f px" % remaining_slack
+	_log_connection_state(last_bind_failure_reason)
+	_update_visuals()
+	return true
+
+
+func _path_length(path: PackedVector2Array) -> float:
+	var result := 0.0
+	for index in range(path.size() - 1):
+		result += path[index].distance_to(path[index + 1])
+	return result
 
 
 func _update_rope_lengths_and_barrier() -> void:
 	if not is_instance_valid(player) or not is_instance_valid(target):
 		return
 	var route := _build_routed_path()
-	actual_routed_length = 0.0
-	for index in range(route.size() - 1):
-		actual_routed_length += route[index].distance_to(route[index + 1])
+	actual_routed_length = _path_length(route)
 	remaining_slack = maxf(effective_rope_length - actual_routed_length, 0.0)
 	if rope_physically_taut:
 		rope_physically_taut = remaining_slack <= LOOP_GEOMETRY_EPSILON + rope_taut_hysteresis
@@ -761,6 +842,7 @@ func _update_rope_barrier_shapes(route: PackedVector2Array, enabled: bool) -> vo
 
 func _bind_wrapped_targets() -> void:
 	var targets := _collect_enclosed_targets()
+	var actual_loops := _extract_actual_closed_loops(_build_routed_path())
 	var bound_count := 0
 	var eligible_count := 0
 	for enemy in targets:
@@ -775,8 +857,20 @@ func _bind_wrapped_targets() -> void:
 	if loop_bound:
 		wrap_state = WrapState.BOUND
 		last_bind_failure_reason = "束缚已触发 %d/%d 个有效目标" % [_bound_target_ids.size(), targets.size()]
+		_retain_bound_loops(actual_loops)
+		# The caught targets retain their own bind timers. The cat-side tether is
+		# removed immediately; only the closed loop, if any, survives independently.
+		_finish()
 	else:
 		last_bind_failure_reason = "没有可结算目标（免疫或已被其他毛线束缚；候选 %d）" % eligible_count
+
+
+func _retain_bound_loops(actual_loops: Array[PackedVector2Array]) -> void:
+	if actual_loops.is_empty() or not is_instance_valid(owner_scene):
+		return
+	var retained_loop := BoundYarnLoop.new()
+	retained_loop.setup(actual_loops, bind_duration, taut_rope_collision_radius)
+	owner_scene.add_child(retained_loop)
 
 
 func _collect_enclosed_targets() -> Array[Node2D]:
@@ -1184,6 +1278,7 @@ func _update_visuals() -> void:
 	if not last_bind_failure_reason.is_empty() and not loop_bound:
 		status_text += "\n原因：" + last_bind_failure_reason
 	status_text += "\n绳路 %.1f / 有效 %.1f px | 松弛 %.1f px" % [actual_routed_length, effective_rope_length, remaining_slack]
+	status_text += " | 放线：%s" % ("开" if feeding_enabled else "已锁定")
 	debug_status.text = status_text
 	debug_status.add_theme_color_override("font_color", Color(1.0, 0.92, 0.65))
 	debug_status.add_theme_font_size_override("font_size", 10)
@@ -1238,6 +1333,7 @@ func _reset_wrap_state(reason: String) -> void:
 	tension_value = 0.0
 	_active_pull_distance = 0.0
 	_player_requested_outward_pull = false
+	_feed_step_valid = false
 	_last_tension_player_position = player.global_position
 	_last_tension_pivot_position = Vector2.ZERO
 	_last_tension_anchor_position = target.global_position if is_instance_valid(target) else Vector2.ZERO

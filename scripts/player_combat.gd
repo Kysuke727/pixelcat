@@ -96,6 +96,9 @@ func _process(delta: float) -> void:
 			buffered_combo = false
 	if Input.is_action_just_pressed("yarn_cut"):
 		_cut_all_yarn_connections()
+	var ranged_attack_consumed := false
+	if Input.is_action_just_pressed("ranged_attack"):
+		ranged_attack_consumed = _handle_ranged_attack_pressed()
 
 	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		if action_state == ActionState.ATTACK1 and combo_window_open and Input.is_action_just_pressed("melee_attack"):
@@ -121,10 +124,29 @@ func _process(delta: float) -> void:
 			_start_melee(false)
 	elif (
 		Input.is_action_just_pressed("ranged_attack")
+		and not ranged_attack_consumed
 		and ranged_cooldown_left <= 0.0
 		and not yarn_projectile_in_flight
 	):
 		_start_ranged()
+
+
+func _handle_ranged_attack_pressed() -> bool:
+	var has_connection := false
+	for connection in active_yarn_connections.duplicate():
+		if not is_instance_valid(connection):
+			active_yarn_connections.erase(connection)
+			continue
+		has_connection = true
+	if not has_connection:
+		return false
+	for connection in active_yarn_connections.duplicate():
+		if is_instance_valid(connection) and connection.has_method("stop_feeding"):
+			connection.stop_feeding()
+	# While any cat-side connection exists, K locks released rope length instead
+	# of creating another projectile. Repeated K presses remain consumed until
+	# the connection is cut, expires, or resolves.
+	return true
 
 
 func _can_start_action() -> bool:
