@@ -138,9 +138,10 @@ func _run() -> void:
 	seam_connection.pivot_position_at_wound = seam_pivot_position
 	seam_connection.player_radius_at_wound = player.global_position.distance_to(seam_pivot_position)
 	seam_connection.routed_path_length_at_wound = seam_connection._routed_path_length()
+	seam_connection.effective_rope_length = seam_connection._routed_path_length() + 20.0
 	player.global_position += (player.global_position - seam_pivot_position).normalized()
 	seam_connection._update_tension_and_bind()
-	_check(not seam_connection.is_taut and not seam_connection.loop_bound, "one-pixel radial change around a full-turn seam cannot satisfy active-pull thresholds")
+	_check(seam_connection.remaining_slack > 0.0 and not seam_connection.loop_bound, "one-pixel radial change at a full-turn seam cannot consume reserved slack or bind")
 	seam_connection.finish_naturally()
 	seam_target.queue_free()
 	seam_pivot.queue_free()
@@ -167,7 +168,7 @@ func _run() -> void:
 	var static_target := _spawn_slime(world, Vector2(700.0, 350.0))
 	var static_pivot := _add_wrap_point(world, static_pivot_position, 20.0)
 	player.global_position = Vector2(430.0, 350.0)
-	var static_connection := _create_connection(combat, player, static_target)
+	var static_connection := _create_connection(combat, player, static_target, 0.0)
 	await process_frame
 	static_connection._process(1.0 / 60.0)
 	var previous_route_length: float = static_connection._routed_path_length()
@@ -182,7 +183,7 @@ func _run() -> void:
 		previous_route_length = route_length
 	_check(static_connection.winding_complete, "270 degrees around static pivot completes winding")
 	_check(maximum_route_length_step < 40.0, "routed yarn topology changes continuously without a sudden wrap jump")
-	_check(not static_connection.is_taut and static_target.bind_time_left <= 0.0, "winding without tension does not bind")
+	_check(static_target.bind_time_left <= 0.0, "winding without active player pull does not bind even if rope length is exhausted")
 	var actual_wrap_history := static_connection.wrap_angle_history.duplicate()
 	static_connection.wrap_angle_history.clear()
 	static_connection.wrap_angle_history.append(269.999999402585)
@@ -288,7 +289,7 @@ func _run() -> void:
 	var counterclockwise_target := _spawn_slime(world, Vector2(700.0, 350.0))
 	var counterclockwise_pivot := _add_wrap_point(world, counterclockwise_pivot_position, 20.0)
 	player.global_position = Vector2(430.0, 350.0)
-	var counterclockwise_connection := _create_connection(combat, player, counterclockwise_target)
+	var counterclockwise_connection := _create_connection(combat, player, counterclockwise_target, 0.0)
 	await process_frame
 	counterclockwise_connection._process(1.0 / 60.0)
 	for step in range(1, 46):
@@ -334,7 +335,7 @@ func _run() -> void:
 	var anchor_bait := _spawn_slime(world, Vector2(600.0, 200.0))
 	var dynamic_pivot := _spawn_slime(world, dynamic_pivot_position)
 	player.global_position = Vector2(330.0, 200.0)
-	var dynamic_connection := _create_connection(combat, player, anchor_bait)
+	var dynamic_connection := _create_connection(combat, player, anchor_bait, 0.0)
 	await process_frame
 	dynamic_connection._process(1.0 / 60.0)
 	_check(dynamic_connection.is_wrapped and dynamic_connection.wrap_pivot == dynamic_pivot, "enemy B is detected as a dynamic pivot, not anchor A")
@@ -578,9 +579,10 @@ func _add_wrap_point(parent: Node, position: Vector2, radius: float) -> Node2D:
 	return point
 
 
-func _create_connection(combat: Node, player: Node2D, target: Node2D) -> YarnConnection:
+func _create_connection(combat: Node, player: Node2D, target: Node2D, initial_slack: float = 72.0) -> YarnConnection:
 	var connection := load("res://scenes/combat/yarn_connection.tscn").instantiate() as YarnConnection
 	connection.configure(player, target, combat)
+	connection.initial_slack_length = initial_slack
 	current_scene.add_child(connection)
 	return connection
 

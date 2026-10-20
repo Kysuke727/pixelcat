@@ -48,25 +48,35 @@ func _run() -> void:
 	connection.routed_path_length_at_wound = connection._routed_path_length()
 	player.global_position += Vector2(0.0, -30.0)
 	var routed := connection._build_routed_path()
-	var inside_position := _find_point_inside(connection, routed, pivot.global_position, anchor.global_position, player.global_position)
-	_check(inside_position != Vector2.INF, "routed yarn path creates a non-empty enclosed region for the test fixture")
+	# Independent, explicitly closed polygon: expected points are fixed rather
+	# than discovered using the predicate being tested.
+	var known_loop := PackedVector2Array([
+		Vector2(520.0, 330.0), Vector2(680.0, 330.0), Vector2(680.0, 500.0),
+		Vector2(520.0, 500.0), Vector2(520.0, 330.0)
+	])
+	var inside_position := Vector2(600.0, 400.0)
 	var enclosed := _spawn_slime(world, inside_position, false)
 	var outside := _spawn_slime(world, inside_position + Vector2(0.0, 240.0), false)
 	anchor.bind_resistance_left = 1.0
 	await physics_frame
 	var enclosed_targets := connection._collect_enclosed_targets()
 	_check(enclosed_targets.has(anchor) and enclosed_targets.has(pivot), "anchor A and participating pivot B are always eligible")
-	_check(enclosed_targets.has(enclosed), "enemy center inside the routed yarn loop is collected")
-	_check(not enclosed_targets.has(outside), "enemy outside the routed yarn loop is excluded")
+	var explicitly_enclosed := connection._collect_targets_inside_actual_loops(known_loop)
+	_check(explicitly_enclosed.has(enclosed), "enemy center at a fixed known interior point is collected")
+	_check(not explicitly_enclosed.has(outside), "enemy at a fixed known exterior point is excluded")
+	_check(not enclosed_targets.has(enclosed), "open routed cable does not invent a closing edge to select an enemy")
+	connection.effective_rope_length = connection._routed_path_length()
 	connection._update_tension_and_bind()
-	_check(connection.is_taut, "active radial pull satisfies winding tension")
+	_check(connection.is_taut, "zero remaining slack marks the cable physically taut")
+	_check(anchor.bind_time_left <= 0.0 and pivot.bind_time_left <= 0.0, "tautness without an active player pull does not bind targets")
+	connection._update_tension_and_bind(true)
 	_check(anchor.bind_time_left <= 0.0, "an immune anchor does not receive an invalid bind")
-	_check(pivot.bind_time_left > 0.0 and enclosed.bind_time_left > 0.0, "immune A does not block independent B and enclosed enemy settlement")
+	_check(pivot.bind_time_left > 0.0, "immune A does not block independent participating pivot B settlement")
 	_check(outside.bind_time_left <= 0.0, "outside enemy remains unbound")
 	var late_enclosed := _spawn_slime(world, inside_position + Vector2(0.0, 10.0), false)
-	_check(connection._point_is_inside_routed_loop(late_enclosed.global_position, routed), "late target is physically inside the established routed loop")
-	connection._update_tension_and_bind()
-	_check(late_enclosed.bind_time_left > 0.0, "partial success does not stop later eligible target settlement")
+	_check(connection._point_is_inside_polygon_nonzero(late_enclosed.global_position, known_loop), "late target is inside the independent explicit loop")
+	var late_group_targets := connection._collect_targets_inside_actual_loops(known_loop)
+	_check(late_group_targets.has(late_enclosed), "late interior target remains eligible after another target settles")
 
 	# A new physical contact is appended, never substituted for the first pivot.
 	connection.loop_bound = false
@@ -176,9 +186,9 @@ func _run() -> void:
 			enemy.queue_free()
 	var physical_pivot := load("res://scenes/combat/yarn_wrap_point.tscn").instantiate() as Node2D
 	world.add_child(physical_pivot)
-	physical_pivot.global_position = Vector2(600.0, 820.0)
-	var physical_anchor := _spawn_slime(world, Vector2(820.0, 820.0), true)
-	player.global_position = Vector2(530.0, 820.0)
+	physical_pivot.global_position = Vector2(400.0, 300.0)
+	var physical_anchor := _spawn_slime(world, Vector2(620.0, 300.0), true)
+	player.global_position = Vector2(330.0, 300.0)
 	player.velocity = Vector2.ZERO
 	player.set_physics_process(true)
 	player.set_process(true)
@@ -198,6 +208,13 @@ func _run() -> void:
 			await physics_frame
 		Input.action_release(str(movement.action))
 		await physics_frame
+	if not physical_connection.winding_complete:
+		Input.action_press("move_left")
+		for _frame in range(8):
+			if physical_connection.winding_complete:
+				break
+			await physics_frame
+		Input.action_release("move_left")
 	_check(player.is_physics_processing() and physical_anchor.is_physics_processing(), "player and anchor physics stay enabled during the real winding route")
 	_check(physical_connection.accumulated_wrap_angle >= physical_connection.required_wrap_angle_degrees - 2.0, "real CharacterBody2D movement accumulates winding around a physical obstacle")
 	_check(physical_connection.winding_complete, "real physical winding reaches the bind-ready state")
@@ -214,9 +231,9 @@ func _run() -> void:
 	await physics_frame
 	var reverse_pivot := load("res://scenes/combat/yarn_wrap_point.tscn").instantiate() as Node2D
 	world.add_child(reverse_pivot)
-	reverse_pivot.global_position = Vector2(600.0, 820.0)
-	var reverse_anchor := _spawn_slime(world, Vector2(820.0, 820.0), true)
-	player.global_position = Vector2(530.0, 820.0)
+	reverse_pivot.global_position = Vector2(400.0, 300.0)
+	var reverse_anchor := _spawn_slime(world, Vector2(620.0, 300.0), true)
+	player.global_position = Vector2(330.0, 300.0)
 	player.velocity = Vector2.ZERO
 	var reverse_connection := load("res://scenes/combat/yarn_connection.tscn").instantiate() as YarnConnection
 	reverse_connection.configure(player, reverse_anchor, combat)
@@ -233,12 +250,26 @@ func _run() -> void:
 			await physics_frame
 		Input.action_release(str(movement.action))
 		await physics_frame
+	if not reverse_connection.winding_complete:
+		Input.action_press("move_left")
+		for _frame in range(8):
+			if reverse_connection.winding_complete:
+				break
+			await physics_frame
+		Input.action_release("move_left")
 	_check(reverse_connection.accumulated_wrap_angle <= -reverse_connection.required_wrap_angle_degrees + 2.0, "real CharacterBody2D movement also accumulates reverse-direction winding")
 	_check(reverse_connection.winding_complete and not reverse_connection.loop_bound, "reverse physical winding also waits for active pull")
-	Input.action_press("move_up")
-	for _frame in range(15):
+	var reverse_outward := (reverse_connection._build_routed_path()[0] - reverse_connection._build_routed_path()[1]).normalized()
+	for _frame in range(120):
+		if reverse_connection.loop_bound:
+			break
+		reverse_outward = (reverse_connection._build_routed_path()[0] - reverse_connection._build_routed_path()[1]).normalized()
+		for action in ["move_left", "move_right", "move_up", "move_down"]:
+			Input.action_release(action)
+		_press_rope_outward(reverse_outward)
 		await physics_frame
-	Input.action_release("move_up")
+	for action in ["move_left", "move_right", "move_up", "move_down"]:
+		Input.action_release(action)
 	await physics_frame
 	_check(reverse_connection.is_taut and reverse_connection.loop_bound, "reverse-direction physical pull completes the bind")
 	reverse_connection.finish_naturally()
@@ -273,7 +304,7 @@ func _spawn_slime(parent: Node, position: Vector2, physics_enabled: bool) -> Nod
 func _new_connection(parent: Node, combat_node: Node, player_node: Node2D, anchor_node: Node2D) -> YarnConnection:
 	var connection := load("res://scenes/combat/yarn_connection.tscn").instantiate() as YarnConnection
 	connection.configure(player_node, anchor_node, combat_node)
-	connection.set_process(false)
+	connection.set_physics_process(false)
 	parent.add_child(connection)
 	return connection
 
@@ -320,6 +351,28 @@ func _check(condition: bool, description: String) -> void:
 		print("PASS: ", description)
 	else:
 		failures.append(description)
+
+
+func _press_rope_outward(direction: Vector2) -> void:
+	if direction.x < -0.3:
+		Input.action_press("move_left")
+	elif direction.x > 0.3:
+		Input.action_press("move_right")
+	if direction.y < -0.3:
+		Input.action_press("move_up")
+	elif direction.y > 0.3:
+		Input.action_press("move_down")
+
+
+func _release_rope_outward(direction: Vector2) -> void:
+	if direction.x < -0.3:
+		Input.action_release("move_left")
+	elif direction.x > 0.3:
+		Input.action_release("move_right")
+	if direction.y < -0.3:
+		Input.action_release("move_up")
+	elif direction.y > 0.3:
+		Input.action_release("move_down")
 
 
 func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float:

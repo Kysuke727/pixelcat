@@ -83,7 +83,7 @@ func _physics_process(delta: float) -> void:
 	if guard_break_left > 0.0:
 		velocity = Vector2.ZERO
 		update_animation(Vector2.ZERO)
-		move_and_slide()
+		_move_and_slide_with_yarn(delta)
 		return
 
 	if hitstun_left > 0.0:
@@ -92,7 +92,7 @@ func _physics_process(delta: float) -> void:
 			Vector2.ZERO,
 			received_knockback_decay * delta
 		)
-		move_and_slide()
+		_move_and_slide_with_yarn(delta)
 		return
 
 	var direction = Input.get_vector(
@@ -106,7 +106,7 @@ func _physics_process(delta: float) -> void:
 	if is_defending:
 		velocity = Vector2.ZERO
 		update_animation(Vector2.ZERO)
-		move_and_slide()
+		_move_and_slide_with_yarn(delta)
 		return
 	if dodge_time_left > 0.0:
 		_move_during_dodge(delta)
@@ -123,7 +123,7 @@ func _physics_process(delta: float) -> void:
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
 		update_animation(direction)
 
-	move_and_slide()
+	_move_and_slide_with_yarn(delta)
 
 
 func update_animation(direction: Vector2) -> void:
@@ -192,7 +192,18 @@ func _try_start_dodge(input_direction: Vector2) -> bool:
 func _move_during_dodge(delta: float) -> void:
 	dodge_time_left = maxf(dodge_time_left - delta, 0.0)
 	velocity = dodge_direction * (dodge_distance / maxf(dodge_duration, 0.001))
+	_move_and_slide_with_yarn(delta)
+
+
+func _move_and_slide_with_yarn(delta: float) -> void:
+	var old_position := global_position
+	for connection in get_tree().get_nodes_in_group("yarn_connections"):
+		if connection is YarnConnection and (connection as YarnConnection).player == self:
+			velocity = (connection as YarnConnection).constrain_player_velocity(velocity, delta)
 	move_and_slide()
+	for connection in get_tree().get_nodes_in_group("yarn_connections"):
+		if connection is YarnConnection and (connection as YarnConnection).player == self:
+			(connection as YarnConnection).on_player_physics_moved(old_position, global_position)
 
 
 func is_guard_broken() -> bool:
