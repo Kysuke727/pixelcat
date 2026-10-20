@@ -14,6 +14,7 @@ signal died
 @export var dodge_invulnerability_duration: float = 0.15
 @export var dodge_cooldown: float = 15.0
 @export var dodge_duration: float = 0.15
+@export var dodge_counts_as_yarn_intent: bool = true
 
 @export_category("Defense")
 @export var shield_max_durability: float = 100.0
@@ -92,7 +93,9 @@ func _physics_process(delta: float) -> void:
 			Vector2.ZERO,
 			received_knockback_decay * delta
 		)
-		_move_and_slide_with_yarn(delta)
+		# External force still obeys rope constraints, but is not player intent:
+		# it cannot pay out yarn or count as an active pull.
+		_move_and_slide_with_yarn(delta, Vector2.ZERO)
 		return
 
 	var direction = Input.get_vector(
@@ -106,7 +109,7 @@ func _physics_process(delta: float) -> void:
 	if is_defending:
 		velocity = Vector2.ZERO
 		update_animation(Vector2.ZERO)
-		_move_and_slide_with_yarn(delta)
+		_move_and_slide_with_yarn(delta, Vector2.ZERO)
 		return
 	if dodge_time_left > 0.0:
 		_move_during_dodge(delta)
@@ -123,7 +126,7 @@ func _physics_process(delta: float) -> void:
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
 		update_animation(direction)
 
-	_move_and_slide_with_yarn(delta)
+	_move_and_slide_with_yarn(delta, direction)
 
 
 func update_animation(direction: Vector2) -> void:
@@ -192,18 +195,20 @@ func _try_start_dodge(input_direction: Vector2) -> bool:
 func _move_during_dodge(delta: float) -> void:
 	dodge_time_left = maxf(dodge_time_left - delta, 0.0)
 	velocity = dodge_direction * (dodge_distance / maxf(dodge_duration, 0.001))
-	_move_and_slide_with_yarn(delta)
+	# Dodge intent is passed separately from its resulting velocity so its
+	# confirmed active-movement contribution stays explicit.
+	_move_and_slide_with_yarn(delta, dodge_direction if dodge_counts_as_yarn_intent else Vector2.ZERO)
 
 
-func _move_and_slide_with_yarn(delta: float) -> void:
+func _move_and_slide_with_yarn(delta: float, player_intent: Vector2 = Vector2.ZERO) -> void:
 	var old_position := global_position
 	for connection in get_tree().get_nodes_in_group("yarn_connections"):
 		if connection is YarnConnection and (connection as YarnConnection).player == self:
-			velocity = (connection as YarnConnection).constrain_player_velocity(velocity, delta)
+			velocity = (connection as YarnConnection).constrain_player_velocity(velocity, delta, player_intent)
 	move_and_slide()
 	for connection in get_tree().get_nodes_in_group("yarn_connections"):
 		if connection is YarnConnection and (connection as YarnConnection).player == self:
-			(connection as YarnConnection).on_player_physics_moved(old_position, global_position)
+			(connection as YarnConnection).on_player_physics_moved(old_position, global_position, player_intent)
 
 
 func is_guard_broken() -> bool:

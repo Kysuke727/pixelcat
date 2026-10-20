@@ -5,6 +5,7 @@ enum WrapState { SEEKING_SUPPORT, WRAPPED, WOUND, TAUT, BOUND }
 
 const WRAP_ANGLE_EPSILON_DEGREES: float = 0.00001
 const MAX_SUPPORT_SOLVE_ITERATIONS: int = 8
+const ROUTE_VISIBILITY_SAMPLES_PER_SUPPORT: int = 12
 const LOOP_GEOMETRY_EPSILON: float = 0.05
 static var _next_debug_connection_id: int = 1
 
@@ -63,6 +64,9 @@ var winding_complete: bool = false
 var is_taut: bool = false
 var rope_physically_taut: bool = false
 var loop_bound: bool = false
+var settlement_completed: bool = false
+var settlement_attempt_count: int = 0
+var settled_target_ids: Array[int] = []
 var valid_movement_this_frame: bool = false
 var path_resolution_complete: bool = true
 var effective_rope_length: float = 0.0
@@ -87,7 +91,23 @@ var _wrap_seed_arc_direction: float = 1.0
 var _secondary_support_arc_directions: Dictionary = {}
 var _secondary_support_winding: Dictionary = {}
 var _bound_target_ids: Dictionary = {}
+var _settlement_targets_snapshot: Array[Node2D] = []
+var _settlement_loops_snapshot: Array[PackedVector2Array] = []
+var debug_support_contact_events: Array[Dictionary] = []
+var debug_visibility_graph_solve_count: int = 0
+var debug_visibility_graph_failure_count: int = 0
+var debug_visibility_graph_last_node_count: int = 0
+var debug_visibility_graph_max_node_count: int = 0
+var debug_visibility_graph_total_usec: int = 0
+var debug_visibility_graph_max_usec: int = 0
+var debug_visibility_graph_topology_rejection_count: int = 0
+var debug_visibility_graph_request_count: int = 0
+var debug_visibility_graph_cache_hit_count: int = 0
+var _visibility_graph_cache_tick: int = -1
+var _visibility_graph_cache_key: String = ""
+var _visibility_graph_cache_result: PackedVector2Array = PackedVector2Array()
 var debug_connection_id: int = 0
+var last_path_solver_diagnostic: String = ""
 var _last_tension_player_position: Vector2 = Vector2.ZERO
 var _last_tension_pivot_position: Vector2 = Vector2.ZERO
 var _last_tension_anchor_position: Vector2 = Vector2.ZERO
@@ -185,13 +205,36 @@ func _update_connection(delta: float, compatibility_active_pull: bool = false) -
 		if path_resolution_complete:
 			_remove_released_secondary_supports()
 		else:
-			last_bind_failure_reason = "支点路径求解达到迭代上限，本帧暂停判定"
+			if last_bind_failure_reason.is_empty():
+				last_bind_failure_reason = "支点路径求解达到迭代上限，本帧暂停判定"
+			_rebase_wrap_samples_while_unresolved()
 	_update_player_trail()
 	var continuous_player_motion := path_resolution_complete and _update_wrap_angle(compatibility_active_pull)
 	if continuous_player_motion and path_resolution_complete:
 		_update_tension_and_bind(compatibility_active_pull)
 	_update_rope_lengths_and_barrier()
 	_update_visuals()
+
+
+func _rebase_wrap_samples_while_unresolved() -> void:
+	# Collision recovery or a moving blocker can displace endpoints while the
+	# actual yarn route is invalid. Do not replay that displacement as player
+	# winding/pull when geometry becomes valid again; retain committed winding
+	# totals, but move all incremental sampling baselines to the current frame.
+	if is_instance_valid(player):
+		_last_observed_player_position = player.global_position
+		for state in _secondary_support_winding.values():
+			if state is Dictionary:
+				state["last_player_position"] = player.global_position
+	if is_instance_valid(wrap_pivot) and _is_valid_support(wrap_pivot):
+		_last_pivot_position = _get_support_center(wrap_pivot)
+	for support_id in _secondary_support_winding.keys():
+		var support := instance_from_id(int(support_id)) as Node2D
+		if is_instance_valid(support) and _is_valid_support(support):
+			var state: Dictionary = _secondary_support_winding[support_id]
+			state["last_support_center"] = _get_support_center(support)
+	_pending_wrap_angle_degrees = 0.0
+	_pending_player_travel = 0.0
 
 
 func _legacy_test_pull_detected() -> bool:
@@ -291,15 +334,33 @@ func _get_support_candidates() -> Array[Node2D]:
 
 
 func _add_contacted_supports() -> bool:
+	last_path_solver_diagnostic = ""
 	for iteration in range(MAX_SUPPORT_SOLVE_ITERATIONS):
 		var contact := _find_next_contacted_support(_build_routed_path())
 		var candidate: Node2D = contact.get("support")
 		if not is_instance_valid(candidate):
-			path_resolution_complete = true
 			path_valid = _validate_current_path()
+			if not path_valid:
+				_mark_routed_path_unresolved("没有未处理接触点，但最终碰撞路径仍不合法")
+				return false
+			path_resolution_complete = true
 			return true
 		wrap_supports.append(candidate)
 		var support_id := candidate.get_instance_id()
+		var contact_center := _get_support_center(candidate)
+		var contact_radius := _get_support_radius(candidate)
+		var contact_path: PackedVector2Array = _build_routed_path()
+		var contact_distance := INF
+		for segment_index in range(contact_path.size() - 1):
+			contact_distance = minf(contact_distance, _distance_to_segment(contact_center, contact_path[segment_index], contact_path[segment_index + 1]))
+		debug_support_contact_events.append({
+			"id": support_id,
+			"name": str(candidate.name),
+			"tick": Engine.get_physics_frames(),
+			"center": contact_center,
+			"radius": contact_radius,
+			"path_distance": contact_distance,
+		})
 		_secondary_support_arc_directions[support_id] = 0.0
 		_secondary_support_winding[support_id] = {
 			"angle": 0.0,
@@ -307,7 +368,7 @@ func _add_contacted_supports() -> bool:
 			"last_support_center": _get_support_center(candidate),
 		}
 		_rebase_tension_after_topology_change()
-		_log_connection_state("added contacted support %s at path segment %d (solve %d)" % [str(candidate.name), int(contact.get("segment", -1)), iteration + 1])
+		_log_connection_state("added contacted support %s at path segment %d (solve %d, physics tick %d, center=%s, d=%.2f/r=%.2f)" % [str(candidate.name), int(contact.get("segment", -1)), iteration + 1, Engine.get_physics_frames(), str(contact_center), contact_distance, contact_radius])
 	var remaining_contact := _find_next_contacted_support(_build_routed_path())
 	if is_instance_valid(remaining_contact.get("support")):
 		path_resolution_complete = false
@@ -315,9 +376,74 @@ func _add_contacted_supports() -> bool:
 		last_bind_failure_reason = "支点求解达到 %d 次上限，未验证路径" % MAX_SUPPORT_SOLVE_ITERATIONS
 		_log_connection_state(last_bind_failure_reason)
 		return false
-	path_resolution_complete = true
 	path_valid = _validate_current_path()
+	if not path_valid:
+		_mark_routed_path_unresolved("最终路由仍与碰撞边界冲突")
+		return false
+	path_resolution_complete = true
 	return true
+
+
+func _mark_routed_path_unresolved(context: String) -> void:
+	var routed := _build_routed_path()
+	var obstruction := _first_routed_path_obstruction(routed)
+	var geometry_note := "no ray obstruction identified"
+	if not obstruction.is_empty():
+		geometry_note = "segment %d (%s→%s) hits %s at %s" % [
+			int(obstruction.get("segment", -1)),
+			str(obstruction.get("start")),
+			str(obstruction.get("end")),
+			str(obstruction.get("collider", "<unknown>")),
+			str(obstruction.get("position", "<unknown>")),
+		]
+	var overlap_notes: PackedStringArray = []
+	if routed.size() >= 2:
+		for support in wrap_supports:
+			if not is_instance_valid(support):
+				continue
+			var collision_radius := _get_support_collision_radius(support)
+			var start_distance := routed[0].distance_to(_get_support_center(support))
+			var end_distance := routed[routed.size() - 1].distance_to(_get_support_center(support))
+			if start_distance < collision_radius:
+				overlap_notes.append("玩家端点进入支点实体 %s d=%.2f < actual_r=%.2f" % [support.name, start_distance, collision_radius])
+			if end_distance < collision_radius:
+				overlap_notes.append("锚定端点进入支点实体 %s d=%.2f < actual_r=%.2f" % [support.name, end_distance, collision_radius])
+	for first_index in range(wrap_supports.size()):
+		var first := wrap_supports[first_index]
+		if not is_instance_valid(first):
+			continue
+		for second_index in range(first_index + 1, wrap_supports.size()):
+			var second := wrap_supports[second_index]
+			if not is_instance_valid(second):
+				continue
+			var first_radius := _get_support_collision_radius(first)
+			var second_radius := _get_support_collision_radius(second)
+			var centers_distance := _get_support_center(first).distance_to(_get_support_center(second))
+			if centers_distance < first_radius + second_radius:
+				overlap_notes.append("实体重叠 %s/%s d=%.2f < actual_r_sum=%.2f" % [first.name, second.name, centers_distance, first_radius + second_radius])
+	last_bind_failure_reason = "路径求解未完成，暂停缠绕/结算（进度保留）：%s; solver=%s; context=%s geometry=[%s]" % [geometry_note, last_path_solver_diagnostic, context, ", ".join(overlap_notes)]
+	path_valid = false
+	path_resolution_complete = false
+	_log_connection_state(last_bind_failure_reason)
+
+
+func _first_routed_path_obstruction(path: PackedVector2Array) -> Dictionary:
+	var excluded: Array[Node] = []
+	if is_instance_valid(player):
+		excluded.append(player)
+	if is_instance_valid(target):
+		excluded.append(target)
+	for index in range(path.size() - 1):
+		var hit := _ray_hit(path[index], path[index + 1], excluded)
+		if not hit.is_empty():
+			return {
+				"segment": index,
+				"start": path[index],
+				"end": path[index + 1],
+				"collider": hit.get("collider", "<unknown>").name if hit.get("collider") is Node else "<unknown>",
+				"position": hit.get("position", Vector2.ZERO),
+			}
+	return {}
 
 
 func _find_next_contacted_support(path: PackedVector2Array) -> Dictionary:
@@ -400,7 +526,7 @@ func _remove_released_secondary_supports() -> void:
 		_secondary_support_arc_directions.erase(support_id)
 		_secondary_support_winding.erase(support_id)
 		_rebase_tension_after_topology_change()
-		_log_connection_state("removed released secondary support %s after direct path became clear" % str(support.name))
+		_log_connection_state("removed released secondary support %s at %.2f degrees after direct path became clear" % [str(support.name), float(state.get("angle", 0.0))])
 
 
 func _path_touches_support(path: PackedVector2Array, support: Node2D, radius: float) -> bool:
@@ -462,6 +588,19 @@ func _get_support_radius(candidate: Node2D) -> float:
 			var physical_radius := (collision_shape.shape as CircleShape2D).radius * maxf(scale.x, scale.y)
 			configured_radius = maxf(configured_radius, physical_radius)
 	return configured_radius
+
+
+func _get_support_collision_radius(candidate: Node2D) -> float:
+	if not is_instance_valid(candidate):
+		return 0.0
+	for shape_node in candidate.find_children("*", "CollisionShape2D", true, false):
+		var collision_shape := shape_node as CollisionShape2D
+		if collision_shape == null or collision_shape.disabled or not collision_shape.get_parent() is PhysicsBody2D:
+			continue
+		if collision_shape.shape is CircleShape2D:
+			var scale := collision_shape.global_scale.abs()
+			return (collision_shape.shape as CircleShape2D).radius * maxf(scale.x, scale.y)
+	return _get_support_radius(candidate)
 
 
 func _get_support_center(candidate: Node2D) -> Vector2:
@@ -658,7 +797,11 @@ func _get_endpoint_segment_length(route: PackedVector2Array) -> float:
 	return route[0].distance_to(route[1])
 
 
-func constrain_player_velocity(requested_velocity: Vector2, delta: float) -> Vector2:
+func constrain_player_velocity(
+	requested_velocity: Vector2,
+	delta: float,
+	player_intent: Vector2 = Vector2.ZERO
+) -> Vector2:
 	_player_requested_outward_pull = false
 	if finished or not is_instance_valid(player) or not is_instance_valid(target):
 		return requested_velocity
@@ -678,8 +821,8 @@ func constrain_player_velocity(requested_velocity: Vector2, delta: float) -> Vec
 	_player_slack_before_step = remaining_slack
 	var outward := (route[0] - route[1]).normalized()
 	var outward_speed := requested_velocity.dot(outward)
-	var alignment := outward_speed / maxf(requested_velocity.length(), 0.001)
-	_player_requested_outward_pull = outward_speed > 0.5 and alignment >= 0.7
+	var intent_alignment := player_intent.normalized().dot(outward) if player_intent.length_squared() > 0.001 else 0.0
+	_player_requested_outward_pull = intent_alignment >= 0.7 and outward_speed > 0.5
 	if outward_speed <= 0.0:
 		return requested_velocity
 	var allowed_extension_speed := remaining_slack / maxf(delta, 0.001)
@@ -688,7 +831,11 @@ func constrain_player_velocity(requested_velocity: Vector2, delta: float) -> Vec
 	return requested_velocity - outward * maxf(outward_speed - allowed_extension_speed, 0.0)
 
 
-func on_player_physics_moved(old_position: Vector2, new_position: Vector2) -> void:
+func on_player_physics_moved(
+	old_position: Vector2,
+	new_position: Vector2,
+	player_intent: Vector2 = Vector2.ZERO
+) -> void:
 	if finished:
 		return
 	var requested_pull := _player_requested_outward_pull
@@ -706,10 +853,11 @@ func on_player_physics_moved(old_position: Vector2, new_position: Vector2) -> vo
 		return
 	var discontinuity_before := _get_player_discontinuity_version()
 	var continuous_motion := _update_wrap_angle(requested_pull)
-	if continuous_motion:
-		_pay_out_for_player_route_growth(old_position, new_position)
-	_update_rope_lengths_and_barrier()
 	var movement := new_position - old_position
+	var intentional_travel := player_intent.length_squared() > 0.001 and movement.length() > 0.1 and movement.normalized().dot(player_intent.normalized()) >= 0.5
+	if continuous_motion and intentional_travel:
+		_pay_out_for_player_route_growth(old_position, new_position, player_intent)
+	_update_rope_lengths_and_barrier()
 	var route := _build_routed_path()
 	var outward := (route[0] - route[1]).normalized() if route.size() >= 2 else Vector2.ZERO
 	var actively_pulled := requested_pull and (
@@ -746,11 +894,18 @@ func _capture_feed_step(route: PackedVector2Array) -> void:
 		_feed_step_support_centers[support_id] = _get_support_center(support)
 
 
-func _pay_out_for_player_route_growth(old_position: Vector2, new_position: Vector2) -> void:
+func _pay_out_for_player_route_growth(
+	old_position: Vector2,
+	new_position: Vector2,
+	player_intent: Vector2 = Vector2.ZERO
+) -> void:
 	if not feeding_enabled or not _feed_step_valid or not is_instance_valid(target):
 		return
-	var player_step := old_position.distance_to(new_position)
-	if player_step <= 0.1 or player_step > maximum_player_sample_step:
+	var player_motion := new_position - old_position
+	var player_step := player_motion.length()
+	if player_step <= 0.1 or player_step > maximum_player_sample_step or player_intent.length_squared() <= 0.001:
+		return
+	if player_motion.normalized().dot(player_intent.normalized()) < 0.5:
 		return
 	if target.global_position.distance_to(_feed_step_anchor_position) > 0.05:
 		return
@@ -841,28 +996,94 @@ func _update_rope_barrier_shapes(route: PackedVector2Array, enabled: bool) -> vo
 
 
 func _bind_wrapped_targets() -> void:
-	var targets := _collect_enclosed_targets()
-	var actual_loops := _extract_actual_closed_loops(_build_routed_path())
+	if settlement_completed:
+		return
+	if not path_resolution_complete or not _validate_current_path():
+		last_bind_failure_reason = "毛线路径尚未验证，不能结算束缚"
+		return
+	# Take one immutable route snapshot. The same real loops must validate the
+	# bind, select group targets, and become the retained barrier.
+	var routed_path := _build_routed_path()
+	var actual_loops := _extract_actual_closed_loops(routed_path)
+	if not _closed_loop_snapshot_is_valid(actual_loops):
+		last_bind_failure_reason = "当前毛线路径没有真实有效闭环，不能结算束缚"
+		_log_connection_state(last_bind_failure_reason)
+		return
+	var targets := _collect_enclosed_targets_for_path(routed_path, actual_loops)
+	_commit_bind_snapshot(targets, actual_loops)
+
+
+func _commit_bind_snapshot(targets: Array[Node2D], actual_loops: Array[PackedVector2Array]) -> void:
+	if settlement_completed or not _closed_loop_snapshot_is_valid(actual_loops):
+		return
+	_settlement_targets_snapshot = targets.duplicate()
+	_settlement_loops_snapshot = _duplicate_loop_paths(actual_loops)
+	settlement_completed = true
+	settlement_attempt_count += 1
+	settled_target_ids.clear()
 	var bound_count := 0
 	var eligible_count := 0
-	for enemy in targets:
-		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind") or _bound_target_ids.has(enemy.get_instance_id()):
+	for enemy in _settlement_targets_snapshot:
+		if not is_instance_valid(enemy) or not enemy.has_method("apply_yarn_bind"):
 			continue
 		eligible_count += 1
+		settled_target_ids.append(enemy.get_instance_id())
 		if bool(enemy.apply_yarn_bind(bind_duration)):
 			bound_count += 1
 			_bound_target_ids[enemy.get_instance_id()] = true
 			_log_connection_state("bound enclosed target %s" % str(enemy.name))
 	loop_bound = loop_bound or bound_count > 0
-	if loop_bound:
+	if bound_count > 0:
 		wrap_state = WrapState.BOUND
-		last_bind_failure_reason = "束缚已触发 %d/%d 个有效目标" % [_bound_target_ids.size(), targets.size()]
-		_retain_bound_loops(actual_loops)
-		# The caught targets retain their own bind timers. The cat-side tether is
-		# removed immediately; only the closed loop, if any, survives independently.
-		_finish()
+		last_bind_failure_reason = "束缚已触发 %d/%d 个有效目标" % [_bound_target_ids.size(), _settlement_targets_snapshot.size()]
 	else:
-		last_bind_failure_reason = "没有可结算目标（免疫或已被其他毛线束缚；候选 %d）" % eligible_count
+		last_bind_failure_reason = "本次结算已完成：候选 %d 个目标均免疫或不可受缚" % eligible_count
+	# User-confirmed all-immune behavior is the same physical resolution: preserve
+	# the real loop for bind_duration and release the cat endpoint. No immune
+	# target is retried, and later entrants are absent from the frozen snapshot.
+	_retain_bound_loops(_settlement_loops_snapshot)
+	_finish()
+
+
+func _closed_loop_snapshot_is_valid(loops: Array[PackedVector2Array]) -> bool:
+	if loops.is_empty():
+		return false
+	for loop_path in loops:
+		if loop_path.size() < 4 or loop_path[0].distance_to(loop_path[loop_path.size() - 1]) > LOOP_GEOMETRY_EPSILON:
+			return false
+		if absf(_signed_polygon_area(loop_path)) <= LOOP_GEOMETRY_EPSILON:
+			return false
+	return true
+
+
+func _duplicate_loop_paths(loops: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	var result: Array[PackedVector2Array] = []
+	for loop_path in loops:
+		result.append(loop_path.duplicate())
+	return result
+
+
+func _collect_enclosed_targets_for_path(
+	routed_path: PackedVector2Array,
+	actual_loops: Array[PackedVector2Array]
+) -> Array[Node2D]:
+	var result: Array[Node2D] = []
+	if is_instance_valid(target) and target.is_in_group("enemies"):
+		result.append(target)
+	for support in wrap_supports:
+		if not is_instance_valid(support) or not support.is_in_group("enemies") or result.has(support):
+			continue
+		if _path_touches_support(routed_path, support, _get_support_radius(support) + path_clearance):
+			result.append(support)
+	for candidate in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(candidate) or not candidate is Node2D or not _is_valid_support(candidate):
+			continue
+		for loop_path in actual_loops:
+			if _point_is_inside_polygon_nonzero((candidate as Node2D).global_position, loop_path):
+				if not result.has(candidate):
+					result.append(candidate)
+				break
+	return result
 
 
 func _retain_bound_loops(actual_loops: Array[PackedVector2Array]) -> void:
@@ -1023,10 +1244,21 @@ func _ray_hit(start: Vector2, end: Vector2, exclude_nodes: Array[Node]) -> Dicti
 	query.collision_mask = 3
 	var exclusions: Array[RID] = []
 	for node in exclude_nodes:
-		if node is CollisionObject2D and is_instance_valid(node):
-			exclusions.append((node as CollisionObject2D).get_rid())
+		if is_instance_valid(node):
+			_append_collision_rids_recursive(node, exclusions)
 	query.exclude = exclusions
 	return get_world_2d().direct_space_state.intersect_ray(query)
+
+
+func _append_collision_rids_recursive(node: Node, exclusions: Array[RID]) -> void:
+	# Player/enemy scenes often own hurtbox or interaction Area2D children. Those
+	# are part of an endpoint, not obstacles for the rope's first/last segment.
+	# Exclude the complete endpoint subtree while retaining every independent
+	# support and world collider in the query.
+	if node is CollisionObject2D:
+		exclusions.append((node as CollisionObject2D).get_rid())
+	for child in node.get_children():
+		_append_collision_rids_recursive(child, exclusions)
 
 
 func _routed_path_length() -> float:
@@ -1137,33 +1369,365 @@ func _route_through_secondary_supports(base_path: PackedVector2Array, excluded_s
 			if support.get_instance_id() == excluded_support_id:
 				continue
 			var center := _get_support_center(support)
-			var radius := _get_support_radius(support) + maxf(path_clearance, 0.0)
-			for segment_index in range(routed.size() - 1):
-				if _distance_to_segment(center, routed[segment_index], routed[segment_index + 1]) >= radius - 0.5:
-					continue
-				var key := support.get_instance_id()
-				var preferred_direction := float(_secondary_support_arc_directions.get(key, 0.0))
-				var route_result := _route_segment_around_circle(
-					routed[segment_index], routed[segment_index + 1], center, radius, preferred_direction
-				)
-				var detour: PackedVector2Array = route_result.get("points", PackedVector2Array())
-				if detour.size() < 3:
-					continue
-				var replacement := PackedVector2Array()
-				for prefix_index in range(segment_index + 1):
-					replacement.append(routed[prefix_index])
-				for detour_index in range(1, detour.size() - 1):
-					replacement.append(detour[detour_index])
-				for suffix_index in range(segment_index + 1, routed.size()):
-					replacement.append(routed[suffix_index])
-				routed = replacement
-				if preferred_direction == 0.0:
-					_secondary_support_arc_directions[key] = float(route_result.get("direction", 0.0))
-				changed = true
-				break
+			# Contact/acquisition radii intentionally include generous gameplay
+			# reach. Routing must use the entity's real collision boundary instead;
+			# using the acquisition radius makes adjacent but physically separate
+			# enemies look like an impossible obstacle cluster.
+			var radius := _get_support_collision_radius(support) + maxf(path_clearance, 0.0)
+			var key := support.get_instance_id()
+			var preferred_direction := float(_secondary_support_arc_directions.get(key, 0.0))
+			var route_result := _route_entire_path_around_circle(routed, center, radius, preferred_direction, support)
+			if not bool(route_result.get("changed", false)):
+				continue
+			var replacement: PackedVector2Array = route_result.get("points", PackedVector2Array())
+			if replacement.size() < 2:
+				continue
+			routed = replacement
+			if preferred_direction == 0.0:
+				_secondary_support_arc_directions[key] = float(route_result.get("direction", 0.0))
+			changed = true
+			break
 		if not changed:
 			break
 	return routed
+
+
+func _route_entire_path_around_circle(
+	path: PackedVector2Array,
+	center: Vector2,
+	radius: float,
+	preferred_direction: float,
+	current_support: Node2D
+) -> Dictionary:
+	# A newly contacted body commonly lies across several short arc segments.
+	# Solving each segment independently fails when its endpoint vertices are
+	# already inside the body's collision radius. Find the complete contiguous
+	# in-circle span, then route between its actual entry/exit intersections.
+	var first_contact_segment := -1
+	var last_contact_segment := -1
+	for segment_index in range(path.size() - 1):
+		var segment_contacts := _distance_to_segment(center, path[segment_index], path[segment_index + 1]) < radius - 0.25
+		if segment_contacts:
+			if first_contact_segment < 0:
+				first_contact_segment = segment_index
+			last_contact_segment = segment_index
+		elif first_contact_segment >= 0:
+			break
+	if first_contact_segment < 0:
+		return {"changed": false}
+	var left_index := first_contact_segment
+	while left_index >= 0 and path[left_index].distance_to(center) < radius - 0.01:
+		left_index -= 1
+	var right_index := last_contact_segment + 1
+	while right_index < path.size() and path[right_index].distance_to(center) < radius - 0.01:
+		right_index += 1
+	if left_index < 0 or right_index >= path.size():
+		var endpoint_name := "player" if left_index < 0 else "anchor"
+		var endpoint := path[0] if left_index < 0 else path[path.size() - 1]
+		var endpoint_distance := endpoint.distance_to(center)
+		var physical_radius := _get_support_collision_radius(current_support)
+		var overlap_kind := "实际碰撞体重叠" if endpoint_distance < physical_radius else "仅路径安全余量不足"
+		last_bind_failure_reason = "%s：%s 端点在支点 %s 内 (d=%.2f, actual_r=%.2f, route_r=%.2f)" % [overlap_kind, endpoint_name, current_support.name, endpoint_distance, physical_radius, radius]
+		return {"changed": false, "impossible": endpoint_distance < physical_radius}
+	var entry_candidates := _segment_circle_intersections(path[left_index], path[left_index + 1], center, radius)
+	var exit_candidates := _segment_circle_intersections(path[right_index - 1], path[right_index], center, radius)
+	if entry_candidates.is_empty() or exit_candidates.is_empty():
+		var intersection_fallback := _route_support_cluster_with_visibility_graph(path, left_index, right_index - 1)
+		if intersection_fallback.size() >= 2:
+			return {"changed": true, "points": intersection_fallback, "direction": 0.0, "solver": "visibility graph"}
+		last_path_solver_diagnostic = "切线区间存在但边界采样未给出可靠交点，且障碍簇可视图无路：support=%s center=%s radius=%.2f" % [current_support.name, str(center), radius]
+		last_bind_failure_reason = last_path_solver_diagnostic
+		return {"changed": false, "solver_failed": true}
+	var entry: Vector2 = entry_candidates[0]
+	var exit: Vector2 = exit_candidates[exit_candidates.size() - 1]
+	var entry_angle := (entry - center).angle()
+	var exit_angle := (exit - center).angle()
+	var directions: Array[float] = []
+	if absf(preferred_direction) > 0.1:
+		directions.append(preferred_direction)
+	else:
+		directions.append(1.0)
+		directions.append(-1.0)
+	var best_direction := 0.0
+	var best_length := INF
+	var best_arc := 0.0
+	for direction in directions:
+		var arc := _directed_arc_delta(entry_angle, exit_angle, direction)
+		var points := _sample_circle_arc(center, radius, entry_angle, arc)
+		if not _candidate_arc_clear_of_other_supports(points, current_support):
+			continue
+		var arc_length := absf(arc) * radius
+		if arc_length < best_length:
+			best_length = arc_length
+			best_direction = direction
+			best_arc = arc
+	if best_direction == 0.0:
+		# The local entry/exit on this support can lie inside the clearance disc of
+		# a neighbouring, non-overlapping support. That does not make the route
+		# impossible: expand to the complete contiguous obstacle cluster and run
+		# the visibility solver between path vertices outside the cluster union.
+		var graph_result := _route_support_cluster_with_visibility_graph(path, left_index, right_index - 1)
+		if graph_result.size() >= 2:
+			return {"changed": true, "points": graph_result, "direction": 0.0, "solver": "visibility graph"}
+		var blockers: PackedStringArray = []
+		for support in wrap_supports:
+			if not is_instance_valid(support) or support == current_support or not _is_valid_support(support):
+				continue
+			var other_center := _get_support_center(support)
+			var other_collision_radius := _get_support_collision_radius(support)
+			var center_distance := center.distance_to(other_center)
+			var physical_overlap := center_distance < _get_support_collision_radius(current_support) + other_collision_radius
+			blockers.append("%s d=%.2f actual_r_sum=%.2f actual_overlap=%s" % [support.name, center_distance, _get_support_collision_radius(current_support) + other_collision_radius, str(physical_overlap)])
+		last_path_solver_diagnostic = "路由求解失败（不是无路可走的证明）：支点 %s 的弧线候选被实体碰撞挡住；候选中心=%s entry=%s exit=%s route_r=%.2f blockers=[%s]" % [current_support.name, str(center), str(entry), str(exit), radius, ", ".join(blockers)]
+		last_bind_failure_reason = last_path_solver_diagnostic
+		return {"changed": false, "solver_failed": true}
+	var result := PackedVector2Array()
+	for index in range(left_index + 1):
+		result.append(path[index])
+	if result.is_empty() or result[result.size() - 1].distance_to(entry) > 0.01:
+		result.append(entry)
+	var arc_points := _sample_circle_arc(center, radius, entry_angle, best_arc)
+	for index in range(1, arc_points.size() - 1):
+		result.append(arc_points[index])
+	if result.is_empty() or result[result.size() - 1].distance_to(exit) > 0.01:
+		result.append(exit)
+	for index in range(right_index, path.size()):
+		result.append(path[index])
+	return {"changed": true, "points": result, "direction": best_direction}
+
+
+func _route_support_cluster_with_visibility_graph(path: PackedVector2Array, first_segment: int, last_segment: int) -> PackedVector2Array:
+	if path.size() < 2 or first_segment < 0 or last_segment >= path.size() - 1:
+		return PackedVector2Array()
+	debug_visibility_graph_request_count += 1
+	var physics_tick := Engine.get_physics_frames()
+	var cache_key := _visibility_route_signature(path, first_segment, last_segment)
+	if physics_tick == _visibility_graph_cache_tick and cache_key == _visibility_graph_cache_key:
+		debug_visibility_graph_cache_hit_count += 1
+		return _visibility_graph_cache_result.duplicate()
+	var solve_started_usec := Time.get_ticks_usec()
+	debug_visibility_graph_solve_count += 1
+	var cluster_left_segment := first_segment
+	var cluster_right_segment := last_segment
+	while cluster_left_segment > 0 and _segment_intersects_any_support(path[cluster_left_segment - 1], path[cluster_left_segment]):
+		cluster_left_segment -= 1
+	while cluster_right_segment < path.size() - 2 and _segment_intersects_any_support(path[cluster_right_segment + 1], path[cluster_right_segment + 2]):
+		cluster_right_segment += 1
+	var detour_start := path[cluster_left_segment]
+	var detour_finish := path[cluster_right_segment + 1]
+	var visibility_detour := _find_collision_free_visibility_detour(detour_start, detour_finish)
+	if visibility_detour.size() < 2:
+		_record_visibility_solve_duration(solve_started_usec)
+		debug_visibility_graph_failure_count += 1
+		_visibility_graph_cache_tick = physics_tick
+		_visibility_graph_cache_key = cache_key
+		_visibility_graph_cache_result = PackedVector2Array()
+		return PackedVector2Array()
+	var graph_result := PackedVector2Array()
+	for index in range(cluster_left_segment + 1):
+		graph_result.append(path[index])
+	for index in range(visibility_detour.size()):
+		if graph_result.is_empty() or graph_result[graph_result.size() - 1].distance_to(visibility_detour[index]) > 0.01:
+			graph_result.append(visibility_detour[index])
+	for index in range(cluster_right_segment + 2, path.size()):
+		graph_result.append(path[index])
+	# A geometrically shorter detour must not erase a loop that already existed
+	# in the routed line. Reject the candidate; the caller keeps the old route
+	# unresolved rather than silently changing its winding topology.
+	var prior_loop_count := _extract_actual_closed_loops(path).size()
+	var candidate_loop_count := _extract_actual_closed_loops(graph_result).size()
+	if candidate_loop_count < prior_loop_count:
+		_record_visibility_solve_duration(solve_started_usec)
+		debug_visibility_graph_failure_count += 1
+		debug_visibility_graph_topology_rejection_count += 1
+		last_path_solver_diagnostic = "障碍簇可视图候选会移除既有真实闭环（%d→%d），拒绝替换" % [prior_loop_count, candidate_loop_count]
+		_visibility_graph_cache_tick = physics_tick
+		_visibility_graph_cache_key = cache_key
+		_visibility_graph_cache_result = PackedVector2Array()
+		return PackedVector2Array()
+	_record_visibility_solve_duration(solve_started_usec)
+	_visibility_graph_cache_tick = physics_tick
+	_visibility_graph_cache_key = cache_key
+	_visibility_graph_cache_result = graph_result.duplicate()
+	return graph_result
+
+
+func _visibility_route_signature(path: PackedVector2Array, first_segment: int, last_segment: int) -> String:
+	var parts := PackedStringArray([str(first_segment), str(last_segment)])
+	for point in path:
+		parts.append("p:%s" % str(point))
+	for support in wrap_supports:
+		if not is_instance_valid(support) or not _is_valid_support(support):
+			continue
+		parts.append("s:%d:%s:%.4f" % [support.get_instance_id(), str(_get_support_center(support)), _get_support_collision_radius(support)])
+	return "|".join(parts)
+
+
+func _record_visibility_solve_duration(started_usec: int) -> void:
+	var elapsed_usec := maxi(Time.get_ticks_usec() - started_usec, 0)
+	debug_visibility_graph_total_usec += elapsed_usec
+	debug_visibility_graph_max_usec = maxi(debug_visibility_graph_max_usec, elapsed_usec)
+
+
+func _find_collision_free_visibility_detour(start: Vector2, finish: Vector2) -> PackedVector2Array:
+	debug_visibility_graph_last_node_count = 0
+	var circles: Array[Dictionary] = []
+	for support in wrap_supports:
+		if not is_instance_valid(support) or not _is_valid_support(support):
+			continue
+		circles.append({
+			"center": _get_support_center(support),
+			"radius": _get_support_collision_radius(support) + maxf(path_clearance, 0.0),
+			"id": support.get_instance_id(),
+		})
+	if circles.is_empty():
+		return PackedVector2Array()
+	for circle in circles:
+		var center: Vector2 = circle["center"]
+		var radius: float = circle["radius"]
+		if start.distance_to(center) < radius - 0.25 or finish.distance_to(center) < radius - 0.25:
+			return PackedVector2Array()
+	var nodes: Array[Vector2] = [start, finish]
+	var circle_node_ranges: Array[Dictionary] = []
+	var sample_count := ROUTE_VISIBILITY_SAMPLES_PER_SUPPORT
+	var sample_radius_factor := 1.0 / cos(PI / float(sample_count))
+	for circle in circles:
+		var first_node := nodes.size()
+		var center: Vector2 = circle["center"]
+		var sample_radius: float = float(circle["radius"]) * sample_radius_factor
+		for sample_index in range(sample_count):
+			var angle := TAU * float(sample_index) / float(sample_count)
+			var point := center + Vector2.from_angle(angle) * sample_radius
+			if _point_is_clear_of_support_circles(point, circles, int(circle["id"])):
+				nodes.append(point)
+		circle_node_ranges.append({"id": int(circle["id"]), "first": first_node, "last": nodes.size() - 1})
+	if nodes.size() <= 2:
+		debug_visibility_graph_last_node_count = nodes.size()
+		debug_visibility_graph_max_node_count = maxi(debug_visibility_graph_max_node_count, nodes.size())
+		return PackedVector2Array()
+	debug_visibility_graph_last_node_count = nodes.size()
+	debug_visibility_graph_max_node_count = maxi(debug_visibility_graph_max_node_count, nodes.size())
+	var distances: Array[float] = []
+	var previous: Array[int] = []
+	var visited: Array[bool] = []
+	for index in range(nodes.size()):
+		distances.append(INF)
+		previous.append(-1)
+		visited.append(false)
+	distances[0] = 0.0
+	for _iteration in range(nodes.size()):
+		var current := -1
+		var best_distance := INF
+		for node_index in range(nodes.size()):
+			if not visited[node_index] and distances[node_index] < best_distance:
+				current = node_index
+				best_distance = distances[node_index]
+		if current < 0:
+			break
+		if current == 1:
+			break
+		visited[current] = true
+		for next_index in range(nodes.size()):
+			if next_index == current or visited[next_index]:
+				continue
+			if not _visibility_segment_is_clear(nodes[current], nodes[next_index], circles):
+				continue
+			var edge_length := nodes[current].distance_to(nodes[next_index])
+			var candidate_distance := distances[current] + edge_length
+			if candidate_distance + 0.001 < distances[next_index]:
+				distances[next_index] = candidate_distance
+				previous[next_index] = current
+		if distances[1] < INF:
+			# Continue until the destination is finalized so a later shorter route
+			# cannot be lost through the graph's deterministic tie ordering.
+			continue
+	if previous[1] < 0:
+		return PackedVector2Array()
+	var reversed_path: Array[Vector2] = []
+	var cursor := 1
+	while cursor >= 0:
+		reversed_path.append(nodes[cursor])
+		if cursor == 0:
+			break
+		cursor = previous[cursor]
+	if reversed_path.is_empty() or reversed_path[reversed_path.size() - 1].distance_to(start) > 0.01:
+		return PackedVector2Array()
+	var result := PackedVector2Array()
+	for index in range(reversed_path.size() - 1, -1, -1):
+		result.append(reversed_path[index])
+	return result
+
+
+func _point_is_clear_of_support_circles(point: Vector2, circles: Array[Dictionary], own_id: int) -> bool:
+	for circle in circles:
+		if int(circle["id"]) == own_id:
+			continue
+		var center: Vector2 = circle["center"]
+		var radius: float = circle["radius"]
+		if point.distance_to(center) < radius - 0.25:
+			return false
+	return true
+
+
+func _visibility_segment_is_clear(start: Vector2, finish: Vector2, circles: Array[Dictionary]) -> bool:
+	for circle in circles:
+		var center: Vector2 = circle["center"]
+		var radius: float = circle["radius"]
+		if _distance_to_segment(center, start, finish) < radius - 0.25:
+			return false
+	return true
+
+
+func _segment_intersects_any_support(start: Vector2, finish: Vector2) -> bool:
+	for support in wrap_supports:
+		if not is_instance_valid(support) or not _is_valid_support(support):
+			continue
+		var center := _get_support_center(support)
+		var radius := _get_support_collision_radius(support) + maxf(path_clearance, 0.0)
+		if _distance_to_segment(center, start, finish) < radius - 0.25:
+			return true
+	return false
+
+
+func _segment_circle_intersections(start: Vector2, end: Vector2, center: Vector2, radius: float) -> Array[Vector2]:
+	var result: Array[Vector2] = []
+	var delta := end - start
+	var offset := start - center
+	var a := delta.length_squared()
+	if a <= 0.000001:
+		return result
+	var b := 2.0 * offset.dot(delta)
+	var c := offset.length_squared() - radius * radius
+	var discriminant := b * b - 4.0 * a * c
+	if discriminant < -0.0001:
+		return result
+	var root := sqrt(maxf(discriminant, 0.0))
+	for t in [(-b - root) / (2.0 * a), (-b + root) / (2.0 * a)]:
+		if float(t) >= -0.0001 and float(t) <= 1.0001:
+			var point := start + delta * clampf(float(t), 0.0, 1.0)
+			if result.is_empty() or result[result.size() - 1].distance_to(point) > 0.01:
+				result.append(point)
+	return result
+
+
+func _sample_circle_arc(center: Vector2, radius: float, start_angle: float, arc: float) -> PackedVector2Array:
+	var result := PackedVector2Array()
+	var subdivisions := maxi(1, ceili(absf(arc) / deg_to_rad(8.0)))
+	for index in range(subdivisions + 1):
+		result.append(center + Vector2.from_angle(start_angle + arc * float(index) / float(subdivisions)) * radius)
+	return result
+
+
+func _candidate_arc_clear_of_other_supports(arc_points: PackedVector2Array, current_support: Node2D) -> bool:
+	for support in wrap_supports:
+		if not is_instance_valid(support) or support == current_support or not _is_valid_support(support):
+			continue
+		var center := _get_support_center(support)
+		var radius := _get_support_collision_radius(support) + maxf(path_clearance, 0.0)
+		for index in range(arc_points.size() - 1):
+			if _distance_to_segment(center, arc_points[index], arc_points[index + 1]) < radius - 0.25:
+				return false
+	return true
 
 
 func _route_segment_around_circle(
@@ -1328,6 +1892,11 @@ func _reset_wrap_state(reason: String) -> void:
 	is_taut = false
 	rope_physically_taut = false
 	loop_bound = false
+	settlement_completed = false
+	settlement_attempt_count = 0
+	settled_target_ids.clear()
+	_settlement_targets_snapshot.clear()
+	_settlement_loops_snapshot.clear()
 	path_resolution_complete = true
 	path_valid = true
 	tension_value = 0.0
