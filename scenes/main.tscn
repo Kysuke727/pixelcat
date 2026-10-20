@@ -10,9 +10,10 @@
 [ext_resource type="AudioStream" uid="uid://bvkg765saeqa5" path="res://assets/audio/sfx/switch17.wav" id="7_85g3d"]
 [ext_resource type="PackedScene" uid="uid://balg7vlwvktfq" path="res://scenes/interactables/bed.tscn" id="7_tipki"]
 [ext_resource type="Script" uid="uid://c6b2btc525jqk" path="res://scripts/state_switch_soundm_player_2d.gd" id="8_choun"]
-[ext_resource type="Script" path="res://scripts/progression_panel.gd" id="9_progression"]
-[ext_resource type="Script" path="res://scripts/debug_panel.gd" id="10_debug"]
-[ext_resource type="PackedScene" path="res://scenes/ui/coin_ui.tscn" id="11_coin"]
+[ext_resource type="Script" uid="uid://c2j8dicjg6teb" path="res://scripts/progression_panel.gd" id="9_progression"]
+[ext_resource type="Script" uid="uid://sm5nv2iar6sx" path="res://scripts/debug_panel.gd" id="10_debug"]
+[ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="11_coin"]
+[ext_resource type="PackedScene" uid="uid://bt0c2jpm3rl18" path="res://scenes/ui/inventory_ui.tscn" id="14_a8y0u"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -114,10 +115,16 @@ offset_top = 65.0
 offset_right = 252.0
 offset_bottom = 625.0
 
-[node name="ProgressionPanel" type="CanvasLayer" parent="."]
+[node name="ProgressionPanel" type="CanvasLayer" parent="." unique_id=1057056340]
 script = ExtResource("9_progression")
 
-[node name="DebugPanel" type="CanvasLayer" parent="."]
+[node name="DebugPanel" type="CanvasLayer" parent="." unique_id=1084660165]
 script = ExtResource("10_debug")
 
-[node name="FishUI" parent="." instance=ExtResource("11_coin")]
+[node name="FishUI" parent="." unique_id=1637907249 instance=ExtResource("11_coin")]
+
+[node name="InventoryUI" parent="." unique_id=556513039 instance=ExtResource("14_a8y0u")]
+offset_left = 362.0
+offset_top = 164.0
+offset_right = 362.0
+offset_bottom = 164.0

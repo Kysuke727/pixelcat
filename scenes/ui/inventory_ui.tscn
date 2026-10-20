@@ -1,0 +1,86 @@
+[gd_scene format=3 uid="uid://bt0c2jpm3rl18"]
+
+[ext_resource type="Script" uid="uid://v5h0aiyrg73t" path="res://scripts/inventory_ui.gd" id="1_drsq2"]
+[ext_resource type="PackedScene" uid="uid://be6xv27lxa536" path="res://scenes/ui/inventory_slot.tscn" id="2_nuief"]
+[ext_resource type="AudioStream" uid="uid://ei4qjtm4pb21" path="res://assets/audio/sfx/OpenSound.mp3" id="3_bsps8"]
+
+[node name="InventoryUI" type="Control" unique_id=556513039]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -732.0
+offset_bottom = -288.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_drsq2")
+
+[node name="Background" type="PanelContainer" parent="." unique_id=193242996]
+layout_mode = 0
+offset_right = 420.0
+offset_bottom = 360.0
+
+[node name="Content" type="VBoxContainer" parent="Background" unique_id=297401588]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Background/Content" unique_id=596659225]
+custom_minimum_size = Vector2(20, 20)
+custom_maximum_size = Vector2(40, -1)
+layout_mode = 2
+text = "背包"
+
+[node name="SlotGrid" type="GridContainer" parent="Background/Content" unique_id=709076296]
+custom_minimum_size = Vector2(320, 240)
+layout_mode = 2
+columns = 4
+
+[node name="inventory_slot" parent="Background/Content/SlotGrid" unique_id=2036254045 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot2" parent="Background/Content/SlotGrid" unique_id=1020561555 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot3" parent="Background/Content/SlotGrid" unique_id=490852194 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot4" parent="Background/Content/SlotGrid" unique_id=1393357392 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot5" parent="Background/Content/SlotGrid" unique_id=913066178 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot6" parent="Background/Content/SlotGrid" unique_id=1617222588 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot7" parent="Background/Content/SlotGrid" unique_id=475756818 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot8" parent="Background/Content/SlotGrid" unique_id=1465453392 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot9" parent="Background/Content/SlotGrid" unique_id=1867195517 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot10" parent="Background/Content/SlotGrid" unique_id=1838591016 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot11" parent="Background/Content/SlotGrid" unique_id=972174798 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="inventory_slot12" parent="Background/Content/SlotGrid" unique_id=626729626 instance=ExtResource("2_nuief")]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+
+[node name="OpenSound" type="AudioStreamPlayer" parent="." unique_id=883935640]
+stream = ExtResource("3_bsps8")

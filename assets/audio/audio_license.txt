@@ -40,3 +40,9 @@ Source: 小森平
 
 coin04.mp3
 Source: 小森平
+
+mobile_phone_C.mp3
+Source: 小森平
+
+mobile_phone_O.mp3
+Source: 小森平
