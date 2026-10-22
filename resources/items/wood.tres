@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://jrkn16y76dip"]
+
+[ext_resource type="Script" uid="uid://dah6id8r2i5if" path="res://resources/items/item_data.gd" id="1_5ao5j"]
+
+[resource]
+script = ExtResource("1_5ao5j")
+item_id = "wood"
+display_name = "木材"
+description = "普通木材，可用于制作家具。"
+metadata/_custom_type_script = "uid://dah6id8r2i5if"

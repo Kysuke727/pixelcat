@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://c1jlsyhk8k6i0"]
+
+[ext_resource type="Script" uid="uid://dah6id8r2i5if" path="res://resources/items/item_data.gd" id="1_pegj0"]
+
+[resource]
+script = ExtResource("1_pegj0")
+item_id = "yarn"
+display_name = "毛线团"
+description = "柔软的毛线团。"
+metadata/_custom_type_script = "uid://dah6id8r2i5if"

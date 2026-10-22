@@ -124,7 +124,7 @@ script = ExtResource("10_debug")
 [node name="FishUI" parent="." unique_id=1637907249 instance=ExtResource("11_coin")]
 
 [node name="InventoryUI" parent="." unique_id=556513039 instance=ExtResource("14_a8y0u")]
-offset_left = 362.0
-offset_top = 164.0
-offset_right = 362.0
-offset_bottom = 164.0
+offset_left = 301.0
+offset_top = 158.0
+offset_right = 301.0
+offset_bottom = 158.0

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://dd2ypwns6ism3"]
+
+[ext_resource type="Script" uid="uid://dah6id8r2i5if" path="res://resources/items/item_data.gd" id="1_becff"]
+
+[resource]
+script = ExtResource("1_becff")
+item_id = "stone"
+display_name = "石头"
+description = "普通石头，可用于制作。"
+metadata/_custom_type_script = "uid://dah6id8r2i5if"

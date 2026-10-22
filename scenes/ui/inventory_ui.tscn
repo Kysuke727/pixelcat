@@ -9,8 +9,10 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -732.0
-offset_bottom = -288.0
+offset_left = 311.0
+offset_top = 157.0
+offset_right = -421.0
+offset_bottom = -131.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_drsq2")
@@ -32,54 +34,42 @@ text = "背包"
 [node name="SlotGrid" type="GridContainer" parent="Background/Content" unique_id=709076296]
 custom_minimum_size = Vector2(320, 240)
 layout_mode = 2
-columns = 4
+columns = 5
 
 [node name="inventory_slot" parent="Background/Content/SlotGrid" unique_id=2036254045 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot2" parent="Background/Content/SlotGrid" unique_id=1020561555 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot3" parent="Background/Content/SlotGrid" unique_id=490852194 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot4" parent="Background/Content/SlotGrid" unique_id=1393357392 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot5" parent="Background/Content/SlotGrid" unique_id=913066178 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot6" parent="Background/Content/SlotGrid" unique_id=1617222588 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot7" parent="Background/Content/SlotGrid" unique_id=475756818 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot8" parent="Background/Content/SlotGrid" unique_id=1465453392 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot9" parent="Background/Content/SlotGrid" unique_id=1867195517 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot10" parent="Background/Content/SlotGrid" unique_id=1838591016 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot11" parent="Background/Content/SlotGrid" unique_id=972174798 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="inventory_slot12" parent="Background/Content/SlotGrid" unique_id=626729626 instance=ExtResource("2_nuief")]
-custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 
 [node name="OpenSound" type="AudioStreamPlayer" parent="." unique_id=883935640]
