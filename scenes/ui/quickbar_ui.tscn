@@ -1,0 +1,103 @@
+[gd_scene format=3 uid="uid://cb6h6jwn7bcus"]
+
+[ext_resource type="Script" uid="uid://tn1e2ub8ehfk" path="res://scripts/quickbar_ui.gd" id="1_v8ov1"]
+
+[node name="QuickbarUI" type="Control" unique_id=1857029479]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_v8ov1")
+
+[node name="QuickbarPanel" type="PanelContainer" parent="." unique_id=2100318726]
+custom_minimum_size = Vector2(200, 30)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="QuickbarSlots" type="HBoxContainer" parent="QuickbarPanel" unique_id=1362990830]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Slot1" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots" unique_id=1656963077]
+custom_minimum_size = Vector2(44, 30)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot1" unique_id=1545736278]
+layout_mode = 2
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content" unique_id=540737216]
+layout_mode = 2
+text = "1"
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content" unique_id=593542693]
+layout_mode = 2
+text = "空"
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content" unique_id=1942899003]
+layout_mode = 2
+text = "0"
+
+[node name="Slot2" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots" unique_id=249717402]
+custom_minimum_size = Vector2(44, 30)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot2" unique_id=1353520740]
+layout_mode = 2
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content" unique_id=1333296004]
+layout_mode = 2
+text = "2"
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content" unique_id=851197476]
+layout_mode = 2
+text = "空"
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content" unique_id=1550858897]
+layout_mode = 2
+text = "0"
+
+[node name="Slot3" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots" unique_id=1603793354]
+custom_minimum_size = Vector2(44, 30)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot3" unique_id=101301387]
+layout_mode = 2
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content" unique_id=1645339175]
+layout_mode = 2
+text = "3"
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content" unique_id=349237897]
+layout_mode = 2
+text = "空"
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content" unique_id=493146009]
+layout_mode = 2
+text = "0"
+
+[node name="Slot4" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots" unique_id=705352904]
+custom_minimum_size = Vector2(44, 30)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot4" unique_id=1442771324]
+layout_mode = 2
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content" unique_id=713779232]
+layout_mode = 2
+text = "4"
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content" unique_id=1224175463]
+layout_mode = 2
+text = "空"
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content" unique_id=1514240796]
+layout_mode = 2
+text = "0"

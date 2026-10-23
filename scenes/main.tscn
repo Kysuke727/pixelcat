@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://sm5nv2iar6sx" path="res://scripts/debug_panel.gd" id="10_debug"]
 [ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="11_coin"]
 [ext_resource type="PackedScene" uid="uid://bt0c2jpm3rl18" path="res://scenes/ui/inventory_ui.tscn" id="14_a8y0u"]
+[ext_resource type="PackedScene" uid="uid://cb6h6jwn7bcus" path="res://scenes/ui/quickbar_ui.tscn" id="15_jkv2x"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -124,7 +125,13 @@ script = ExtResource("10_debug")
 [node name="FishUI" parent="." unique_id=1637907249 instance=ExtResource("11_coin")]
 
 [node name="InventoryUI" parent="." unique_id=556513039 instance=ExtResource("14_a8y0u")]
-offset_left = 301.0
-offset_top = 158.0
-offset_right = 301.0
-offset_bottom = 158.0
+offset_left = 304.0
+offset_top = 126.0
+offset_right = 304.0
+offset_bottom = 126.0
+
+[node name="QuickbarUI" parent="." unique_id=1857029479 instance=ExtResource("15_jkv2x")]
+offset_left = 304.0
+offset_top = 126.0
+offset_right = 304.0
+offset_bottom = 126.0

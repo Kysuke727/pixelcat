@@ -14,8 +14,15 @@ func _ready() -> void:
 	_register_item(preload("res://resources/items/wood.tres"))
 	_register_item(preload("res://resources/items/stone.tres"))
 	_register_item(preload("res://resources/items/yarn.tres"))
+	_register_item(preload("res://resources/items/test_potion.tres"))
 
 	_create_empty_slots()
+
+	# 测试用：给背包添加物品
+	add_item(get_item_data("wood"), 10)
+	add_item(get_item_data("stone"), 5)
+	add_item(get_item_data("yarn"), 3)
+	add_item(get_item_data("test_potion"), 3)
 
 
 # 注册物品

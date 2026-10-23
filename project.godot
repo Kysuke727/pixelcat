@@ -24,6 +24,7 @@ CombatTimeController="*res://scripts/combat_time_controller.gd"
 ExpeditionManager="*res://scripts/expedition_manager.gd"
 DayManager="*uid://b7ucns7eojso8"
 InventoryManager="*uid://cmi75s8gsrb7i"
+QuickbarManager="*uid://ytwgsq63ycim"
 
 [display]
 
