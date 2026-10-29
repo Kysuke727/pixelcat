@@ -1,10 +1,18 @@
 extends SceneTree
 
+# DEPRECATED (Yarn V3): this suite covers the retired YarnConnection winding
+# angle, pivot and tension rules together with legacy yarn-cut refunds. It is
+# kept as historical reference and is NOT part of the Sticky Yarn V4 acceptance
+# suite. _initialize() skips it.
+
 var failures: Array[String] = []
 
 
 func _initialize() -> void:
-	call_deferred("_run")
+	# Explicit deprecation marker: keep the file for history, but do not run the
+	# retired YarnConnection scenario. This is a skip, not a V4 pass.
+	print("DEPRECATED_YARN_V3_SKIPPED: v3_1_1_yarn_slime_fixes.gd")
+	quit(0)
 
 
 func _run() -> void:

@@ -10,10 +10,12 @@ var source: Node2D
 var distance_travelled: float = 0.0
 var hit_targets: Dictionary = {}
 var consumed: bool = false
+var resolved: bool = false
 var combat_paused: bool = false
 
 
 func _ready() -> void:
+	add_to_group("yarn_projectiles")
 	body_entered.connect(_on_body_entered)
 
 
@@ -53,7 +55,7 @@ func _physics_process(delta: float) -> void:
 	distance_travelled += movement.length()
 	$Sprite2D.rotation += delta * 8.0
 	if distance_travelled >= max_range:
-		_notify_yarn_miss()
+		_notify_miss()
 		_consume()
 
 
@@ -71,16 +73,23 @@ func _handle_hit(body: Node2D) -> void:
 	var body_id := body.get_instance_id()
 	if hit_targets.has(body_id):
 		return
+	# Mark before dealing damage so a duplicate body_entered/raycast callback for
+	# the same projectile cannot deal a second hit.
 	hit_targets[body_id] = true
-	var yarn_connected := false
 	if body.has_method("receive_damage"):
-		var accepted: bool = body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
-		if accepted and body.is_in_group("enemies"):
-			var combat := _get_source_combat()
-			if is_instance_valid(combat) and combat.has_method("on_yarn_hit"):
-				yarn_connected = combat.on_yarn_hit(body)
-	if not yarn_connected:
-		_notify_yarn_miss()
+		body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
+	var bind_handled := false
+	if body.is_in_group("enemies"):
+		# Bind is attempted through the existing enemy control interface. A
+		# failed bind (dead target, active bind or bind resistance) must not
+		# undo or repeat the damage that was already applied.
+		var combat := _get_source_combat()
+		if is_instance_valid(combat) and combat.has_method("on_sticky_yarn_hit"):
+			combat.on_sticky_yarn_hit(body, self)
+			bind_handled = true
+	if not bind_handled:
+		# Wall, non-enemy body or a projectile without a valid combat owner.
+		_notify_miss()
 	_consume()
 
 
@@ -90,15 +99,25 @@ func _get_source_combat() -> Node:
 	return source.get_node_or_null("PlayerCombat")
 
 
-func _notify_yarn_miss() -> void:
+func _notify_miss() -> void:
 	var combat := _get_source_combat()
-	if is_instance_valid(combat) and combat.has_method("on_yarn_miss"):
-		combat.on_yarn_miss()
+	if is_instance_valid(combat) and not combat.is_queued_for_deletion() and combat.has_method("on_sticky_yarn_miss"):
+		combat.on_sticky_yarn_miss(self)
 
 
 func _consume() -> void:
 	if consumed:
 		return
 	consumed = true
+	resolved = true
 	set_deferred("monitoring", false)
 	queue_free()
+
+
+func _exit_tree() -> void:
+	# A projectile removed by scene switching or by any other external owner must
+	# still release the player's single-flight launch lock.
+	if resolved:
+		return
+	resolved = true
+	_notify_miss()

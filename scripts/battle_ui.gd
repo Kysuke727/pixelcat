@@ -62,18 +62,14 @@ func _update_combat_readout() -> void:
 		combat_feedback.text = "二连命中！史莱姆可能眩晕"
 		combat_feedback.add_theme_color_override("font_color", Color(1.0, 0.87, 0.45))
 	else:
-		combat_feedback.text = "J 爪击 · K 毛线 · Z 防御 · Q 剪线"
+		combat_feedback.text = "J 爪击 · K 黏黏球 · Z 防御"
 		combat_feedback.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
 	if is_instance_valid(combat):
 		var remaining: float = float(combat.get("ranged_cooldown_left"))
-		var active_connections: int = 0
-		for connection in combat.get("active_yarn_connections"):
-			if is_instance_valid(connection):
-				active_connections += 1
 		var yarn_state := "就绪" if remaining <= 0.0 else "冷却 %.1fs" % remaining
-		if active_connections > 0:
-			yarn_state += " · 连接 %d · Q 剪断减冷却" % active_connections
-		yarn_label.text = "毛线：" + yarn_state
+		if bool(combat.get("yarn_projectile_in_flight")):
+			yarn_state += " · 飞行中"
+		yarn_label.text = "黏黏球：" + yarn_state
 
 
 func _on_player_health_changed(current_health: float, max_health: float) -> void:
