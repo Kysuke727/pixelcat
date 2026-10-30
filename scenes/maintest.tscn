@@ -1,0 +1,150 @@
+[gd_scene format=3 uid="uid://csdp1vppdqybl"]
+
+[ext_resource type="PackedScene" uid="uid://dj8kto7fttbet" path="res://scenes/interactables/toy.tscn" id="1_vpoql"]
+[ext_resource type="PackedScene" uid="uid://balg7vlwvktfq" path="res://scenes/interactables/bed.tscn" id="2_lbwfj"]
+[ext_resource type="PackedScene" uid="uid://cgpon5js3xast" path="res://scenes/interactables/food_bowl.tscn" id="3_v65a7"]
+[ext_resource type="PackedScene" uid="uid://drn2vrk52xx7d" path="res://scenes/interactables/exit_door.tscn" id="4_vsvn5"]
+[ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="5_17jbf"]
+[ext_resource type="AudioStream" uid="uid://dr6e1bmiiopv6" path="res://assets/audio/music/井字棋.mp3" id="6_we7hh"]
+[ext_resource type="AudioStream" uid="uid://1jpti8kaqad" path="res://assets/audio/sfx/click3.wav" id="7_otq4m"]
+[ext_resource type="AudioStream" uid="uid://bvkg765saeqa5" path="res://assets/audio/sfx/switch17.wav" id="8_w3bhn"]
+[ext_resource type="Script" uid="uid://c6b2btc525jqk" path="res://scripts/state_switch_soundm_player_2d.gd" id="9_gdeib"]
+[ext_resource type="PackedScene" uid="uid://b4tumclyonk3g" path="res://scenes/ui/ui_main.tscn" id="10_hbwdi"]
+[ext_resource type="Script" uid="uid://c2j8dicjg6teb" path="res://scripts/progression_panel.gd" id="11_c5rer"]
+[ext_resource type="Script" uid="uid://sm5nv2iar6sx" path="res://scripts/debug_panel.gd" id="12_j0mf6"]
+[ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="13_cbxcb"]
+[ext_resource type="PackedScene" uid="uid://bt0c2jpm3rl18" path="res://scenes/ui/inventory_ui.tscn" id="14_2jy23"]
+[ext_resource type="PackedScene" uid="uid://cb6h6jwn7bcus" path="res://scenes/ui/quickbar_ui.tscn" id="15_gx77p"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
+size = Vector2(1152, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sugp2"]
+size = Vector2(1152, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(40, 648)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tbgi4"]
+size = Vector2(560, 40)
+
+[node name="main" type="Node2D" unique_id=476113682]
+
+[node name="World" type="Node2D" parent="." unique_id=93623320]
+
+[node name="wall_top" type="StaticBody2D" parent="World" unique_id=989804564]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_top" unique_id=1035811832]
+position = Vector2(576, 20)
+shape = SubResource("RectangleShape2D_ab0bu")
+
+[node name="ColorRect" type="ColorRect" parent="World/wall_top" unique_id=1359269409]
+offset_right = 1152.0
+offset_bottom = 40.0
+
+[node name="wall_bottom" type="StaticBody2D" parent="World" unique_id=477246396]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_bottom" unique_id=1154689547]
+position = Vector2(576, 628)
+shape = SubResource("RectangleShape2D_sugp2")
+
+[node name="ColorRect" type="ColorRect" parent="World/wall_bottom" unique_id=302726785]
+offset_top = 608.0
+offset_right = 1152.0
+offset_bottom = 648.0
+
+[node name="wall_left" type="StaticBody2D" parent="World" unique_id=205439680]
+rotation = 1.5707964
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_left" unique_id=426964275]
+position = Vector2(324, -20)
+rotation = 1.5707964
+shape = SubResource("RectangleShape2D_jyhfs")
+
+[node name="ColorRect" type="ColorRect" parent="World/wall_left" unique_id=987396233]
+offset_left = 648.0
+offset_top = -40.0
+offset_right = 688.0
+offset_bottom = 608.0
+rotation = 1.5707964
+
+[node name="wall_right" type="StaticBody2D" parent="World" unique_id=1595296588]
+rotation = 1.5707964
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_right" unique_id=1945234643]
+position = Vector2(325, -1132)
+shape = SubResource("RectangleShape2D_tbgi4")
+
+[node name="ColorRect" type="ColorRect" parent="World/wall_right" unique_id=947442112]
+offset_left = 648.0
+offset_top = -1152.0
+offset_right = 688.0
+offset_bottom = -504.0
+rotation = 1.5707964
+
+[node name="Toy" parent="World" unique_id=1082080486 instance=ExtResource("1_vpoql")]
+position = Vector2(330, 546)
+scale = Vector2(3, 3)
+
+[node name="Bed" parent="World" unique_id=1388561695 instance=ExtResource("2_lbwfj")]
+position = Vector2(158, 503)
+scale = Vector2(2, 2)
+
+[node name="FoodBowl" parent="World" unique_id=808035528 instance=ExtResource("3_v65a7")]
+position = Vector2(920, 560)
+scale = Vector2(5, 5)
+
+[node name="ExitDoor" parent="World" unique_id=1157092890 instance=ExtResource("4_vsvn5")]
+position = Vector2(1044, 512)
+scale = Vector2(2, 2)
+
+[node name="Cat" parent="." unique_id=211071589 instance=ExtResource("5_17jbf")]
+position = Vector2(593, 336)
+
+[node name="BGMPlayer" type="AudioStreamPlayer" parent="." unique_id=281329646]
+stream = ExtResource("6_we7hh")
+autoplay = true
+
+[node name="SFXPlayer" type="AudioStreamPlayer" parent="." unique_id=788282683]
+stream = ExtResource("7_otq4m")
+
+[node name="StateSwitchSoundmPlayer2D" type="AudioStreamPlayer2D" parent="." unique_id=551151065]
+position = Vector2(244, 91)
+stream = ExtResource("8_w3bhn")
+script = ExtResource("9_gdeib")
+
+[node name="UI" parent="." unique_id=1590554557 instance=ExtResource("10_hbwdi")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 1
+grow_vertical = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="ProgressionPanel" type="CanvasLayer" parent="." unique_id=1057056340]
+script = ExtResource("11_c5rer")
+
+[node name="DebugPanel" type="CanvasLayer" parent="." unique_id=1084660165]
+script = ExtResource("12_j0mf6")
+
+[node name="FishUI" parent="." unique_id=1637907249 instance=ExtResource("13_cbxcb")]
+offset_left = 180.0
+offset_top = 40.0
+offset_right = 220.0
+offset_bottom = 80.0
+
+[node name="InventoryUI" parent="." unique_id=556513039 instance=ExtResource("14_2jy23")]
+offset_left = 313.0
+offset_top = 81.0
+offset_right = 313.0
+offset_bottom = 81.0
+
+[node name="QuickbarUI" parent="." unique_id=1857029479 instance=ExtResource("15_gx77p")]
+offset_left = 576.0
+offset_top = 567.0
+offset_right = 576.0
+offset_bottom = 567.0

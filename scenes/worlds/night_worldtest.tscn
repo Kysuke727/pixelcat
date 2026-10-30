@@ -1,0 +1,229 @@
+[gd_scene format=3 uid="uid://co7gtb5cfqfb8"]
+
+[ext_resource type="Texture2D" uid="uid://bwbi6o5nwu214" path="res://assets/objects/street_lamp.png" id="1_htsfw"]
+[ext_resource type="PackedScene" path="res://scenes/combat/yarn_wrap_point.tscn" id="2_b1cxw"]
+[ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="3_dfwgd"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/slime.tscn" id="4_1po13"]
+[ext_resource type="AudioStream" uid="uid://c02j4tbrpjcmp" path="res://assets/audio/music/小镇.mp3" id="5_al1pm"]
+[ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="6_32p0s"]
+[ext_resource type="PackedScene" uid="uid://crdk4cmg23b4j" path="res://scenes/ui/battle_ui.tscn" id="7_27vgs"]
+[ext_resource type="Script" uid="uid://jgjjxa1s7n4c" path="res://scripts/night_safe_point.gd" id="8_fo6cr"]
+[ext_resource type="Script" uid="uid://24nh8q5ndsp0" path="res://scripts/night_exit.gd" id="9_g3sj0"]
+[ext_resource type="Script" uid="uid://5d4mhb2vojc4" path="res://scripts/night_run_controller.gd" id="10_j8gsn"]
+[ext_resource type="Script" uid="uid://c2j8dicjg6teb" path="res://scripts/progression_panel.gd" id="11_0bnwa"]
+[ext_resource type="Script" uid="uid://sm5nv2iar6sx" path="res://scripts/debug_panel.gd" id="12_qsbuf"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
+size = Vector2(1152, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qe648"]
+size = Vector2(1152, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7fymg"]
+size = Vector2(40, 648)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
+size = Vector2(40, 648)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_checkpoint"]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
+radius = 24.0
+
+[node name="NightWorld" type="Node2D" unique_id=590361467 groups=["night_exploration"]]
+
+[node name="Groud" type="Node2D" parent="." unique_id=1226507053]
+
+[node name="NightFloor" type="Polygon2D" parent="Groud" unique_id=257597940]
+scale = Vector2(1.1730138, 0.9273835)
+color = Color(0.1254902, 0.15686275, 0.23921569, 1)
+polygon = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
+
+[node name="Street" type="Polygon2D" parent="Groud" unique_id=31876004]
+scale = Vector2(1.013099, 0.9251612)
+color = Color(0.22352941, 0.2627451, 0.39215687, 1)
+polygon = PackedVector2Array(350, 0, 650, 0, 650, 700, 350, 700)
+
+[node name="Park" type="Polygon2D" parent="Groud" unique_id=1892569871]
+color = Color(0.14117648, 0.28235295, 0.23137255, 1)
+polygon = PackedVector2Array(30, 180, 320, 180, 320, 500, 30, 500)
+
+[node name="Walls" type="Node2D" parent="." unique_id=1480901505]
+
+[node name="WallTop" type="StaticBody2D" parent="Walls" unique_id=1063834062]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallTop" unique_id=660910872]
+position = Vector2(576, 20)
+shape = SubResource("RectangleShape2D_ynyhv")
+
+[node name="WallBottom" type="StaticBody2D" parent="Walls" unique_id=1884202366]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallBottom" unique_id=1456840447]
+position = Vector2(576, 628)
+shape = SubResource("RectangleShape2D_qe648")
+
+[node name="WallLeft" type="StaticBody2D" parent="Walls" unique_id=1644662808]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallLeft" unique_id=618314979]
+position = Vector2(20, 324)
+shape = SubResource("RectangleShape2D_7fymg")
+
+[node name="WallRight" type="StaticBody2D" parent="Walls" unique_id=1321220713]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallRight" unique_id=575000623]
+position = Vector2(1152, 324)
+shape = SubResource("RectangleShape2D_fojya")
+
+[node name="Decorations" type="Node2D" parent="." unique_id=1352625751]
+
+[node name="StreetLamp1" type="Sprite2D" parent="Decorations" unique_id=1692922329]
+position = Vector2(686, 210)
+scale = Vector2(0.75, 0.75)
+texture = ExtResource("1_htsfw")
+
+[node name="StreetLamp2D2" type="Sprite2D" parent="Decorations" unique_id=14542261]
+position = Vector2(686, 390)
+scale = Vector2(0.75, 0.75)
+texture = ExtResource("1_htsfw")
+
+[node name="StreetLamp2D3" type="Sprite2D" parent="Decorations" unique_id=184136245]
+position = Vector2(686, 570)
+scale = Vector2(0.75, 0.75)
+texture = ExtResource("1_htsfw")
+
+[node name="LampWrapPoint1" parent="Decorations" unique_id=1870281397 instance=ExtResource("2_b1cxw")]
+position = Vector2(686, 210)
+
+[node name="LampWrapPoint2" parent="Decorations" unique_id=1938765462 instance=ExtResource("2_b1cxw")]
+position = Vector2(686, 396)
+
+[node name="LampWrapPoint3" parent="Decorations" unique_id=264042162 instance=ExtResource("2_b1cxw")]
+position = Vector2(687, 541)
+
+[node name="Tree1" type="Polygon2D" parent="Decorations" unique_id=1516793081]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(150, 250)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Tree2" type="Polygon2D" parent="Decorations" unique_id=920148860]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(230, 340)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Tree3" type="Polygon2D" parent="Decorations" unique_id=2028586079]
+color = Color(0.09411765, 0.22745098, 0.19215687, 1)
+offset = Vector2(100, 420)
+polygon = PackedVector2Array(0, 0, 50, 0, 25, -60)
+
+[node name="Cat" parent="." unique_id=211071589 instance=ExtResource("3_dfwgd")]
+position = Vector2(500, 350)
+
+[node name="SlimeA" parent="." unique_id=1446444493 instance=ExtResource("4_1po13")]
+position = Vector2(275, 280)
+
+[node name="SlimeB" parent="." unique_id=1907207591 instance=ExtResource("4_1po13")]
+position = Vector2(760, 260)
+
+[node name="SlimeC" parent="." unique_id=479528938 instance=ExtResource("4_1po13")]
+position = Vector2(735, 520)
+
+[node name="NightMusic" type="AudioStreamPlayer2D" parent="." unique_id=381423912]
+stream = ExtResource("5_al1pm")
+autoplay = true
+
+[node name="CoinUI" parent="." unique_id=1943915820 instance=ExtResource("6_32p0s")]
+offset_left = 281.0
+offset_right = 321.0
+
+[node name="BattleUI" parent="." unique_id=1765966774 instance=ExtResource("7_27vgs")]
+offset_left = -5.0
+offset_top = -22.0
+offset_right = -5.0
+offset_bottom = -22.0
+
+[node name="SafePointPark" type="Area2D" parent="." unique_id=967093472]
+position = Vector2(300, 470)
+scale = Vector2(1.004233, 1)
+collision_layer = 0
+script = ExtResource("8_fo6cr")
+checkpoint_label = "公园安全点"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SafePointPark" unique_id=1704689107]
+shape = SubResource("CircleShape2D_checkpoint")
+
+[node name="Glow" type="Polygon2D" parent="SafePointPark" unique_id=1394812855]
+color = Color(0.25, 0.72, 1, 0.62)
+polygon = PackedVector2Array(22, 0, 15.556, 15.556, 0, 22, -15.556, 15.556, -22, 0, -15.556, -15.556, 0, -22, 15.556, -15.556)
+
+[node name="Label" type="Label" parent="SafePointPark" unique_id=1366184382]
+offset_left = -48.0
+offset_top = 24.0
+offset_right = 48.0
+offset_bottom = 46.0
+text = "公园安全点"
+horizontal_alignment = 1
+
+[node name="SafePointStreet" type="Area2D" parent="." unique_id=788844598]
+position = Vector2(700, 590)
+collision_layer = 0
+script = ExtResource("8_fo6cr")
+checkpoint_label = "街道安全点"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SafePointStreet" unique_id=2014398094]
+shape = SubResource("CircleShape2D_checkpoint")
+
+[node name="Glow" type="Polygon2D" parent="SafePointStreet" unique_id=1093982377]
+color = Color(0.25, 0.72, 1, 0.62)
+polygon = PackedVector2Array(22, 0, 15.556, 15.556, 0, 22, -15.556, 15.556, -22, 0, -15.556, -15.556, 0, -22, 15.556, -15.556)
+
+[node name="Label" type="Label" parent="SafePointStreet" unique_id=1620495043]
+offset_left = -48.0
+offset_top = 24.0
+offset_right = 48.0
+offset_bottom = 46.0
+text = "街道安全点"
+horizontal_alignment = 1
+
+[node name="NightExit" type="Area2D" parent="." unique_id=1903685370]
+position = Vector2(920, 350)
+collision_layer = 0
+monitoring = false
+script = ExtResource("9_g3sj0")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NightExit" unique_id=424193561]
+shape = SubResource("CircleShape2D_exit")
+
+[node name="GateVisual" type="Polygon2D" parent="NightExit" unique_id=599884371]
+color = Color(0.25, 0.85, 1, 0.88)
+polygon = PackedVector2Array(-16, -20, 16, -20, 22, 0, 16, 20, -16, 20, -22, 0)
+
+[node name="Label" type="Label" parent="NightExit" unique_id=38692328]
+offset_left = -38.0
+offset_top = 24.0
+offset_right = 38.0
+offset_bottom = 46.0
+text = "撤离出口"
+horizontal_alignment = 1
+
+[node name="ExpeditionHUD" type="CanvasLayer" parent="." unique_id=1266456053]
+layer = 15
+
+[node name="Panel" type="PanelContainer" parent="ExpeditionHUD" unique_id=376738662]
+offset_left = 812.0
+offset_top = 3.0
+offset_right = 1174.0
+offset_bottom = 59.0
+
+[node name="Status" type="Label" parent="ExpeditionHUD/Panel" unique_id=50637916]
+layout_mode = 2
+text = "夜晚探索"
+
+[node name="NightRunController" type="Node" parent="." unique_id=1312397588]
+script = ExtResource("10_j8gsn")
+
+[node name="ProgressionPanel" type="CanvasLayer" parent="." unique_id=401228457]
+script = ExtResource("11_0bnwa")
+
+[node name="DebugPanel" type="CanvasLayer" parent="." unique_id=1702768499]
+script = ExtResource("12_qsbuf")

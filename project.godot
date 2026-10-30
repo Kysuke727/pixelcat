@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="pixelcat"
-run/main_scene="uid://b3ng00yahc8ce"
+run/main_scene="uid://csdp1vppdqybl"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -28,8 +28,8 @@ QuickbarManager="*uid://ytwgsq63ycim"
 
 [display]
 
+window/size/resizable=false
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
 
 [input]
 
