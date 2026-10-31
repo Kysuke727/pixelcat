@@ -2,6 +2,18 @@
 
 [ext_resource type="Script" uid="uid://dc27usfs30h3q" path="res://scripts/inventory_slot.gd" id="1_kscix"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ynyhv"]
+bg_color = Color(1, 0.9411765, 0.9529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.972549, 0.8627451, 0.8980392, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [node name="inventory_slot" type="Control" unique_id=2036254045]
 custom_minimum_size = Vector2(72, 72)
 layout_mode = 3
@@ -10,6 +22,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="." unique_id=2031478242]
+layout_mode = 0
+offset_right = 72.0
+offset_bottom = 72.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ynyhv")
 
 [node name="InventorySlot" type="PanelContainer" parent="." unique_id=1035845984]
 custom_minimum_size = Vector2(72, 72)

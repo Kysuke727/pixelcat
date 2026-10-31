@@ -3,6 +3,18 @@
 [ext_resource type="Script" uid="uid://v5h0aiyrg73t" path="res://scripts/inventory_ui.gd" id="1_drsq2"]
 [ext_resource type="AudioStream" uid="uid://ei4qjtm4pb21" path="res://assets/audio/sfx/OpenSound.mp3" id="3_bsps8"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_funqb"]
+bg_color = Color(1, 0.9607843, 0.9372549, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.9372549, 0.72156864, 0.7882353, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
 [node name="InventoryUI" type="Control" unique_id=556513039]
 layout_mode = 3
 anchors_preset = 15
@@ -20,15 +32,18 @@ script = ExtResource("1_drsq2")
 layout_mode = 0
 offset_right = 420.0
 offset_bottom = 360.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_funqb")
 
 [node name="Content" type="VBoxContainer" parent="Background" unique_id=297401588]
 layout_mode = 2
 
 [node name="TitleLabel" type="Label" parent="Background/Content" unique_id=596659225]
-custom_minimum_size = Vector2(20, 20)
-custom_maximum_size = Vector2(40, -1)
 layout_mode = 2
-text = "背包"
+theme_override_colors/font_color = Color(0.57254905, 0.46666667, 0.5137255, 1)
+theme_override_font_sizes/font_size = 24
+text = "我的背包 ♡"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="SlotGrid" type="GridContainer" parent="Background/Content" unique_id=709076296]
 custom_minimum_size = Vector2(320, 240)
