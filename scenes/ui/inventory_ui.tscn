@@ -15,6 +15,33 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qe648"]
+bg_color = Color(0.972549, 0.8627451, 0.8980392, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8666667, 0.6509804, 0.7254902, 1)
+corner_detail = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7fymg"]
+bg_color = Color(0.9372549, 0.72156864, 0.7882353, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8666667, 0.6509804, 0.7254902, 1)
+corner_detail = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ynyhv"]
+bg_color = Color(1, 0.9607843, 0.9372549, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.9372549, 0.72156864, 0.7882353, 1)
+corner_detail = 12
+
 [node name="InventoryUI" type="Control" unique_id=556513039]
 layout_mode = 3
 anchors_preset = 15
@@ -55,16 +82,28 @@ layout_mode = 2
 
 [node name="ItemName" type="Label" parent="Background/Content/ItemDetails" unique_id=1324355185]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0.41568628, 0.5137255, 1)
 
 [node name="ItemDescription" type="Label" parent="Background/Content/ItemDetails" unique_id=1179985266]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0.41568628, 0.5137255, 1)
 
 [node name="ItemQuantity" type="Label" parent="Background/Content/ItemDetails" unique_id=1264066093]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0.41568628, 0.5137255, 1)
 
 [node name="BindQuickbarButton" type="Button" parent="Background/Content/ItemDetails" unique_id=1505994370]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0.35686275, 0.3137255, 1)
+theme_override_colors/font_pressed_color = Color(0.4, 0.3137255, 0.2901961, 1)
+theme_override_colors/font_hover_color = Color(0.45882353, 0.29411766, 0.35686275, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_qe648")
+theme_override_styles/hover = SubResource("StyleBoxFlat_7fymg")
 text = "保存场景，暂时不用运行。"
+
+[node name="DetailsBackground" type="Panel" parent="Background/Content/ItemDetails" unique_id=325461675]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ynyhv")
 
 [node name="OpenSound" type="AudioStreamPlayer" parent="." unique_id=883935640]
 stream = ExtResource("3_bsps8")

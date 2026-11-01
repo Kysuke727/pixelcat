@@ -15,6 +15,7 @@ const COLUMN_COUNT: int = 6
 
 var is_open: bool = false
 var inventory_slots: Array[Node] = []
+
 var selected_slot_index: int = -1
 var selected_item_id: String = ""
 
@@ -43,6 +44,7 @@ func _ready() -> void:
 	refresh_inventory()
 
 
+# 创建24个背包格子
 func _create_slots() -> void:
 	for child in slot_grid.get_children():
 		slot_grid.remove_child(child)
@@ -63,9 +65,11 @@ func _create_slots() -> void:
 
 		slot.set_slot_index(i)
 		slot.slot_clicked.connect(_on_slot_clicked)
+
 		inventory_slots.append(slot)
 
 
+# 创建快捷栏绑定菜单
 func _create_bind_popup() -> void:
 	bind_popup = PopupMenu.new()
 	bind_popup.name = "BindQuickbarPopup"
@@ -77,9 +81,11 @@ func _create_bind_popup() -> void:
 	bind_popup.add_item("清除所选快捷栏绑定", 4)
 
 	add_child(bind_popup)
+
 	bind_popup.id_pressed.connect(_on_bind_popup_id_pressed)
 
 
+# 刷新背包物品
 func refresh_inventory() -> void:
 	if not is_node_ready():
 		return
@@ -94,6 +100,7 @@ func refresh_inventory() -> void:
 
 		var item_id: String = str(data.get("item_id", ""))
 		var quantity: int = int(data.get("quantity", 0))
+
 		var item: ItemData = InventoryManager.get_item_data(item_id)
 
 		if item == null or quantity <= 0:
@@ -101,7 +108,7 @@ func refresh_inventory() -> void:
 		else:
 			slot.set_item(item, quantity)
 
-	# 物品被消耗或移除后，同步更新详情
+	# 检查当前选中的物品是否还存在
 	if selected_slot_index >= 0:
 		var selected_data: Dictionary = InventoryManager.get_slot(selected_slot_index)
 
@@ -117,8 +124,18 @@ func refresh_inventory() -> void:
 				_show_item_details(current_id, current_quantity)
 
 
+# 点击背包格子
 func _on_slot_clicked(index: int) -> void:
+	# 取消之前所有格子的选中效果
+	for slot in inventory_slots:
+		slot.set_selected(false)
+
+	# 记录当前选中的格子
 	selected_slot_index = index
+
+	# 给当前格子添加选中效果
+	if index >= 0 and index < inventory_slots.size():
+		inventory_slots[index].set_selected(true)
 
 	var data: Dictionary = InventoryManager.get_slot(index)
 
@@ -134,9 +151,11 @@ func _on_slot_clicked(index: int) -> void:
 		return
 
 	selected_item_id = item_id
+
 	_show_item_details(item_id, quantity)
 
 
+# 显示物品详情
 func _show_item_details(item_id: String, quantity: int) -> void:
 	var item: ItemData = InventoryManager.get_item_data(item_id)
 
@@ -145,6 +164,7 @@ func _show_item_details(item_id: String, quantity: int) -> void:
 		return
 
 	selected_item_id = item_id
+
 	item_name_label.text = item.display_name
 	item_description_label.text = item.description
 	item_quantity_label.text = "数量：" + str(quantity)
@@ -152,16 +172,23 @@ func _show_item_details(item_id: String, quantity: int) -> void:
 	bind_button.disabled = not item.usable
 
 
+# 清空物品详情
 func _clear_item_details() -> void:
+	# 取消所有格子的选中效果
+	for slot in inventory_slots:
+		slot.set_selected(false)
+
 	selected_slot_index = -1
 	selected_item_id = ""
 
 	item_name_label.text = "请选择物品"
 	item_description_label.text = ""
 	item_quantity_label.text = "数量：0"
+
 	bind_button.disabled = true
 
 
+# 点击设置快捷栏按钮
 func _on_bind_button_pressed() -> void:
 	if selected_item_id.is_empty():
 		return
@@ -180,6 +207,7 @@ func _on_bind_button_pressed() -> void:
 	bind_popup.popup()
 
 
+# 处理快捷栏菜单选择
 func _on_bind_popup_id_pressed(id: int) -> void:
 	if id == 4:
 		# 清除所选物品在快捷栏中的所有绑定
@@ -201,11 +229,12 @@ func _on_bind_popup_id_pressed(id: int) -> void:
 		item_description_label.text = "已绑定到快捷栏 " + str(id + 1)
 
 
+# 快捷栏数据发生变化
 func _on_quickbar_changed() -> void:
-	# 快捷栏数据变化时，后续可在这里刷新快捷栏显示
 	pass
 
 
+# 打开或关闭背包
 func toggle_inventory() -> void:
 	is_open = not is_open
 	visible = is_open
@@ -217,6 +246,7 @@ func toggle_inventory() -> void:
 			open_sound.play()
 
 
+# 关闭背包
 func close_inventory() -> void:
 	if not is_open:
 		return
@@ -225,6 +255,7 @@ func close_inventory() -> void:
 	hide()
 
 
+# 键盘输入
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_inventory") and not event.is_echo():
 		toggle_inventory()

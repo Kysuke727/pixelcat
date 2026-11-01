@@ -138,10 +138,10 @@ offset_right = 220.0
 offset_bottom = 80.0
 
 [node name="InventoryUI" parent="." unique_id=556513039 instance=ExtResource("14_2jy23")]
-offset_left = 313.0
-offset_top = 81.0
-offset_right = 313.0
-offset_bottom = 81.0
+offset_left = 318.0
+offset_top = 59.0
+offset_right = 318.0
+offset_bottom = 59.0
 
 [node name="QuickbarUI" parent="." unique_id=1857029479 instance=ExtResource("15_gx77p")]
 offset_left = 576.0
