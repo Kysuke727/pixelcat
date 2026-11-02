@@ -74,6 +74,11 @@ func _run() -> void:
 	expedition.finish_run(true)
 	await scene_changed
 	await physics_frame
+	var returned_bgm = current_scene.get_node_or_null("BGMPlayer")
+	if returned_bgm != null:
+		returned_bgm.stop()
+		returned_bgm.stream = null
+		await process_frame
 	_check(day_manager.current_state == day_manager.TimeState.DAY, "successful extraction returns to day")
 	_check(day_manager.night_state_snapshot.is_empty(), "returning to day clears the temporary night snapshot")
 	var returned_player := get_first_node_in_group("player")
