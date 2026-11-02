@@ -79,6 +79,11 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		velocity = Vector2.ZERO
 		return
+	if InventoryManager.ui_open:
+		velocity = Vector2.ZERO
+		update_animation(Vector2.ZERO)
+		move_and_slide()
+		return
 	_update_defense(delta)
 	if guard_break_left > 0.0:
 		velocity = Vector2.ZERO
@@ -406,13 +411,16 @@ func restore_expedition_state(health: float, shield: float) -> void:
 
 
 func get_effective_move_speed() -> float:
-	return SPEED * ProgressionManager.get_movement_multiplier()
+	return SPEED * ProgressionManager.get_movement_multiplier() * DayManager.get_night_movement_multiplier()
 
 
 func _apply_progression_stats(initial: bool = false) -> void:
 	var old_max_health := max_health
 	var old_max_shield := shield_max_durability
-	max_health = ProgressionManager.get_effective_max_health(CombatBalance.tuning.player_base_health)
+	max_health = (
+		ProgressionManager.get_effective_max_health(CombatBalance.tuning.player_base_health)
+		+ DayManager.get_night_max_health_bonus()
+	)
 	shield_max_durability = CombatBalance.tuning.shield_max_durability * ProgressionManager.get_shield_multiplier()
 	if not initial:
 		current_health = minf(current_health + float(max_health - old_max_health), float(max_health))
@@ -456,7 +464,7 @@ func unregister_interactable(object: Node) -> void:
 
 
 func _process(_delta: float) -> void:
-	if dead:
+	if dead or InventoryManager.ui_open:
 		return
 	if Input.is_action_just_pressed("interact"):
 		nearby_objects = nearby_objects.filter(func(object: Node) -> bool: return is_instance_valid(object))

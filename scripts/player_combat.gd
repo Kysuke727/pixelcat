@@ -115,7 +115,7 @@ func _process(delta: float) -> void:
 
 
 func _can_start_action() -> bool:
-	if not combat_enabled or not _is_night_combat_scene():
+	if not combat_enabled or not _is_night_combat_scene() or InventoryManager.ui_open:
 		return false
 	if player.has_method("can_perform_combat_action"):
 		return player.can_perform_combat_action()
@@ -240,7 +240,11 @@ func _try_damage_target(target: Node) -> void:
 	hit_targets[target_id] = true
 	var is_combo_finisher := action_state == ActionState.ATTACK2
 	var base_damage: float = float(melee_damage if is_combo_finisher else first_melee_damage)
-	var attack_damage := base_damage * ProgressionManager.get_attack_multiplier()
+	var attack_damage := (
+		base_damage
+		* ProgressionManager.get_attack_multiplier()
+		* DayManager.get_night_attack_multiplier()
+	)
 	var accepted: bool = target.receive_damage(attack_damage, player.global_position, melee_knockback)
 	if not accepted:
 		return
@@ -295,7 +299,9 @@ func _spawn_projectile() -> void:
 		projectile.setup(
 			facing,
 			player,
-			float(ranged_damage) * ProgressionManager.get_attack_multiplier(),
+			float(ranged_damage)
+			* ProgressionManager.get_attack_multiplier()
+			* DayManager.get_night_attack_multiplier(),
 			projectile_speed,
 			projectile_range
 		)
