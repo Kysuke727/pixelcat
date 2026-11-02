@@ -25,6 +25,7 @@ var _debug_snapshot: Dictionary = {}
 var _test_mode: bool = false
 var _save_elapsed: float = 0.0
 var _profile_save_blocked_by_newer_version: bool = false
+var _pending_day_state: Dictionary = {}
 
 
 func _ready() -> void:
@@ -246,6 +247,12 @@ func get_save_data() -> Dictionary:
 	return {"version": SAVE_VERSION, "profile": _profile_data(), "expedition": ExpeditionManager.get_save_data()}
 
 
+func consume_pending_day_state() -> Dictionary:
+	var pending := _pending_day_state.duplicate(true)
+	_pending_day_state.clear()
+	return pending
+
+
 func save_now() -> void:
 	if is_instance_valid(ExpeditionManager):
 		ExpeditionManager.capture_current_run()
@@ -262,7 +269,21 @@ func _profile_data() -> Dictionary:
 		"permanent_hp_bonus": permanent_hp_bonus,
 		"permanent_items": permanent_items.duplicate(),
 		"currency": CurrencyManager.get_save_data(),
+		"inventory": _inventory_save_data(),
+		"day_state": _day_state_save_data(),
 	}
+
+
+func _inventory_save_data() -> Array:
+	if is_instance_valid(InventoryManager):
+		return InventoryManager.get_save_data()
+	return []
+
+
+func _day_state_save_data() -> Dictionary:
+	if is_instance_valid(DayManager):
+		return DayManager.get_save_data()
+	return {}
 
 
 func _load_profile() -> void:
@@ -401,8 +422,48 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 	if profile.has("currency"):
 		if not profile["currency"] is Dictionary or not _has_number(profile["currency"], "fish_count"):
 			return false
+	if profile.has("inventory") and not _is_valid_inventory_data(profile["inventory"]):
+		return false
+	if profile.has("day_state") and not _is_valid_day_state_data(profile["day_state"]):
+		return false
 	if current_format and (not profile["attributes"] is Dictionary or not profile["skill_points"] is Dictionary):
 		return false
+	return true
+
+
+func _is_valid_inventory_data(value: Variant) -> bool:
+	if not value is Array:
+		return false
+	if value.size() > InventoryManager.SLOT_COUNT:
+		return false
+	for entry in value:
+		if not entry is Dictionary:
+			return false
+		if not entry.get("item_id", null) is String:
+			return false
+		if not entry.has("quantity") or not _is_number(entry["quantity"]):
+			return false
+		var quantity := float(entry["quantity"])
+		if quantity < 0.0 or quantity > 999.0 or not is_equal_approx(quantity, roundf(quantity)):
+			return false
+		if str(entry["item_id"]).is_empty() and quantity > 0.0:
+			return false
+	return true
+
+
+func _is_valid_day_state_data(value: Variant) -> bool:
+	if not value is Dictionary:
+		return false
+	for key in ["hunger", "mood", "energy"]:
+		if value.has(key) and not _is_number(value[key]):
+			return false
+	if value.has("night_snapshot"):
+		var snapshot: Variant = value["night_snapshot"]
+		if not snapshot is Dictionary:
+			return false
+		for key in ["hunger", "mood", "energy"]:
+			if snapshot.has(key) and not _is_number(snapshot[key]):
+				return false
 	return true
 
 
@@ -497,8 +558,28 @@ func _load_profile_data(data: Dictionary) -> void:
 	permanent_items.clear()
 	for item in data.get("permanent_items", []):
 		permanent_items.append(str(item))
+	_load_inventory_data(data.get("inventory", []))
+	_load_day_state_data(data.get("day_state", {}))
 	pending_allocation.clear()
 	level_changed.emit(level, experience, required_experience())
+
+
+func _load_inventory_data(value: Variant) -> void:
+	var inventory_data: Array = []
+	if value is Array:
+		inventory_data = value
+	if is_instance_valid(InventoryManager):
+		InventoryManager.load_save_data(inventory_data)
+
+
+func _load_day_state_data(value: Variant) -> void:
+	var day_state: Dictionary = {}
+	if value is Dictionary:
+		day_state = value
+	if is_instance_valid(DayManager):
+		DayManager.load_save_data(day_state)
+	else:
+		_pending_day_state = day_state.duplicate(true)
 
 
 func _skill_cap(key: String) -> int:
@@ -515,6 +596,8 @@ func _save_profile() -> bool:
 		return true
 	if _profile_save_blocked_by_newer_version:
 		return false
+	if is_instance_valid(DayManager):
+		DayManager.capture_cat_stats()
 	var serialized := JSON.stringify(get_save_data(), "\t")
 	if not _write_profile_atomically(serialized, save_path):
 		push_error("PixelCat profile save failed; the previous save was retained")
@@ -546,7 +629,7 @@ func _write_profile_atomically(serialized: String, destination: String) -> bool:
 	var parser := JSON.new()
 	var parse_error := parser.parse(verify.get_as_text())
 	verify.close()
-	if parse_error != OK or not parser.data is Dictionary or not parser.data.has("profile"):
+	if parse_error != OK or not parser.data is Dictionary or not _is_usable_profile_payload(parser.data):
 		DirAccess.remove_absolute(temporary_path)
 		return false
 	var backup_path := absolute_path + ".bak"

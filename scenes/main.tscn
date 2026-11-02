@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://scripts/progression_panel.gd" id="9_progression"]
 [ext_resource type="Script" path="res://scripts/debug_panel.gd" id="10_debug"]
 [ext_resource type="PackedScene" path="res://scenes/ui/coin_ui.tscn" id="11_coin"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(650, 40)
@@ -121,3 +122,5 @@ script = ExtResource("9_progression")
 script = ExtResource("10_debug")
 
 [node name="FishUI" parent="." instance=ExtResource("11_coin")]
+
+[node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]

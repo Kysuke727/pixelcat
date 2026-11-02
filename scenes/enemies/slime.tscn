@@ -21,7 +21,6 @@ tuning_override = ExtResource("6_tuning")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_texture")
-hframes = 4
 
 [node name="StatusFeedback" type="Label" parent="."]
 visible = false

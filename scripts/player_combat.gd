@@ -2,7 +2,10 @@ extends Node2D
 
 enum ActionState { IDLE, ATTACK1, ATTACK2, RECOVERY, RANGED }
 
-const YARN_CONNECTION_SCENE := preload("res://scenes/combat/yarn_connection.tscn")
+## Sticky Yarn V4: a hit applies a fixed bind through the enemy's existing
+## apply_yarn_bind() interface. No YarnConnection, wrapping, pivot or tension
+## simulation is created, and the old skill-tree bind duration bonus is ignored.
+const STICKY_YARN_BIND_DURATION := 1.8
 
 @export_category("Melee")
 @export var melee_damage: int = 2
@@ -32,19 +35,6 @@ var current_melee_attack_id: int = 0
 @export var projectile_range: float = 160.0
 @export var ranged_movement_multiplier: float = 0.8
 
-@export_category("Yarn Connection")
-@export var yarn_slow_multiplier: float = 0.5
-@export var yarn_slow_duration: float = 3.0
-@export var yarn_bind_duration: float = 1.5
-@export var yarn_connection_duration: float = 10.0
-@export var yarn_maximum_length: float = 0.0 # 0 = unlimited connection length
-@export var yarn_cut_cooldown_reduction: float = 1.5
-@export_category("Yarn Skill Interface — Stage 04 can set these bonuses")
-@export_range(0.0, 0.3, 0.01) var yarn_skill_slow_reduction_bonus: float = 0.0
-@export_range(0.0, 5.0, 0.1) var yarn_skill_connection_duration_bonus: float = 0.0
-@export_range(0.0, 1.0, 0.05) var yarn_skill_bind_duration_bonus: float = 0.0
-@export_range(0.0, 30.0, 1.0) var yarn_skill_loop_angle_reduction: float = 0.0
-
 var action_state: int = ActionState.IDLE
 var action_time: float = 0.0
 var melee_cooldown_left: float = 0.0
@@ -58,7 +48,7 @@ var stun_rng := RandomNumberGenerator.new()
 var combat_enabled: bool = true
 var projectile_fired: bool = false
 var yarn_projectile_in_flight: bool = false
-var active_yarn_connections: Array[Node2D] = []
+var active_yarn_projectile: Node2D
 var melee_window_open: bool = false
 var hit_targets: Dictionary = {}
 var facing: Vector2 = Vector2.DOWN
@@ -94,9 +84,6 @@ func _process(delta: float) -> void:
 		if combo_window_left <= 0.0:
 			combo_window_open = false
 			buffered_combo = false
-	if Input.is_action_just_pressed("yarn_cut"):
-		_cut_all_yarn_connections()
-
 	if action_state == ActionState.ATTACK1 or action_state == ActionState.ATTACK2:
 		if action_state == ActionState.ATTACK1 and combo_window_open and Input.is_action_just_pressed("melee_attack"):
 			buffered_combo = true
@@ -128,7 +115,7 @@ func _process(delta: float) -> void:
 
 
 func _can_start_action() -> bool:
-	if not combat_enabled or not _is_night_combat_scene():
+	if not combat_enabled or not _is_night_combat_scene() or InventoryManager.ui_open:
 		return false
 	if player.has_method("can_perform_combat_action"):
 		return player.can_perform_combat_action()
@@ -253,7 +240,11 @@ func _try_damage_target(target: Node) -> void:
 	hit_targets[target_id] = true
 	var is_combo_finisher := action_state == ActionState.ATTACK2
 	var base_damage: float = float(melee_damage if is_combo_finisher else first_melee_damage)
-	var attack_damage := base_damage * ProgressionManager.get_attack_multiplier()
+	var attack_damage := (
+		base_damage
+		* ProgressionManager.get_attack_multiplier()
+		* DayManager.get_night_attack_multiplier()
+	)
 	var accepted: bool = target.receive_damage(attack_damage, player.global_position, melee_knockback)
 	if not accepted:
 		return
@@ -292,71 +283,60 @@ func _spawn_projectile() -> void:
 	if projectile_scene == null:
 		push_warning("PlayerCombat: projectile_scene 未配置")
 		return
+	if yarn_projectile_in_flight:
+		return
+	if is_instance_valid(active_yarn_projectile) and not active_yarn_projectile.is_queued_for_deletion():
+		return
 	var projectile = projectile_scene.instantiate()
 	get_tree().current_scene.add_child(projectile)
+	active_yarn_projectile = projectile
 	yarn_projectile_in_flight = true
+	# The cooldown starts when the projectile is actually launched, after the
+	# cast wind-up, not when the input is pressed.
 	ranged_cooldown_left = ranged_cooldown
 	projectile.global_position = player.global_position + facing * 20.0
 	if projectile.has_method("setup"):
 		projectile.setup(
 			facing,
 			player,
-			float(ranged_damage) * ProgressionManager.get_attack_multiplier(),
+			float(ranged_damage)
+			* ProgressionManager.get_attack_multiplier()
+			* DayManager.get_night_attack_multiplier(),
 			projectile_speed,
 			projectile_range
 		)
+	else:
+		push_warning("PlayerCombat: projectile_scene 缺少 setup()")
 
 
-func on_yarn_hit(target: Node2D) -> bool:
-	yarn_projectile_in_flight = false
+## Attempts a sticky-yarn bind through the enemy's existing control interface.
+## Returns whether the bind was actually applied; damage is resolved separately
+## by the projectile before this is called.
+func on_sticky_yarn_hit(target: Node2D, projectile: Node = null) -> bool:
+	_release_projectile(projectile)
 	if (
 		not is_instance_valid(target)
 		or not target.is_in_group("enemies")
-		or not target.has_method("apply_yarn_slow")
 		or not target.has_method("apply_yarn_bind")
 		or not _is_night_combat_scene()
 	):
 		return false
-	var connection = YARN_CONNECTION_SCENE.instantiate()
-	var tuning: CombatV3Tuning = CombatBalance.tuning
-	var skill_modifiers := ProgressionManager.get_skill_modifiers()
-	var slow_reduction := clampf(1.0 - yarn_slow_multiplier + yarn_skill_slow_reduction_bonus + float(skill_modifiers["slow_reduction_bonus"]), 0.0, 0.8)
-	connection.configure(player, target, self, {
-		"slow_multiplier": 1.0 - slow_reduction,
-		"slow_duration": yarn_slow_duration,
-		"bind_duration": minf(yarn_bind_duration + yarn_skill_bind_duration_bonus + float(skill_modifiers["bind_duration_bonus"]), 2.5),
-		"maximum_duration": minf(yarn_connection_duration + yarn_skill_connection_duration_bonus + float(skill_modifiers["connection_duration_bonus"]), 15.0),
-		"maximum_length": yarn_maximum_length,
-		"minimum_player_step": tuning.yarn_minimum_player_step,
-		"required_wrap_angle_degrees": maxf(tuning.yarn_required_wrap_angle_degrees - yarn_skill_loop_angle_reduction - float(skill_modifiers["loop_angle_reduction"]), 240.0),
-		"minimum_wrap_radius": tuning.yarn_minimum_wrap_radius,
-		"minimum_pivot_contact_radius": tuning.yarn_minimum_pivot_contact_radius,
-		"maximum_sample_angle_degrees": tuning.yarn_maximum_sample_angle_degrees,
-		"required_tension_extension": tuning.yarn_required_tension_extension,
-		"required_pull_distance": tuning.yarn_required_pull_distance,
-		"cooldown_reduction_on_cut": yarn_cut_cooldown_reduction
-	})
-	get_tree().current_scene.add_child(connection)
-	active_yarn_connections.append(connection)
-	return true
+	return bool(target.apply_yarn_bind(STICKY_YARN_BIND_DURATION))
 
 
-func on_yarn_miss() -> void:
+## Called when a projectile is consumed without applying a bind (miss, wall,
+## range exhaustion or external destruction). Always releases the launch lock.
+func on_sticky_yarn_miss(projectile: Node = null) -> void:
+	_release_projectile(projectile)
+
+
+func _release_projectile(projectile: Node) -> void:
+	# Ignore a late callback from a previous projectile so it cannot clear the
+	# lock of the projectile that is currently in flight.
+	if projectile != null and projectile != active_yarn_projectile:
+		return
 	yarn_projectile_in_flight = false
-
-
-func on_yarn_cut_reward(cooldown_reduction: float) -> void:
-	ranged_cooldown_left = maxf(ranged_cooldown_left - maxf(cooldown_reduction, 0.0), 0.0)
-
-
-func on_yarn_connection_finished(connection: Node) -> void:
-	active_yarn_connections.erase(connection)
-
-
-func _cut_all_yarn_connections() -> void:
-	for connection in active_yarn_connections.duplicate():
-		if is_instance_valid(connection) and connection.has_method("cut_by_player"):
-			connection.cut_by_player()
+	active_yarn_projectile = null
 
 
 func _get_facing() -> Vector2:
@@ -416,6 +396,12 @@ func cancel_action() -> void:
 func set_combat_enabled(enabled: bool) -> void:
 	combat_enabled = enabled
 	if not enabled:
+		# Death, scene teardown and other forced exits must not leave the
+		# one-projectile launch lock stuck on.
+		yarn_projectile_in_flight = false
+		if is_instance_valid(active_yarn_projectile):
+			active_yarn_projectile.queue_free()
+		active_yarn_projectile = null
 		cancel_action()
 
 

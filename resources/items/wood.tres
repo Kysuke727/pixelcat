@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "wood"
+display_name = "木材"
+description = "基础制作材料，为后续家具与制作系统预留。"
+category = 1
+max_stack = 99

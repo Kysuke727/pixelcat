@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://bxxehv6dlj81a"]
+[gd_scene load_steps=20 format=3 uid="uid://bxxehv6dlj81a"]
 
 [ext_resource type="PackedScene" path="res://scenes/enemies/slime.tscn" id="1_bqfs8"]
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/night_run_controller.gd" id="10_run"]
 [ext_resource type="Script" path="res://scripts/night_exit.gd" id="11_exit"]
 [ext_resource type="Script" path="res://scripts/night_safe_point.gd" id="12_safe"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
 size = Vector2(1000, 20)
@@ -231,3 +232,5 @@ script = ExtResource("8_progression")
 
 [node name="DebugPanel" type="CanvasLayer" parent="."]
 script = ExtResource("9_debug")
+
+[node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]

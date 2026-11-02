@@ -668,14 +668,11 @@ func _update_sprite(delta: float) -> void:
 	var state_color := Color.WHITE
 	if state == SlimeState.WINDUP:
 		state_color = Color(1.0, 0.58, 0.42, 1.0)
-		sprite.frame = 0
 		sprite.scale = Vector2(1.08, 0.86)
 	elif state == SlimeState.LUNGE:
 		state_color = Color(1.0, 0.82, 0.68, 1.0)
-		sprite.frame = 3
 		sprite.scale = Vector2(0.92, 1.12)
 	else:
-		sprite.frame = int(animation_time * 8.0) % 4
 		sprite.scale = Vector2.ONE
 	var flash_strength := clampf(hit_flash_time_left / HIT_FLASH_DURATION, 0.0, 1.0)
 	sprite.modulate = state_color.lerp(Color(3.0, 3.0, 3.0, 1.0), flash_strength)
