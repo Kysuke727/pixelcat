@@ -88,8 +88,8 @@ func _run() -> void:
 	_check(absf(returned_stats.hunger - 20.0) < 1.0 and absf(returned_stats.mood - 80.0) < 1.0, "day scene restores the persisted stats")
 	_check(not expedition.run_active, "extraction ends the expedition")
 	_check(not day_manager.has_night_snapshot(), "no snapshot remains after extraction")
-
-	await _teardown_scene()
+	for _frame in range(10):
+		await process_frame
 
 	if failures.is_empty():
 		print("DAY12_NIGHT_INTEGRATION_PASSED")
@@ -98,21 +98,6 @@ func _run() -> void:
 		for failure in failures:
 			printerr("FAIL: ", failure)
 		quit(1)
-
-
-func _teardown_scene() -> void:
-	if not is_instance_valid(current_scene):
-		return
-	for audio_player in current_scene.find_children("*", "AudioStreamPlayer", true, false):
-		audio_player.stop()
-		audio_player.stream = null
-	for audio_player in current_scene.find_children("*", "AudioStreamPlayer2D", true, false):
-		audio_player.stop()
-		audio_player.stream = null
-	current_scene.queue_free()
-	current_scene = null
-	await process_frame
-	await process_frame
 
 
 func _check(condition: bool, description: String) -> void:
