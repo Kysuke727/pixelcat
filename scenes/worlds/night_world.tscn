@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://bxxehv6dlj81a"]
+[gd_scene load_steps=21 format=3 uid="uid://bxxehv6dlj81a"]
 
 [ext_resource type="PackedScene" path="res://scenes/enemies/slime.tscn" id="1_bqfs8"]
 [ext_resource type="PackedScene" uid="uid://cryd2b1lnjw3x" path="res://scenes/player/cat.tscn" id="1_gnfau"]
@@ -13,18 +13,19 @@
 [ext_resource type="Script" path="res://scripts/night_exit.gd" id="11_exit"]
 [ext_resource type="Script" path="res://scripts/night_safe_point.gd" id="12_safe"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
-size = Vector2(1000, 20)
+size = Vector2(1152, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_qe648"]
-size = Vector2(1000, 20)
+size = Vector2(1152, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7fymg"]
-size = Vector2(20, 700)
+size = Vector2(40, 648)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
-size = Vector2(20, 700)
+size = Vector2(40, 648)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
 radius = 24.0
@@ -37,10 +38,12 @@ radius = 24.0
 [node name="Groud" type="Node2D" parent="." unique_id=1226507053]
 
 [node name="NightFloor" type="Polygon2D" parent="Groud" unique_id=257597940]
+scale = Vector2(1.1730138, 0.9273835)
 color = Color(0.1254902, 0.15686275, 0.23921569, 1)
 polygon = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
 
 [node name="Street" type="Polygon2D" parent="Groud" unique_id=31876004]
+scale = Vector2(1.013099, 0.9251612)
 color = Color(0.22352941, 0.2627451, 0.39215687, 1)
 polygon = PackedVector2Array(350, 0, 650, 0, 650, 700, 350, 700)
 
@@ -53,25 +56,25 @@ polygon = PackedVector2Array(30, 180, 320, 180, 320, 500, 30, 500)
 [node name="WallTop" type="StaticBody2D" parent="Walls" unique_id=1063834062]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallTop" unique_id=660910872]
-position = Vector2(500, 0)
+position = Vector2(576, 20)
 shape = SubResource("RectangleShape2D_ynyhv")
 
 [node name="WallBottom" type="StaticBody2D" parent="Walls" unique_id=1884202366]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallBottom" unique_id=1456840447]
-position = Vector2(500, 700)
+position = Vector2(576, 628)
 shape = SubResource("RectangleShape2D_qe648")
 
 [node name="WallLeft" type="StaticBody2D" parent="Walls" unique_id=1644662808]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallLeft" unique_id=618314979]
-position = Vector2(0, 350)
+position = Vector2(20, 324)
 shape = SubResource("RectangleShape2D_7fymg")
 
 [node name="WallRight" type="StaticBody2D" parent="Walls" unique_id=1321220713]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/WallRight" unique_id=575000623]
-position = Vector2(1000, 350)
+position = Vector2(1152, 324)
 shape = SubResource("RectangleShape2D_fojya")
 
 [node name="Decorations" type="Node2D" parent="." unique_id=1352625751]
@@ -97,12 +100,12 @@ yarn_wrap_radius = 11.0
 entity_collision_radius = 10.0
 
 [node name="LampWrapPoint2" parent="Decorations" instance=ExtResource("13_wrap_point")]
-position = Vector2(686, 390)
+position = Vector2(686, 396)
 yarn_wrap_radius = 11.0
 entity_collision_radius = 10.0
 
 [node name="LampWrapPoint3" parent="Decorations" instance=ExtResource("13_wrap_point")]
-position = Vector2(686, 570)
+position = Vector2(687, 541)
 yarn_wrap_radius = 11.0
 entity_collision_radius = 10.0
 
@@ -138,15 +141,18 @@ stream = ExtResource("2_ug1gh")
 autoplay = true
 
 [node name="CoinUI" parent="." unique_id=1943915820 instance=ExtResource("4_ji3sx")]
+offset_left = 281.0
+offset_right = 321.0
 
 [node name="BattleUI" parent="." unique_id=1765966774 instance=ExtResource("6_dsh4f")]
-offset_left = -78.0
-offset_top = -4.0
-offset_right = -78.0
-offset_bottom = -4.0
+offset_left = -5.0
+offset_top = -22.0
+offset_right = -5.0
+offset_bottom = -22.0
 
 [node name="SafePointPark" type="Area2D" parent="."]
 position = Vector2(300, 470)
+scale = Vector2(1.004233, 1)
 collision_layer = 0
 collision_mask = 1
 script = ExtResource("12_safe")
@@ -215,10 +221,10 @@ horizontal_alignment = 1
 layer = 15
 
 [node name="Panel" type="PanelContainer" parent="ExpeditionHUD"]
-offset_left = 620.0
-offset_top = 18.0
-offset_right = 982.0
-offset_bottom = 74.0
+offset_left = 812.0
+offset_top = 3.0
+offset_right = 1174.0
+offset_bottom = 59.0
 
 [node name="Status" type="Label" parent="ExpeditionHUD/Panel"]
 layout_mode = 2
@@ -234,3 +240,5 @@ script = ExtResource("8_progression")
 script = ExtResource("9_debug")
 
 [node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]
+
+[node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]

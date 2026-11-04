@@ -14,15 +14,16 @@
 [ext_resource type="Script" path="res://scripts/debug_panel.gd" id="10_debug"]
 [ext_resource type="PackedScene" path="res://scenes/ui/coin_ui.tscn" id="11_coin"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
-size = Vector2(650, 40)
+size = Vector2(1152, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sugp2"]
-size = Vector2(650, 40)
+size = Vector2(1152, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
-size = Vector2(560, 40)
+size = Vector2(40, 648)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tbgi4"]
 size = Vector2(560, 40)
@@ -32,64 +33,70 @@ size = Vector2(560, 40)
 [node name="World" type="Node2D" parent="." unique_id=93623320]
 
 [node name="wall_top" type="StaticBody2D" parent="World" unique_id=989804564]
-position = Vector2(251, 64)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_top" unique_id=1035811832]
-position = Vector2(325, 20)
+position = Vector2(576, 20)
 shape = SubResource("RectangleShape2D_ab0bu")
 
 [node name="ColorRect" type="ColorRect" parent="World/wall_top" unique_id=1359269409]
-offset_right = 650.0
+offset_right = 1152.0
 offset_bottom = 40.0
 
 [node name="wall_bottom" type="StaticBody2D" parent="World" unique_id=477246396]
-position = Vector2(251, 64)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_bottom" unique_id=1154689547]
-position = Vector2(325, 540)
+position = Vector2(576, 628)
 shape = SubResource("RectangleShape2D_sugp2")
 
 [node name="ColorRect" type="ColorRect" parent="World/wall_bottom" unique_id=302726785]
-offset_top = 520.0
-offset_right = 650.0
-offset_bottom = 560.0
+offset_top = 608.0
+offset_right = 1152.0
+offset_bottom = 648.0
 
 [node name="wall_left" type="StaticBody2D" parent="World" unique_id=205439680]
-position = Vector2(250, 64)
 rotation = 1.5707964
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_left" unique_id=426964275]
-position = Vector2(280, 20)
+position = Vector2(324, -20)
+rotation = 1.5707964
 shape = SubResource("RectangleShape2D_jyhfs")
 
 [node name="ColorRect" type="ColorRect" parent="World/wall_left" unique_id=987396233]
-offset_right = 560.0
-offset_bottom = 40.0
+offset_left = 648.0
+offset_top = -40.0
+offset_right = 688.0
+offset_bottom = 608.0
+rotation = 1.5707964
 
 [node name="wall_right" type="StaticBody2D" parent="World" unique_id=1595296588]
-position = Vector2(290, 64)
 rotation = 1.5707964
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/wall_right" unique_id=1945234643]
-position = Vector2(280, -630)
+position = Vector2(325, -1132)
 shape = SubResource("RectangleShape2D_tbgi4")
 
 [node name="ColorRect" type="ColorRect" parent="World/wall_right" unique_id=947442112]
-offset_top = -650.0
-offset_right = 560.0
-offset_bottom = -610.0
+offset_left = 648.0
+offset_top = -1152.0
+offset_right = 688.0
+offset_bottom = -504.0
+rotation = 1.5707964
 
 [node name="Toy" parent="World" unique_id=1082080486 instance=ExtResource("6_o6xl0")]
-position = Vector2(764, 390)
+position = Vector2(330, 546)
+scale = Vector2(3, 3)
 
 [node name="Bed" parent="World" unique_id=1388561695 instance=ExtResource("7_tipki")]
-position = Vector2(826, 402)
+position = Vector2(158, 503)
+scale = Vector2(2, 2)
 
 [node name="FoodBowl" parent="World" unique_id=808035528 instance=ExtResource("5_tbgi4")]
-position = Vector2(777, 401)
+position = Vector2(920, 560)
+scale = Vector2(5, 5)
 
 [node name="ExitDoor" parent="World" unique_id=1157092890 instance=ExtResource("4_choun")]
-position = Vector2(756, 237)
+position = Vector2(1044, 512)
+scale = Vector2(2, 2)
 
 [node name="Cat" parent="." unique_id=211071589 instance=ExtResource("1_o5qli")]
 position = Vector2(593, 336)
@@ -107,13 +114,16 @@ stream = ExtResource("7_85g3d")
 script = ExtResource("8_choun")
 
 [node name="UI" parent="." unique_id=1590554557 instance=ExtResource("4_jyhfs")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 1
+grow_vertical = 1
 metadata/_edit_use_anchors_ = true
-
-[node name="LeftBorder" type="ColorRect" parent="." unique_id=1755918080]
-offset_left = 210.0
-offset_top = 65.0
-offset_right = 252.0
-offset_bottom = 625.0
 
 [node name="ProgressionPanel" type="CanvasLayer" parent="."]
 script = ExtResource("9_progression")
@@ -122,5 +132,11 @@ script = ExtResource("9_progression")
 script = ExtResource("10_debug")
 
 [node name="FishUI" parent="." instance=ExtResource("11_coin")]
+offset_left = 180.0
+offset_top = 40.0
+offset_right = 220.0
+offset_bottom = 80.0
 
 [node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]
+
+[node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]
