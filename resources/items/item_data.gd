@@ -17,6 +17,8 @@ enum Category {
 @export var category: Category = Category.MATERIAL
 @export var icon: Texture2D
 @export_range(1, 999, 1) var max_stack: int = 99
+@export var usable: bool = false
+@export var discardable: bool = true
 
 
 func is_valid_item() -> bool:

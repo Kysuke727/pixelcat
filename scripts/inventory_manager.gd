@@ -9,6 +9,7 @@ const ITEM_PATHS := [
 	"res://resources/items/yarn_ball.tres",
 	"res://resources/items/wood.tres",
 	"res://resources/items/stone.tres",
+	"res://resources/items/test_potion.tres",
 ]
 
 var item_database: Dictionary = {}

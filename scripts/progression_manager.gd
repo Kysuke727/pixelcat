@@ -270,6 +270,7 @@ func _profile_data() -> Dictionary:
 		"permanent_items": permanent_items.duplicate(),
 		"currency": CurrencyManager.get_save_data(),
 		"inventory": _inventory_save_data(),
+		"quickbar": _quickbar_save_data(),
 		"day_state": _day_state_save_data(),
 	}
 
@@ -277,6 +278,12 @@ func _profile_data() -> Dictionary:
 func _inventory_save_data() -> Array:
 	if is_instance_valid(InventoryManager):
 		return InventoryManager.get_save_data()
+	return []
+
+
+func _quickbar_save_data() -> Array:
+	if is_instance_valid(QuickbarManager):
+		return QuickbarManager.get_save_data()
 	return []
 
 
@@ -424,6 +431,8 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 			return false
 	if profile.has("inventory") and not _is_valid_inventory_data(profile["inventory"]):
 		return false
+	if profile.has("quickbar") and not _is_valid_quickbar_data(profile["quickbar"]):
+		return false
 	if profile.has("day_state") and not _is_valid_day_state_data(profile["day_state"]):
 		return false
 	if current_format and (not profile["attributes"] is Dictionary or not profile["skill_points"] is Dictionary):
@@ -447,6 +456,17 @@ func _is_valid_inventory_data(value: Variant) -> bool:
 		if quantity < 0.0 or quantity > 999.0 or not is_equal_approx(quantity, roundf(quantity)):
 			return false
 		if str(entry["item_id"]).is_empty() and quantity > 0.0:
+			return false
+	return true
+
+
+func _is_valid_quickbar_data(value: Variant) -> bool:
+	if not value is Array:
+		return false
+	if value.size() > QuickbarManager.SLOT_COUNT:
+		return false
+	for item_id in value:
+		if not item_id is String:
 			return false
 	return true
 
@@ -559,6 +579,7 @@ func _load_profile_data(data: Dictionary) -> void:
 	for item in data.get("permanent_items", []):
 		permanent_items.append(str(item))
 	_load_inventory_data(data.get("inventory", []))
+	_load_quickbar_data(data.get("quickbar", []))
 	_load_day_state_data(data.get("day_state", {}))
 	pending_allocation.clear()
 	level_changed.emit(level, experience, required_experience())
@@ -570,6 +591,14 @@ func _load_inventory_data(value: Variant) -> void:
 		inventory_data = value
 	if is_instance_valid(InventoryManager):
 		InventoryManager.load_save_data(inventory_data)
+
+
+func _load_quickbar_data(value: Variant) -> void:
+	var quickbar_data: Array = []
+	if value is Array:
+		quickbar_data = value
+	if is_instance_valid(QuickbarManager):
+		QuickbarManager.load_save_data(quickbar_data)
 
 
 func _load_day_state_data(value: Variant) -> void:

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "test_potion"
+display_name = "测试药水"
+description = "用于验证快捷栏绑定与数量同步的测试物品。实际使用效果尚未定义。"
+category = 0
+max_stack = 5
+usable = true

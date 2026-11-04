@@ -1,0 +1,186 @@
+[gd_scene load_steps=4 format=3 uid="uid://cb6h6jwn7bcus"]
+
+[ext_resource type="Script" path="res://scripts/quickbar_ui.gd" id="1_quickbar"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar"]
+bg_color = Color(1, 0.9607843, 0.9372549, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9372549, 0.72156864, 0.7882353, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(1, 0.9411765, 0.9529412, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.972549, 0.8627451, 0.8980392, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="QuickbarUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_quickbar")
+
+[node name="QuickbarPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -132.0
+offset_top = -62.0
+offset_right = 132.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bar")
+
+[node name="QuickbarSlots" type="HBoxContainer" parent="QuickbarPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Slot1" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots"]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot1"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.45, 0.5, 1)
+theme_override_font_sizes/font_size = 9
+text = "1"
+horizontal_alignment = 1
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.3, 0.35, 1)
+theme_override_font_sizes/font_size = 10
+text = "空"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = ""
+horizontal_alignment = 1
+
+[node name="Slot2" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots"]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot2"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.45, 0.5, 1)
+theme_override_font_sizes/font_size = 9
+text = "2"
+horizontal_alignment = 1
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.3, 0.35, 1)
+theme_override_font_sizes/font_size = 10
+text = "空"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = ""
+horizontal_alignment = 1
+
+[node name="Slot3" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots"]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot3"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.45, 0.5, 1)
+theme_override_font_sizes/font_size = 9
+text = "3"
+horizontal_alignment = 1
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.3, 0.35, 1)
+theme_override_font_sizes/font_size = 10
+text = "空"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = ""
+horizontal_alignment = 1
+
+[node name="Slot4" type="PanelContainer" parent="QuickbarPanel/QuickbarSlots"]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Content" type="VBoxContainer" parent="QuickbarPanel/QuickbarSlots/Slot4"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="KeyLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.45, 0.5, 1)
+theme_override_font_sizes/font_size = 9
+text = "4"
+horizontal_alignment = 1
+
+[node name="ItemName" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.3, 0.35, 1)
+theme_override_font_sizes/font_size = 10
+text = "空"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="QuantityLabel" type="Label" parent="QuickbarPanel/QuickbarSlots/Slot4/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = ""
+horizontal_alignment = 1

@@ -4,16 +4,19 @@ const SLOT_SCENE: PackedScene = preload("res://scenes/ui/inventory_slot.tscn")
 const COLUMN_COUNT := 6
 
 @onready var root_control: Control = $Root
-@onready var slot_grid: GridContainer = $Root/Center/Panel/Margin/VBox/Content/Grid
-@onready var detail_name: Label = $Root/Center/Panel/Margin/VBox/Content/Detail/DetailName
-@onready var detail_type: Label = $Root/Center/Panel/Margin/VBox/Content/Detail/DetailType
-@onready var detail_quantity: Label = $Root/Center/Panel/Margin/VBox/Content/Detail/DetailQuantity
-@onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Content/Detail/DetailDescription
-@onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Content/Detail/EmptyHint
+@onready var slot_grid: GridContainer = $Root/Center/Panel/Margin/VBox/Grid
+@onready var detail_name: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailName
+@onready var detail_type: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailType
+@onready var detail_quantity: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailQuantity
+@onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailDescription
+@onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Detail/EmptyHint
+@onready var bind_button: Button = $Root/Center/Panel/Margin/VBox/Detail/BindQuickbarButton
 
 var is_open: bool = false
 var inventory_slots: Array[Node] = []
 var selected_slot_index: int = -1
+var selected_item_id: String = ""
+var bind_popup: PopupMenu
 
 
 func _ready() -> void:
@@ -21,8 +24,12 @@ func _ready() -> void:
 	root_control.visible = false
 	slot_grid.columns = COLUMN_COUNT
 	_create_slots()
+	_create_bind_popup()
+	bind_button.pressed.connect(_on_bind_button_pressed)
 	if not InventoryManager.inventory_changed.is_connected(refresh_inventory):
 		InventoryManager.inventory_changed.connect(refresh_inventory)
+	if not QuickbarManager.quickbar_changed.is_connected(_on_quickbar_changed):
+		QuickbarManager.quickbar_changed.connect(_on_quickbar_changed)
 	InventoryManager.set_ui_open(false)
 	refresh_inventory()
 
@@ -44,6 +51,17 @@ func _create_slots() -> void:
 		slot.set_slot_index(index)
 		slot.slot_clicked.connect(_on_slot_clicked)
 		inventory_slots.append(slot)
+
+
+func _create_bind_popup() -> void:
+	bind_popup = PopupMenu.new()
+	bind_popup.name = "BindQuickbarPopup"
+	for index in range(QuickbarManager.SLOT_COUNT):
+		bind_popup.add_item("绑定到快捷栏 %d" % (index + 1), index)
+	bind_popup.add_separator()
+	bind_popup.add_item("清除所选物品的快捷栏绑定", 4)
+	add_child(bind_popup)
+	bind_popup.id_pressed.connect(_on_bind_popup_id_pressed)
 
 
 func refresh_inventory() -> void:
@@ -101,6 +119,7 @@ func close_inventory() -> void:
 func select_slot(index: int) -> void:
 	if index < 0 or index >= InventoryManager.SLOT_COUNT:
 		selected_slot_index = -1
+		selected_item_id = ""
 		for slot in inventory_slots:
 			slot.set_selected(false)
 		_show_empty_detail()
@@ -121,16 +140,20 @@ func _update_detail(index: int) -> void:
 	if item == null:
 		_show_empty_detail()
 		return
+	selected_item_id = item.item_id
 	detail_name.text = item.display_name
 	detail_type.text = item.category_name()
 	detail_quantity.text = "数量：%d / %d" % [int(data.get("quantity", 0)), int(item.max_stack)]
 	detail_description.text = item.description
 	empty_hint.visible = false
+	var can_bind := bool(item.usable)
+	bind_button.disabled = not can_bind
+	bind_button.text = "设置快捷栏" if can_bind else "该物品不可绑定"
 
 
 func _show_empty_detail() -> void:
 	var inventory_empty := InventoryManager.get_empty_slot_count() == InventoryManager.SLOT_COUNT
-	detail_name.text = "背包"
+	detail_name.text = "我的背包 ♡"
 	detail_type.text = ""
 	detail_quantity.text = ""
 	if inventory_empty:
@@ -139,6 +162,42 @@ func _show_empty_detail() -> void:
 		detail_description.text = "选择一个物品查看描述。"
 	empty_hint.text = "I 键打开 / 关闭背包"
 	empty_hint.visible = true
+	bind_button.disabled = true
+	bind_button.text = "设置快捷栏"
+
+
+func _on_bind_button_pressed() -> void:
+	if selected_item_id.is_empty():
+		return
+	var item = InventoryManager.get_item_data(selected_item_id)
+	if item == null:
+		_show_empty_detail()
+		return
+	if not bool(item.usable):
+		detail_description.text = "该物品暂不可使用，无法绑定快捷栏。"
+		return
+	bind_popup.position = Vector2i(get_viewport().get_mouse_position())
+	bind_popup.popup()
+
+
+func _on_bind_popup_id_pressed(id: int) -> void:
+	if id == 4:
+		for index in range(QuickbarManager.SLOT_COUNT):
+			if QuickbarManager.get_bound_item_id(index) == selected_item_id:
+				QuickbarManager.clear_slot(index)
+		detail_description.text = "已清除该物品的快捷栏绑定。"
+		return
+	if id < 0 or id >= QuickbarManager.SLOT_COUNT or selected_item_id.is_empty():
+		return
+	if QuickbarManager.bind_item(id, selected_item_id):
+		detail_description.text = "已绑定到快捷栏 %d。" % (id + 1)
+	else:
+		detail_description.text = "绑定失败：该物品没有明确的可使用规则。"
+
+
+func _on_quickbar_changed() -> void:
+	if selected_slot_index >= 0:
+		_update_detail(selected_slot_index)
 
 
 func _unhandled_input(event: InputEvent) -> void:
