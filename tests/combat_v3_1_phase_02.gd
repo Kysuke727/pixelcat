@@ -115,7 +115,7 @@ func _run() -> void:
 
 	var wall_slime: CharacterBody2D = load("res://scenes/enemies/slime.tscn").instantiate()
 	night_scene.add_child(wall_slime)
-	wall_slime.global_position = Vector2(978.0, 580.0)
+	wall_slime.global_position = Vector2(1098.0, 580.0)
 	wall_slime.state = wall_slime.SlimeState.CHASE
 	var wall_health: int = wall_slime.current_health
 	wall_slime.receive_damage(2, wall_slime.global_position + Vector2.LEFT, 500.0)

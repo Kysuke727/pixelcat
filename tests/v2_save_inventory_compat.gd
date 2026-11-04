@@ -12,6 +12,7 @@ func _run() -> void:
 	await process_frame
 	var progression := root.get_node("ProgressionManager")
 	var inventory := root.get_node("InventoryManager")
+	var quickbar := root.get_node("QuickbarManager")
 	var currency := root.get_node("CurrencyManager")
 	var expedition := root.get_node("ExpeditionManager")
 	var day_manager := root.get_node("DayManager")
@@ -61,6 +62,7 @@ func _run() -> void:
 	# Old profile without the new sections stays loadable.
 	var old_profile: Dictionary = progression._profile_data().duplicate(true)
 	old_profile.erase("inventory")
+	old_profile.erase("quickbar")
 	old_profile.erase("day_state")
 	old_profile["level"] = 6
 	old_profile["skill_points"] = {"slow": 2, "connection": 7, "bind": 4, "loop": 9}
@@ -70,6 +72,7 @@ func _run() -> void:
 	)
 	progression._load_profile()
 	_check(inventory.get_item_count("yarn_ball") == 0 and inventory.get_item_count("wood") == 0, "old profile loads an empty inventory")
+	_check(quickbar.get_bound_item_id(0).is_empty(), "old profile without quickbar loads empty bindings")
 	_check(progression.level == 6 and progression.skill_points["loop"] == 9, "old profile keeps progression and skill points")
 	_check(is_equal_approx(day_manager.saved_hunger, 100.0), "old profile keeps the neutral day-state default")
 
