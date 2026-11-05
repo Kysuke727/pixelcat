@@ -1,7 +1,9 @@
 [gd_scene format=3 uid="uid://w2tch6a6yu0j"]
 
 [ext_resource type="Shader" uid="uid://brmuov2221xjs" path="res://scenes/menu/main_menu.gdshader" id="1_3rkf3"]
+[ext_resource type="Texture2D" uid="uid://r6wiyhmoy74y" path="res://assets/Background/Gemini_Generated_Image_n8351fn8351fn835.jpg" id="1_kiqgm"]
 [ext_resource type="FontFile" uid="uid://cmsn1ype2avdm" path="res://assets/fonts/BerkshireSwash-Regular.ttf" id="2_247la"]
+[ext_resource type="FontFile" uid="uid://bitikmwcxjo8h" path="res://assets/fonts/SmileySans-Oblique.otf" id="3_247la"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_13vnw"]
 shader = ExtResource("1_3rkf3")
@@ -13,8 +15,7 @@ shader = ExtResource("1_3rkf3")
 shader_parameter/top_color = Color(1, 0.957, 0.788, 1)
 shader_parameter/bottom_color = Color(0.961, 0.78, 0.494, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_247la"]
-bg_color = Color(0.972549, 0.9098039, 0.9372549, 1)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ynyhv"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3rkf3"]
 bg_color = Color(0.9372549, 0.6431373, 0.7647059, 1)
@@ -23,6 +24,18 @@ border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
 border_color = Color(0.7882353, 0.3372549, 0.5137255, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_utqaj"]
+bg_color = Color(0.7882353, 0.3372549, 0.5137255, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.65882355, 0.24705882, 0.4392157, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
@@ -48,23 +61,27 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Background" type="ColorRect" parent="." unique_id=1790273108]
+[node name="TextureRect" type="TextureRect" parent="." unique_id=654910763]
+custom_maximum_size = Vector2(1152, 648)
 layout_mode = 0
-offset_right = 1152.0
-offset_bottom = 648.0
-color = Color(0.972549, 0.9098039, 0.9372549, 1)
+offset_right = 2752.0
+offset_bottom = 1536.0
+texture = ExtResource("1_kiqgm")
 
-[node name="Decoration" type="Control" parent="." unique_id=1185304630]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TitleGroup" type="Control" parent="." unique_id=1185304630]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="Title" type="Label" parent="." unique_id=191280579]
+[node name="Title" type="Label" parent="TitleGroup" unique_id=191280579]
 material = SubResource("ShaderMaterial_13vnw")
 layout_mode = 0
 offset_top = 105.0
 offset_right = 1152.0
-offset_bottom = 185.0
+offset_bottom = 200.0
 theme_override_colors/font_outline_color = Color(0.9098039, 0.45882353, 0.64705884, 1)
 theme_override_constants/outline_size = 10
 theme_override_fonts/font = ExtResource("2_247la")
@@ -73,7 +90,7 @@ text = "PixelCat"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Subtitle" type="Label" parent="." unique_id=1826749862]
+[node name="Subtitle" type="Label" parent="TitleGroup" unique_id=1826749862]
 material = SubResource("ShaderMaterial_3rkf3")
 layout_mode = 0
 offset_top = 185.0
@@ -92,8 +109,8 @@ layout_mode = 0
 offset_left = 376.0
 offset_top = 270.0
 offset_right = 776.0
-offset_bottom = 570.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_247la")
+offset_bottom = 582.0
+theme_override_styles/panel = SubResource("StyleBoxEmpty_ynyhv")
 
 [node name="MenuButtons" type="VBoxContainer" parent="MenuPanel" unique_id=811989357]
 layout_mode = 2
@@ -104,28 +121,57 @@ custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
 theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
-theme_override_fonts/font = ExtResource("2_247la")
+theme_override_fonts/font = ExtResource("3_247la")
 theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
 text = "继续游戏"
 
-[node name="NewGameButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=413923590]
+[node name="NewGameButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=547519237]
 custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
 text = "新开一局"
 
-[node name="GalleryButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=1654696326]
+[node name="GalleryButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=1384427885]
 custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
 text = "CG 图鉴"
 
-[node name="SettingsButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=2084148225]
+[node name="SettingsButtonButton4" type="Button" parent="MenuPanel/MenuButtons" unique_id=889953476]
 custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
 text = "设置"
 
-[node name="ExitButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=1626759820]
+[node name="ExitButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=1424668898]
 custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
 text = "退出游戏"
