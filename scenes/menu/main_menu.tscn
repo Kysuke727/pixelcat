@@ -4,50 +4,69 @@
 [ext_resource type="Texture2D" uid="uid://r6wiyhmoy74y" path="res://assets/Background/Gemini_Generated_Image_n8351fn8351fn835.jpg" id="1_kiqgm"]
 [ext_resource type="FontFile" uid="uid://cmsn1ype2avdm" path="res://assets/fonts/BerkshireSwash-Regular.ttf" id="2_247la"]
 [ext_resource type="FontFile" uid="uid://bitikmwcxjo8h" path="res://assets/fonts/SmileySans-Oblique.otf" id="3_247la"]
+[ext_resource type="Texture2D" uid="uid://cfsdhewo83jyl" path="res://assets/photo/icon_continue.jpg" id="5_hj162"]
+[ext_resource type="Texture2D" uid="uid://g5fe0lnc0teq" path="res://assets/photo/icon_newgame.jpg" id="6_vovv2"]
+[ext_resource type="Texture2D" uid="uid://bdtbyawodv4vm" path="res://assets/photo/icon_gallery.jpg" id="7_1k4da"]
+[ext_resource type="Texture2D" uid="uid://d132xdcba6xhp" path="res://assets/objects/icon_settings.jpg" id="8_bbqo6"]
+[ext_resource type="Texture2D" uid="uid://dqbu8vdd555b5" path="res://assets/objects/icon_exit.jpg" id="9_d4hu8"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_13vnw"]
 shader = ExtResource("1_3rkf3")
-shader_parameter/top_color = Color(1, 0.957, 0.788, 1)
-shader_parameter/bottom_color = Color(0.961, 0.78, 0.494, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_3rkf3"]
 shader = ExtResource("1_3rkf3")
-shader_parameter/top_color = Color(1, 0.957, 0.788, 1)
-shader_parameter/bottom_color = Color(0.961, 0.78, 0.494, 1)
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ynyhv"]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_rlvhi"]
+shader = ExtResource("1_3rkf3")
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3rkf3"]
-bg_color = Color(0.9372549, 0.6431373, 0.7647059, 1)
+bg_color = Color(1, 0.9647059, 0.9607843, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.7882353, 0.3372549, 0.5137255, 1)
+border_color = Color(0.81960785, 0.54901963, 0.6392157, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_utqaj"]
-bg_color = Color(0.7882353, 0.3372549, 0.5137255, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hj162"]
+bg_color = Color(0.9490196, 0.8352941, 0.87058824, 1)
 border_width_left = 5
 border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
-border_color = Color(0.65882355, 0.24705882, 0.4392157, 1)
+border_color = Color(0.6117647, 0.32156864, 0.41960785, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kiqgm"]
-bg_color = Color(0.8509804, 0.47058824, 0.64705884, 1)
+bg_color = Color(0.50962585, 0.30650824, 0.42350078, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.7254902, 0.3019608, 0.48235294, 1)
+border_color = Color(0.72156864, 0.42352942, 0.52156866, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ynyhv"]
+shader = ExtResource("1_3rkf3")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_utqaj"]
+bg_color = Color(0.9490196, 0.8352941, 0.87058824, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.6117647, 0.32156864, 0.41960785, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
@@ -117,6 +136,7 @@ layout_mode = 2
 theme_override_constants/separation = 18
 
 [node name="ContinueButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=1624836821]
+material = SubResource("ShaderMaterial_rlvhi")
 custom_minimum_size = Vector2(340, 48)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
@@ -124,8 +144,37 @@ theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
 theme_override_fonts/font = ExtResource("3_247la")
 theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hj162")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
+text = "
+"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MenuPanel/MenuButtons/ContinueButton" unique_id=1685980826]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = -3
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="MenuPanel/MenuButtons/ContinueButton/HBoxContainer" unique_id=661393509]
+material = SubResource("ShaderMaterial_ynyhv")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("5_hj162")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="MenuPanel/MenuButtons/ContinueButton/HBoxContainer" unique_id=899162126]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 26
 text = "继续游戏"
 
 [node name="NewGameButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=547519237]
@@ -138,7 +187,34 @@ theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
-text = "新开一局"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MenuPanel/MenuButtons/NewGameButton2" unique_id=1272235353]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = -3
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="MenuPanel/MenuButtons/NewGameButton2/HBoxContainer" unique_id=230657125]
+material = SubResource("ShaderMaterial_ynyhv")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("6_vovv2")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="MenuPanel/MenuButtons/NewGameButton2/HBoxContainer" unique_id=828521686]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 26
+text = "再开一局"
 
 [node name="GalleryButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=1384427885]
 custom_minimum_size = Vector2(340, 48)
@@ -150,7 +226,34 @@ theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
-text = "CG 图鉴"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MenuPanel/MenuButtons/GalleryButton2" unique_id=1510626431]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="MenuPanel/MenuButtons/GalleryButton2/HBoxContainer" unique_id=431803118]
+material = SubResource("ShaderMaterial_ynyhv")
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("7_1k4da")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="MenuPanel/MenuButtons/GalleryButton2/HBoxContainer" unique_id=593841092]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 26
+text = "C G 图鉴"
 
 [node name="SettingsButtonButton4" type="Button" parent="MenuPanel/MenuButtons" unique_id=889953476]
 custom_minimum_size = Vector2(340, 48)
@@ -162,6 +265,33 @@ theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MenuPanel/MenuButtons/SettingsButtonButton4" unique_id=525109264]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = -3
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="MenuPanel/MenuButtons/SettingsButtonButton4/HBoxContainer" unique_id=342009990]
+material = SubResource("ShaderMaterial_ynyhv")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("8_bbqo6")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="MenuPanel/MenuButtons/SettingsButtonButton4/HBoxContainer" unique_id=1573475502]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 26
 text = "设置"
 
 [node name="ExitButton2" type="Button" parent="MenuPanel/MenuButtons" unique_id=1424668898]
@@ -174,4 +304,31 @@ theme_override_font_sizes/font_size = 23
 theme_override_styles/normal = SubResource("StyleBoxFlat_3rkf3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_utqaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_kiqgm")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MenuPanel/MenuButtons/ExitButton2" unique_id=613964459]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = -3
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="MenuPanel/MenuButtons/ExitButton2/HBoxContainer" unique_id=68865249]
+material = SubResource("ShaderMaterial_ynyhv")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("9_d4hu8")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="MenuPanel/MenuButtons/ExitButton2/HBoxContainer" unique_id=1898576485]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
+theme_override_fonts/font = ExtResource("3_247la")
+theme_override_font_sizes/font_size = 26
 text = "退出游戏"

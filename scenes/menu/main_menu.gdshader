@@ -1,20 +1,11 @@
-
 shader_type canvas_item;
 
-uniform vec4 top_color : source_color =
-    vec4(1.0, 0.94, 0.76, 1.0);
-
-uniform vec4 bottom_color : source_color =
-    vec4(0.96, 0.70, 0.43, 1.0);
-
 void fragment() {
-    float t = clamp(UV.y, 0.0, 1.0);
-
-    vec4 gradient_color = mix(
-        top_color,
-        bottom_color,
-        t
-    );
-
-    COLOR.rgb *= gradient_color.rgb;
+    vec4 col = texture(TEXTURE, UV);
+    // 识别纯绿幕并剔除
+    if (col.g > 0.55 && col.r < 0.35 && col.b < 0.35) {
+        discard;
+    }
+    // 关键修正：必须乘上 COLOR，否则文字的字体颜色会被强制冲刷成纯白色
+    COLOR = col * COLOR;
 }
