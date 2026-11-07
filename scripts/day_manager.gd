@@ -29,6 +29,19 @@ func _ready() -> void:
 	call_deferred("_resume_saved_expedition")
 
 
+## Persistent autoload owns post-transition work; the menu node is freed on change_scene.
+func enter_from_menu(scene_path: String, save_after: bool) -> void:
+	var tree := get_tree()
+	var error: Error = _request_scene_change(scene_path)
+	if error != OK:
+		push_error("无法进入游戏，错误码：%d" % error)
+		return
+	await tree.scene_changed
+	restore_cat_stats(tree.current_scene)
+	if save_after:
+		ProgressionManager.save_now()
+
+
 func switch_to_night() -> void:
 	if current_state == TimeState.NIGHT or ProgressionManager.debug_session:
 		return
@@ -221,6 +234,8 @@ func _input(event):
 
 
 func _resume_saved_expedition() -> void:
+	if get_tree().current_scene != null and get_tree().current_scene.scene_file_path == "res://scenes/menu/main_menu.tscn":
+		return
 	if ProgressionManager.debug_session:
 		return
 	if ExpeditionManager.run_active and current_state == TimeState.DAY:

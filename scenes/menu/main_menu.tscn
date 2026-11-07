@@ -1,5 +1,8 @@
 [gd_scene format=3 uid="uid://w2tch6a6yu0j"]
 
+[ext_resource type="Script" path="res://scripts/main_menu.gd" id="0_menu"]
+[ext_resource type="Texture2D" path="res://assets/photo/icon_settings.jpg" id="12_settings"]
+[ext_resource type="Texture2D" path="res://assets/photo/icon_exit.jpg" id="13_exit"]
 [ext_resource type="Shader" uid="uid://brmuov2221xjs" path="res://scenes/menu/main_menu.gdshader" id="1_3rkf3"]
 [ext_resource type="Texture2D" uid="uid://r6wiyhmoy74y" path="res://assets/Background/Gemini_Generated_Image_n8351fn8351fn835.jpg" id="1_kiqgm"]
 [ext_resource type="Shader" uid="uid://daev3bx0ejo0y" path="res://scenes/menu/title.gdshader" id="2_1k4da"]
@@ -104,13 +107,8 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_prbor"]
-load_path = "res://.godot/imported/icon_settings.jpg-57ce81f963928bac5d3a332b1e9c3082.ctex"
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_27h4x"]
-load_path = "res://.godot/imported/icon_exit.jpg-159e696d6d70b25c2c5e864b4ebeb826.ctex"
-
 [node name="MainMenu" type="Control" unique_id=2084065874]
+script = ExtResource("0_menu")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -345,7 +343,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-texture = SubResource("CompressedTexture2D_prbor")
+texture = ExtResource("12_settings")
 expand_mode = 1
 
 [node name="Label" type="Label" parent="MenuPanel/MenuButtons/SettingsButtonButton4/HBoxContainer" unique_id=1573475502]
@@ -384,7 +382,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-texture = SubResource("CompressedTexture2D_27h4x")
+texture = ExtResource("13_exit")
 expand_mode = 1
 
 [node name="Label" type="Label" parent="MenuPanel/MenuButtons/ExitButton2/HBoxContainer" unique_id=1898576485]
