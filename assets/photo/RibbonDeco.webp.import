@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bw4m6el6ysa8e"
-path="res://.godot/imported/icon_continue.jpg-6a289e1d855d44775118f56ced78ddeb.ctex"
+uid="uid://bto6u6f8cesf8"
+path="res://.godot/imported/RibbonDeco.webp-90f5479742a463e77f97aa6cf3a3c5a2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/objects/icon_continue.jpg"
-dest_files=["res://.godot/imported/icon_continue.jpg-6a289e1d855d44775118f56ced78ddeb.ctex"]
+source_file="res://assets/photo/RibbonDeco.webp"
+dest_files=["res://.godot/imported/RibbonDeco.webp-90f5479742a463e77f97aa6cf3a3c5a2.ctex"]
 
 [params]
 

@@ -2,19 +2,48 @@
 
 [ext_resource type="Shader" uid="uid://brmuov2221xjs" path="res://scenes/menu/main_menu.gdshader" id="1_3rkf3"]
 [ext_resource type="Texture2D" uid="uid://r6wiyhmoy74y" path="res://assets/Background/Gemini_Generated_Image_n8351fn8351fn835.jpg" id="1_kiqgm"]
+[ext_resource type="Shader" uid="uid://daev3bx0ejo0y" path="res://scenes/menu/title.gdshader" id="2_1k4da"]
 [ext_resource type="FontFile" uid="uid://cmsn1ype2avdm" path="res://assets/fonts/BerkshireSwash-Regular.ttf" id="2_247la"]
 [ext_resource type="FontFile" uid="uid://bitikmwcxjo8h" path="res://assets/fonts/SmileySans-Oblique.otf" id="3_247la"]
+[ext_resource type="Shader" uid="uid://clgwb1on4kak0" path="res://scenes/menu/zhuangban.gdshader" id="4_bbqo6"]
+[ext_resource type="Texture2D" uid="uid://12vbj2ufq76k" path="res://assets/photo/CatHead.webp" id="5_d4hu8"]
 [ext_resource type="Texture2D" uid="uid://cfsdhewo83jyl" path="res://assets/photo/icon_continue.jpg" id="5_hj162"]
+[ext_resource type="Shader" uid="uid://be61rnjq1xsbf" path="res://scenes/menu/newtitle.gdshader" id="5_p1nwe"]
+[ext_resource type="Texture2D" uid="uid://bto6u6f8cesf8" path="res://assets/photo/RibbonDeco.webp" id="6_p1nwe"]
 [ext_resource type="Texture2D" uid="uid://g5fe0lnc0teq" path="res://assets/photo/icon_newgame.jpg" id="6_vovv2"]
 [ext_resource type="Texture2D" uid="uid://bdtbyawodv4vm" path="res://assets/photo/icon_gallery.jpg" id="7_1k4da"]
-[ext_resource type="Texture2D" uid="uid://d132xdcba6xhp" path="res://assets/objects/icon_settings.jpg" id="8_bbqo6"]
-[ext_resource type="Texture2D" uid="uid://dqbu8vdd555b5" path="res://assets/objects/icon_exit.jpg" id="9_d4hu8"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_13vnw"]
-shader = ExtResource("1_3rkf3")
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qe648"]
+shader = ExtResource("4_bbqo6")
+shader_parameter/key_color = Color(1, 0, 1, 1)
+shader_parameter/chroma_threshold = 0.25
+shader_parameter/glow_color = Color(1, 0.92, 0.55, 0.85)
+shader_parameter/glow_radius = 8.0
+shader_parameter/glow_intensity = 1.6
+shader_parameter/samples = 16
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_3rkf3"]
-shader = ExtResource("1_3rkf3")
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gdhp0"]
+shader = ExtResource("4_bbqo6")
+shader_parameter/key_color = Color(1, 0, 1, 1)
+shader_parameter/chroma_threshold = 0.25
+shader_parameter/glow_color = Color(1, 0.92, 0.55, 0.85)
+shader_parameter/glow_radius = 8.0
+shader_parameter/glow_intensity = 1.6
+shader_parameter/samples = 16
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d4hu8"]
+shader = ExtResource("5_p1nwe")
+shader_parameter/top_color = Color(1, 1, 1, 1)
+shader_parameter/bottom_color = Color(1, 0.92, 0.72, 1)
+shader_parameter/start_y = 0.0
+shader_parameter/gradient_height = 180.0
+shader_parameter/power = 0.71600001026
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bbqo6"]
+shader = ExtResource("2_1k4da")
+shader_parameter/top_color = Color(1, 1, 1, 1)
+shader_parameter/bottom_color = Color(1, 0.92, 0.75, 1)
+shader_parameter/text_height = 45.0
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ynyhv"]
 
@@ -22,16 +51,19 @@ shader = ExtResource("1_3rkf3")
 shader = ExtResource("1_3rkf3")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3rkf3"]
-bg_color = Color(1, 0.9647059, 0.9607843, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
+bg_color = Color(1, 0.9607843, 0.96862745, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
 border_width_bottom = 3
-border_color = Color(0.81960785, 0.54901963, 0.6392157, 1)
+border_color = Color(0.7882353, 0.6039216, 0.65882355, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
+shadow_color = Color(0.81960785, 0.654902, 0.76862746, 0.3529412)
+shadow_size = 2
+shadow_offset = Vector2(0, 4)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hj162"]
 bg_color = Color(0.9490196, 0.8352941, 0.87058824, 1)
@@ -46,7 +78,7 @@ corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kiqgm"]
-bg_color = Color(0.50962585, 0.30650824, 0.42350078, 1)
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
@@ -72,6 +104,12 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_prbor"]
+load_path = "res://.godot/imported/icon_settings.jpg-57ce81f963928bac5d3a332b1e9c3082.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_27h4x"]
+load_path = "res://.godot/imported/icon_exit.jpg-159e696d6d70b25c2c5e864b4ebeb826.ctex"
+
 [node name="MainMenu" type="Control" unique_id=2084065874]
 layout_mode = 3
 anchors_preset = 15
@@ -95,40 +133,64 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Title" type="Label" parent="TitleGroup" unique_id=191280579]
-material = SubResource("ShaderMaterial_13vnw")
+[node name="CatHead" type="TextureRect" parent="TitleGroup" unique_id=986729689]
+material = SubResource("ShaderMaterial_qe648")
 layout_mode = 0
-offset_top = 105.0
+offset_left = 491.0
+offset_top = 14.0
+offset_right = 591.0001
+offset_bottom = 114.0
+scale = Vector2(1.5, 1.5)
+texture = ExtResource("5_d4hu8")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RibbonDeco" type="TextureRect" parent="TitleGroup" unique_id=905250922]
+material = SubResource("ShaderMaterial_gdhp0")
+layout_mode = 0
+offset_left = -114.0
+offset_top = 48.0
+offset_right = 1086.0
+offset_bottom = 348.0
+scale = Vector2(1.1676171, 1.3305433)
+texture = ExtResource("6_p1nwe")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="TitleGroup" unique_id=191280579]
+material = SubResource("ShaderMaterial_d4hu8")
+layout_mode = 0
+offset_top = 48.0
 offset_right = 1152.0
-offset_bottom = 200.0
-theme_override_colors/font_outline_color = Color(0.9098039, 0.45882353, 0.64705884, 1)
-theme_override_constants/outline_size = 10
+offset_bottom = 235.0
+theme_override_colors/font_outline_color = Color(0.9647059, 0.65882355, 0.72156864, 1)
+theme_override_constants/outline_size = 12
 theme_override_fonts/font = ExtResource("2_247la")
-theme_override_font_sizes/font_size = 76
+theme_override_font_sizes/font_size = 150
 text = "PixelCat"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Subtitle" type="Label" parent="TitleGroup" unique_id=1826749862]
-material = SubResource("ShaderMaterial_3rkf3")
+material = SubResource("ShaderMaterial_bbqo6")
 layout_mode = 0
-offset_top = 185.0
+offset_top = 257.0
 offset_right = 1152.0
-offset_bottom = 225.0
-theme_override_colors/font_outline_color = Color(0.9098039, 0.45882353, 0.64705884, 1)
+offset_bottom = 320.0
+theme_override_colors/font_outline_color = Color(0.9647059, 0.65882355, 0.72156864, 1)
 theme_override_constants/outline_size = 10
 theme_override_fonts/font = ExtResource("2_247la")
-theme_override_font_sizes/font_size = 28
-text = "-- A Little Cat's World --"
+theme_override_font_sizes/font_size = 45
+text = "  -- A Little Cat's World --"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="MenuPanel" type="PanelContainer" parent="." unique_id=440307970]
 layout_mode = 0
-offset_left = 376.0
-offset_top = 270.0
-offset_right = 776.0
-offset_bottom = 582.0
+offset_left = 407.0
+offset_top = 318.0
+offset_right = 747.0
+offset_bottom = 630.0
 theme_override_styles/panel = SubResource("StyleBoxEmpty_ynyhv")
 
 [node name="MenuButtons" type="VBoxContainer" parent="MenuPanel" unique_id=811989357]
@@ -137,7 +199,7 @@ theme_override_constants/separation = 18
 
 [node name="ContinueButton" type="Button" parent="MenuPanel/MenuButtons" unique_id=1624836821]
 material = SubResource("ShaderMaterial_rlvhi")
-custom_minimum_size = Vector2(340, 48)
+custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6627451, 0.30980393, 0.47058824, 1)
 theme_override_colors/font_hover_color = Color(1, 0.9411765, 0.84705883, 1)
@@ -283,7 +345,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-texture = ExtResource("8_bbqo6")
+texture = SubResource("CompressedTexture2D_prbor")
 expand_mode = 1
 
 [node name="Label" type="Label" parent="MenuPanel/MenuButtons/SettingsButtonButton4/HBoxContainer" unique_id=1573475502]
@@ -322,7 +384,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-texture = ExtResource("9_d4hu8")
+texture = SubResource("CompressedTexture2D_27h4x")
 expand_mode = 1
 
 [node name="Label" type="Label" parent="MenuPanel/MenuButtons/ExitButton2/HBoxContainer" unique_id=1898576485]
