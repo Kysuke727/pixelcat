@@ -20,6 +20,7 @@ var attributes: Dictionary = {"vitality": 0, "attack": 0, "defense": 0, "agility
 var skill_points: Dictionary = {"slow": 0, "connection": 0, "bind": 0, "loop": 0}
 var permanent_items: Array[String] = []
 var pending_allocation: Dictionary = {}
+var game_started: bool = false
 var debug_session: bool = false
 var _debug_snapshot: Dictionary = {}
 var _test_mode: bool = false
@@ -257,6 +258,41 @@ func save_now() -> void:
 	if is_instance_valid(ExpeditionManager):
 		ExpeditionManager.capture_current_run()
 	_save_profile()
+
+
+func has_saved_game() -> bool:
+	var path := ProjectSettings.globalize_path(save_path)
+	if FileAccess.file_exists(path) and _is_usable_profile_payload(_read_profile_payload(path)):
+		return true
+	for candidate in _list_profile_recovery_candidates(path):
+		if _is_usable_profile_payload(_read_profile_payload(candidate)):
+			return true
+	return false
+
+
+## Even unreadable or newer-version saves must not be overwritten without warning.
+func has_any_save_file() -> bool:
+	var path := ProjectSettings.globalize_path(save_path)
+	return FileAccess.file_exists(path) or not _list_profile_recovery_candidates(path).is_empty()
+
+
+func new_game() -> void:
+	game_started = true
+	debug_session = false
+	_debug_snapshot.clear()
+	_profile_save_blocked_by_newer_version = false
+	_load_profile_data({})
+	CurrencyManager.load_save_data({})
+	ExpeditionManager.load_save_data({})
+	DayManager.current_state = DayManager.TimeState.DAY
+	DayManager.load_save_data({})
+	_pending_day_state.clear()
+	_save_elapsed = 0.0
+
+
+func continue_game() -> void:
+	game_started = true
+	_save_elapsed = 0.0
 
 
 func _profile_data() -> Dictionary:
@@ -621,6 +657,8 @@ func _skill_cap(key: String) -> int:
 
 
 func _save_profile() -> bool:
+	if not game_started and get_tree().current_scene != null and get_tree().current_scene.scene_file_path == "res://scenes/menu/main_menu.tscn":
+		return true
 	if _test_mode or debug_session:
 		return true
 	if _profile_save_blocked_by_newer_version:
