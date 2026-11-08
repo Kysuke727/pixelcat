@@ -66,9 +66,11 @@ func _run() -> void:
 		_check(sprite.texture != null and sprite.texture.get_size() == Vector2(64, 64), "each facing retains original 64x64 artwork")
 
 	slime.state = slime.SlimeState.WINDUP
+	slime.attack_state_elapsed = slime.windup_duration * 0.9
 	slime._update_sprite(0.1)
 	_check(sprite.scale.x > 1.1 and sprite.scale.y < 0.9, "WINDUP is compressed")
 	slime.state = slime.SlimeState.LUNGE
+	slime.attack_state_elapsed = slime.lunge_duration * 0.13
 	slime._update_sprite(0.1)
 	_check(sprite.scale.y > 1.1 and sprite.position.y < base_sprite.y, "LUNGE stretches and hops")
 	slime.state = slime.SlimeState.HURT

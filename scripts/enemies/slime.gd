@@ -35,7 +35,7 @@ const HIT_FLASH_DURATION := 0.14
 @export var move_speed: float = 35.0
 @export var chase_range: float = 250.0
 @export var disengage_range: float = 300.0
-@export var attack_range: float = 30.0
+@export var attack_range: float = 135.0
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
@@ -44,8 +44,8 @@ var hit_flash_time_left: float = 0.0
 
 @export_category("Lunge")
 @export var windup_duration: float = 0.4
-@export var lunge_duration: float = 0.22
-@export var lunge_speed: float = 145.0
+@export var lunge_duration: float = 0.45
+@export var lunge_speed: float = 285.0
 @export var recover_duration: float = 0.5
 @export var attack_knockback: float = 135.0
 @export var shield_durability_cost: float = 25.0
@@ -94,6 +94,7 @@ var spawn_position: Vector2
 var wander_direction: Vector2 = Vector2.ZERO
 var locked_target_position: Vector2
 var lunge_direction: Vector2 = Vector2.DOWN
+var attack_state_elapsed: float = 0.0
 var hurt_velocity: Vector2 = Vector2.ZERO
 var attacked_targets: Dictionary = {}
 var target: Node2D
@@ -145,6 +146,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if state == SlimeState.DEAD or combat_paused:
 		return
+	if state == SlimeState.WINDUP or state == SlimeState.LUNGE:
+		attack_state_elapsed += delta
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
 	if state != SlimeState.STUNNED:
 		stun_immunity_left = maxf(stun_immunity_left - delta, 0.0)
@@ -245,6 +248,7 @@ func _process_chase() -> void:
 		_next_attack_id += 1
 		current_attack_parried = false
 		_change_state(SlimeState.WINDUP)
+		attack_state_elapsed = 0.0
 		state_time_left = windup_duration
 		return
 	if is_instance_valid(target):
@@ -264,6 +268,7 @@ func _process_windup() -> void:
 		if attack_sound.stream != null:
 			attack_sound.play()
 		_change_state(SlimeState.LUNGE)
+		attack_state_elapsed = 0.0
 		state_time_left = lunge_duration
 
 
@@ -747,14 +752,22 @@ func _update_sprite(delta: float) -> void:
 		target_scale = Vector2(1.11, 0.88)
 		target_offset = 1.0 + sin(animation_time * 7.0) * 0.45
 	elif state == SlimeState.WINDUP:
-		state_color = Color(1.0, 0.58, 0.42, 1.0)
-		target_scale = Vector2(1.18, 0.78)
-		target_offset = 2.0
+		# Clearly telegraphed charge-up: hold still and gradually squash lower.
+		# Orange flashes toward the end, giving the cat time to dodge/parry.
+		var charge := clampf(attack_state_elapsed / maxf(windup_duration, 0.01), 0.0, 1.0)
+		var pulse := 0.02 * sin(charge * PI * 12.0) * charge
+		state_color = Color(1.0, 0.76 - 0.20 * charge, 0.64 - 0.23 * charge, 1.0)
+		target_scale = Vector2(1.07 + charge * 0.23 + pulse, 0.94 - charge * 0.22)
+		target_offset = 1.0 + charge * 3.0
 	elif state == SlimeState.LUNGE:
+		# Real CharacterBody movement is driven by _process_lunge.
+		# The body artwork traces a dramatic airborne arc on top of that move.
+		var flight := clampf(attack_state_elapsed / maxf(lunge_duration, 0.01), 0.0, 1.0)
+		var lift := sin(flight * PI)
 		state_color = Color(1.0, 0.82, 0.68, 1.0)
-		target_scale = Vector2(0.88, 1.16)
-		target_offset = -3.5
-		target_airborne = 0.55
+		target_scale = Vector2(0.87 + 0.28 * flight, 1.18 - 0.34 * flight)
+		target_offset = -19.0 * lift + 1.5 * flight
+		target_airborne = lift
 	elif state == SlimeState.HURT:
 		var hit_wave := clampf(state_time_left / maxf(hurt_duration, 0.01), 0.0, 1.0)
 		target_scale = Vector2(1.0 + 0.19 * hit_wave, 1.0 - 0.22 * hit_wave)

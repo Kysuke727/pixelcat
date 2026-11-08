@@ -43,7 +43,7 @@ class_name CombatV3Tuning
 @export_category("普通史莱姆")
 @export var slime_base_health: int = 5
 @export var slime_attack_damage: int = 1
-@export var slime_windup_duration: float = 0.4
+@export var slime_windup_duration: float = 0.68
 @export var slime_recover_duration: float = 0.5
 @export var slime_collision_stun_duration: float = 1.0
 @export var slime_collision_stun_cooldown: float = 0.8
