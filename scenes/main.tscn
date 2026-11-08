@@ -16,6 +16,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
+[ext_resource type="PackedScene" path="res://scenes/ui/crafting_ui.tscn" id="crafting_ui"]
+[ext_resource type="PackedScene" path="res://scenes/interactables/crafting_workbench.tscn" id="crafting_workbench"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(1152, 40)
 
@@ -140,3 +143,9 @@ offset_bottom = 80.0
 [node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]
 
 [node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]
+
+[node name="CraftingUI" parent="." instance=ExtResource("crafting_ui")]
+
+[node name="CraftingWorkbench" parent="World" instance=ExtResource("crafting_workbench")]
+position = Vector2(740, 525)
+scale = Vector2(1.5, 1.5)

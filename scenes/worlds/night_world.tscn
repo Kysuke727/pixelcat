@@ -15,6 +15,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="14_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
+[ext_resource type="PackedScene" path="res://scenes/ui/crafting_ui.tscn" id="crafting_ui"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
 size = Vector2(1152, 40)
 
@@ -242,3 +244,5 @@ script = ExtResource("9_debug")
 [node name="InventoryUI" parent="." instance=ExtResource("14_inventory")]
 
 [node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]
+
+[node name="CraftingUI" parent="." instance=ExtResource("crafting_ui")]

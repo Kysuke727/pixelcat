@@ -11,6 +11,8 @@ const COLUMN_COUNT := 6
 @onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailDescription
 @onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Detail/EmptyHint
 @onready var bind_button: Button = $Root/Center/Panel/Margin/VBox/Detail/BindQuickbarButton
+@onready var craft_button: Button = $Root/Center/Panel/Margin/VBox/Detail/CraftButton
+@onready var use_button: Button = $Root/Center/Panel/Margin/VBox/Detail/UseItemButton
 
 var is_open: bool = false
 var inventory_slots: Array[Node] = []
@@ -26,6 +28,8 @@ func _ready() -> void:
 	_create_slots()
 	_create_bind_popup()
 	bind_button.pressed.connect(_on_bind_button_pressed)
+	craft_button.pressed.connect(_on_craft_button_pressed)
+	use_button.pressed.connect(_on_use_button_pressed)
 	if not InventoryManager.inventory_changed.is_connected(refresh_inventory):
 		InventoryManager.inventory_changed.connect(refresh_inventory)
 	if not QuickbarManager.quickbar_changed.is_connected(_on_quickbar_changed):
@@ -148,6 +152,8 @@ func _update_detail(index: int) -> void:
 	empty_hint.visible = false
 	var can_bind := bool(item.usable)
 	bind_button.disabled = not can_bind
+	use_button.disabled = not can_bind
+	use_button.text = "使用 " + item.display_name
 	bind_button.text = "设置快捷栏" if can_bind else "该物品不可绑定"
 
 
@@ -164,6 +170,8 @@ func _show_empty_detail() -> void:
 	empty_hint.visible = true
 	bind_button.disabled = true
 	bind_button.text = "设置快捷栏"
+	use_button.disabled = true
+	use_button.text = "使用物品"
 
 
 func _on_bind_button_pressed() -> void:
@@ -208,3 +216,29 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_open and event.is_action_pressed("ui_cancel"):
 		close_inventory()
 		get_viewport().set_input_as_handled()
+
+
+func _on_craft_button_pressed() -> void:
+	var crafting = get_tree().get_first_node_in_group("crafting_ui")
+	if crafting == null:
+		push_warning("CraftingUI is not in the current scene")
+		return
+	close_inventory()
+	crafting.open_crafting(false, true)
+
+
+
+func _on_use_button_pressed() -> void:
+	if selected_item_id.is_empty():
+		return
+	var result: Dictionary = QuickbarManager.use_item(selected_item_id)
+	var reason := str(result.get("reason", ""))
+	match reason:
+		"used_cat_teaser":
+			detail_description.text = "小猫玩得很开心！心情 +20 ♡"
+		"mood_full":
+			detail_description.text = "小猫已经很开心了，逗猫棒没有消耗。"
+		"item_use_not_implemented":
+			detail_description.text = "这件物品目前还不能使用。"
+		_:
+			detail_description.text = "这次没有使用成功：" + reason

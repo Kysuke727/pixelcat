@@ -45,8 +45,8 @@ func _run() -> void:
 	_check(ui.inventory_slots[0].get_node("VBox/QuantityLabel").text == "×3", "slot shows the stack quantity")
 	ui.select_slot(0)
 	_check(ui.detail_name.text == "毛线球", "selecting a slot shows the item name")
-	_check(ui.detail_type.text == "工具", "selecting a slot shows the item type")
-	_check(ui.detail_description.text.contains("黏黏球"), "selecting a slot shows its description")
+	_check(ui.detail_type.text == "材料", "selecting a slot shows the item type")
+	_check(ui.detail_description.text.contains("二级合成材料"), "selecting a slot shows its description")
 	_check(ui.detail_quantity.text.contains("3"), "detail panel shows the selected quantity")
 
 	inventory.add_item("yarn_ball", 2)

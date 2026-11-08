@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/crafting/crafting_recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = "craft_yarn_ball"
+display_name = "毛线球"
+description = "把松散的毛线绕成一团。随身也能做。"
+ingredients = {"yarn": 2}
+result_item_id = "yarn_ball"
+result_quantity = 1
+requires_workbench = false

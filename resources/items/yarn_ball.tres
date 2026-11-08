@@ -7,7 +7,7 @@
 script = ExtResource("1_item")
 item_id = "yarn_ball"
 display_name = "毛线球"
-description = "猫咪喜欢的玩具，也是黏黏球的原型。"
-category = 2
+description = "由毛线绕成的二级合成材料；不能直接使用。与战斗投射物的素材名称相同，但背包里只用于合成。"
+category = 1
 icon = ExtResource("2_icon")
 max_stack = 5

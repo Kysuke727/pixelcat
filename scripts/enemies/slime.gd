@@ -20,6 +20,8 @@ const BACK_TEXTURE := preload("res://assets/characters/slime/slime_back.png")
 const LEFT_TEXTURE := preload("res://assets/characters/slime/slime_left.png")
 const RIGHT_TEXTURE := preload("res://assets/characters/slime/slime_right.png")
 const FISH_PICKUP_SCENE := preload("res://scenes/pickups/dried_fish_pickup.tscn")
+const MATERIAL_PICKUP_SCENE := preload("res://scenes/pickups/material_drop_pickup.tscn")
+const MaterialLoot := preload("res://scripts/material_loot.gd")
 static var _next_attack_id: int = 1
 const HIT_FLASH_DURATION := 0.14
 
@@ -584,9 +586,12 @@ func _die() -> void:
 	attack_area.set_deferred("monitoring", false)
 	body_collision.set_deferred("disabled", true)
 	var drops := _prepare_fish_drop_records()
+	var materials: Array[Dictionary] = _prepare_material_drop_records() if ExpeditionManager.run_active else []
 	if ExpeditionManager.run_active:
-		ExpeditionManager.complete_enemy_with_drops(String(name), experience_reward, drops)
+		ExpeditionManager.complete_enemy_with_drops(String(name), experience_reward, drops, materials)
 	call_deferred("_drop_fish", drops)
+	if not materials.is_empty():
+		call_deferred("_drop_materials", materials)
 	if death_sound.stream != null:
 		death_sound.play()
 	died.emit(self)
@@ -609,6 +614,38 @@ func _prepare_fish_drop_records() -> Array[Dictionary]:
 		var drop_position := global_position + Vector2.from_angle(angle) * randf_range(8.0, 16.0)
 		records.append({"id": "%s:fish:%d" % [String(name), index], "position": [drop_position.x, drop_position.y], "amount": 1})
 	return records
+
+
+## Roll once for the number of loot entities, independently once per entity for
+## the material type. IDs are saved before spawning, so reloading cannot reroll.
+func _prepare_material_drop_records() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var ids: Array[String] = MaterialLoot.roll_material_ids(rng)
+	for index in range(ids.size()):
+		var angle: float = TAU * float(index) / float(maxi(ids.size(), 1)) + rng.randf_range(-0.18, 0.18)
+		var position: Vector2 = global_position + Vector2.from_angle(angle) * rng.randf_range(22.0, 34.0)
+		records.append({
+			"id": "%s:material:%d" % [String(name), index],
+			"item_id": ids[index],
+			"position": [position.x, position.y],
+			"amount": 1,
+		})
+	return records
+
+
+func _drop_materials(records: Array[Dictionary]) -> void:
+	if ProgressionManager.debug_session or not ExpeditionManager.run_active:
+		return
+	for record in records:
+		if not ExpeditionManager.material_drops.has(str(record.get("id", ""))):
+			continue
+		var pickup: Area2D = MATERIAL_PICKUP_SCENE.instantiate()
+		pickup.setup_saved_drop(str(record["id"]), str(record["item_id"]), 1)
+		get_parent().add_child(pickup)
+		var position_data: Array = record.get("position", [global_position.x, global_position.y])
+		pickup.global_position = Vector2(float(position_data[0]), float(position_data[1]))
 
 
 func _drop_fish(records: Array[Dictionary]) -> void:
