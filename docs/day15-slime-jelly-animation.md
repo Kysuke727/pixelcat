@@ -63,3 +63,14 @@
 - `tests/sticky_yarn_v4.gd`、`tests/combat_v3_phase_b.gd`、`tests/material_loot_integration.gd`：需要持续回归。
 
 试玩重点：是否能明显看见 0.68 秒蓄力，小猫是否有机会闪躲/弹反，以及默认 128px 的远跳会不会过强。可在 Godot Inspector 的 Stats / Lunge 与 CombatV3Tuning 中进一步微调。
+
+
+## V2.1：完美防御时机收紧
+
+远距离蓄力跳上线后，原有 `perfect_guard_window = 0.5s` 的命中预测窗口过宽：史莱姆尚在蓄力中段，玩家按 Z 就能提前成功弹反。
+
+- 统一将 `CombatV3Tuning.perfect_guard_window`、`cat_controller.gd` 的 Inspector 默认值调整为 **0.25s**。
+- `_try_perfect_guard()` 仍在**按下 Z 的瞬间**查询最近的预计命中时间；按得更早只进入普通防御，不会持续自动转成完美防御。
+- **保留**普通格挡、盾牌耐久、松开重新按键的规则，成功完美弹反后的 `perfect_guard_pause_duration = 1.0s` 也暂不改。
+- `tests/combat_v3_phase_d.gd` 现检查提前约 0.34s 的防御不弹反、约 0.18s 的防御可弹反，确保时机更明确。顺便使测试中的玩家初始盾耐久固定为 100，避免从存档/数值成长继承的当前最大盾耐久影响旧断言。
+- 如果 Windows 实机仍觉得过于宽松，可考虑降低到 0.20s；如果太难，可改为 0.30s。当前 0.25s 相当于约 15 帧（60 FPS），适合作为第一轮手感测试。

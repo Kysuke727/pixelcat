@@ -21,6 +21,8 @@ func _run() -> void:
 	time_controller.set_process(false)
 	time_controller.clear_enemy_pause()
 	player.global_position = Vector2(100.0, 100.0)
+	player.shield_durability = 100.0
+	player.guard_break_left = 0.0
 	for existing_enemy in get_nodes_in_group("enemies"):
 		existing_enemy.set_physics_process(false)
 		existing_enemy.global_position = Vector2(850.0, 600.0)
@@ -76,7 +78,7 @@ func _run() -> void:
 	early_enemy.state = early_enemy.SlimeState.WINDUP
 	early_enemy.current_attack_id = 810010
 	early_enemy.locked_target_position = player.global_position
-	early_enemy.state_time_left = 0.35
+	early_enemy.state_time_left = 0.55
 	_check(early_enemy.get_attack_eta_for(player, 0.7) < 0.0, "attack forecast rejects an impact outside the 0.7-second window")
 	player._handle_defend_press(true)
 	_check(player.is_defending, "pressing Z too early enters ordinary defense")
@@ -89,7 +91,16 @@ func _run() -> void:
 	parry_enemy.state = parry_enemy.SlimeState.WINDUP
 	parry_enemy.current_attack_id = 810011
 	parry_enemy.locked_target_position = player.global_position
-	parry_enemy.state_time_left = 0.35
+	# The long-jump charge-up should NOT be parried too early.
+	# A 0.34s forecast is inside the old 0.5s window but outside 0.25s.
+	parry_enemy.state_time_left = 0.34
+	_check(is_equal_approx(player.perfect_guard_window, 0.25), "perfect guard window is now 0.25 seconds")
+	player._handle_defend_press(true)
+	_check(player.is_defending and not parry_enemy.current_attack_parried, "0.34-second early defense is ordinary block, not parry")
+	_check(not time_controller.is_enemy_side_paused(), "early block does not trigger perfect-guard pause")
+	player._handle_defend_press(false)
+	player.is_defending = false
+	parry_enemy.state_time_left = 0.18
 	var eta: float = parry_enemy.get_attack_eta_for(player, 0.7)
 	_check(eta >= 0.0 and eta <= 0.5, "nearby valid lunge has an imminent hit forecast")
 	var enemy_projectile: Area2D = load("res://scenes/combat/yarn_projectile.tscn").instantiate()

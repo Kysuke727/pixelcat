@@ -35,7 +35,7 @@ class_name CombatV3Tuning
 @export var shield_movement_multiplier: float = 0.0
 @export var shield_regen_delay: float = 3.0
 @export var shield_regen_per_second: float = 15.0
-@export var perfect_guard_window: float = 0.5
+@export var perfect_guard_window: float = 0.25
 @export var perfect_guard_pause_duration: float = 1.0
 @export var guard_break_stun_duration: float = 1.5
 @export_range(0.0, 1.0) var guard_break_restore_ratio: float = 0.3

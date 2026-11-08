@@ -23,7 +23,7 @@ signal died
 @export var defense_movement_multiplier: float = 0.0
 @export var guard_break_stun_duration: float = 1.5
 @export var guard_break_restore_ratio: float = 0.3
-@export var perfect_guard_window: float = 0.5
+@export var perfect_guard_window: float = 0.25
 @export var perfect_guard_pause_duration: float = 1.0
 
 var current_health: float
