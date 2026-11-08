@@ -10,6 +10,8 @@ const ITEM_PATHS := [
 	"res://resources/items/wood.tres",
 	"res://resources/items/stone.tres",
 	"res://resources/items/test_potion.tres",
+	"res://resources/items/yarn.tres",
+	"res://resources/items/cat_teaser.tres",
 ]
 
 var item_database: Dictionary = {}
@@ -157,6 +159,59 @@ func remove_item(item_id: String, quantity: int) -> Dictionary:
 	return _remove_result(true, quantity, removed, "")
 
 
+## Crafting operates on a cloned inventory. Failure never removes ingredients
+## or writes a partial output to the persistent save.
+func preview_crafting(ingredients: Dictionary, result_item_id: String, result_quantity: int = 1) -> Dictionary:
+	return _craft_transaction(ingredients, result_item_id, result_quantity, false)
+
+
+func craft_items(ingredients: Dictionary, result_item_id: String, result_quantity: int = 1) -> Dictionary:
+	return _craft_transaction(ingredients, result_item_id, result_quantity, true)
+
+
+func _craft_transaction(ingredients: Dictionary, result_item_id: String, result_quantity: int, commit: bool) -> Dictionary:
+	_ensure_ready()
+	var result_item = get_item_data(result_item_id)
+	if result_item == null:
+		return {"success": false, "reason": "invalid_output"}
+	if result_quantity <= 0 or ingredients.is_empty():
+		return {"success": false, "reason": "invalid_recipe"}
+	var staged: Array[Dictionary] = []
+	for slot in slots:
+		staged.append(slot.duplicate(true))
+	for raw_id in ingredients:
+		if typeof(raw_id) != TYPE_STRING or not item_database.has(raw_id):
+			return {"success": false, "reason": "invalid_ingredient"}
+		var value: Variant = ingredients[raw_id]
+		if typeof(value) != TYPE_INT or int(value) <= 0:
+			return {"success": false, "reason": "invalid_quantity"}
+		if get_item_count(raw_id) < int(value):
+			return {"success": false, "reason": "insufficient_materials"}
+		var remaining: int = int(value)
+		for slot in staged:
+			if str(slot["item_id"]) != raw_id:
+				continue
+			var taken: int = mini(remaining, int(slot["quantity"]))
+			slot["quantity"] = int(slot["quantity"]) - taken
+			remaining -= taken
+			if int(slot["quantity"]) == 0:
+				slot["item_id"] = ""
+			if remaining == 0:
+				break
+		if remaining != 0:
+			return {"success": false, "reason": "insufficient_materials"}
+	if _add_to_slots(staged, result_item, result_quantity) != result_quantity:
+		return {"success": false, "reason": "inventory_full"}
+	if commit:
+		slots = staged
+		for item_id in ingredients.keys():
+			item_removed.emit(str(item_id), int(ingredients[item_id]))
+		item_added.emit(result_item_id, result_quantity)
+		inventory_changed.emit()
+		_persist_change()
+	return {"success": true, "reason": "", "result_item_id": result_item_id, "quantity": result_quantity}
+
+
 func clear_all() -> void:
 	_reset_slots()
 	inventory_changed.emit()
@@ -201,9 +256,13 @@ func load_save_data(data: Array) -> void:
 
 
 func _add_stack(item, quantity: int) -> int:
+	return _add_to_slots(slots, item, quantity)
+
+
+func _add_to_slots(target_slots: Array[Dictionary], item, quantity: int) -> int:
 	var remaining := quantity
 	var added := 0
-	for slot in slots:
+	for slot in target_slots:
 		if str(slot["item_id"]) != item.item_id:
 			continue
 		var space: int = int(item.max_stack) - int(slot["quantity"])
@@ -215,7 +274,7 @@ func _add_stack(item, quantity: int) -> int:
 		added += amount
 		if remaining <= 0:
 			return added
-	for slot in slots:
+	for slot in target_slots:
 		if not str(slot["item_id"]).is_empty():
 			continue
 		var amount: int = mini(remaining, int(item.max_stack))

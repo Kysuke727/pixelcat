@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/crafting/crafting_recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = "craft_cat_teaser"
+display_name = "毛线逗猫棒"
+description = "把木材和粉色毛线绑在一起做成的小玩具。需要工作台。"
+ingredients = {"wood": 2, "yarn": 1}
+result_item_id = "cat_teaser"
+result_quantity = 1
+requires_workbench = true

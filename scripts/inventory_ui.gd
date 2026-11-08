@@ -11,6 +11,7 @@ const COLUMN_COUNT := 6
 @onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailDescription
 @onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Detail/EmptyHint
 @onready var bind_button: Button = $Root/Center/Panel/Margin/VBox/Detail/BindQuickbarButton
+@onready var craft_button: Button = $Root/Center/Panel/Margin/VBox/Detail/CraftButton
 
 var is_open: bool = false
 var inventory_slots: Array[Node] = []
@@ -26,6 +27,7 @@ func _ready() -> void:
 	_create_slots()
 	_create_bind_popup()
 	bind_button.pressed.connect(_on_bind_button_pressed)
+	craft_button.pressed.connect(_on_craft_button_pressed)
 	if not InventoryManager.inventory_changed.is_connected(refresh_inventory):
 		InventoryManager.inventory_changed.connect(refresh_inventory)
 	if not QuickbarManager.quickbar_changed.is_connected(_on_quickbar_changed):
@@ -208,3 +210,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_open and event.is_action_pressed("ui_cancel"):
 		close_inventory()
 		get_viewport().set_input_as_handled()
+
+
+func _on_craft_button_pressed() -> void:
+	var crafting = get_tree().get_first_node_in_group("crafting_ui")
+	if crafting == null:
+		push_warning("CraftingUI is not in the current scene")
+		return
+	close_inventory()
+	crafting.open_crafting(false, true)

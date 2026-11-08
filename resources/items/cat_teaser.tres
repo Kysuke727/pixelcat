@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/items/item_data.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/objects/items/cat_teaser.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "cat_teaser"
+display_name = "毛线逗猫棒"
+description = "手工台制作的猫咪玩具。后续可用于互动。"
+category = 2
+icon = ExtResource("2_icon")
+max_stack = 10
