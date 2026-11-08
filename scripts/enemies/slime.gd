@@ -15,6 +15,7 @@ enum SlimeState {
 	DEAD
 }
 
+const JellyMotion := preload("res://scripts/enemies/slime_jelly_motion.gd")
 const FRONT_TEXTURE := preload("res://assets/characters/slime/slime_front.png")
 const BACK_TEXTURE := preload("res://assets/characters/slime/slime_back.png")
 const LEFT_TEXTURE := preload("res://assets/characters/slime/slime_left.png")
@@ -34,7 +35,7 @@ const HIT_FLASH_DURATION := 0.14
 @export var move_speed: float = 35.0
 @export var chase_range: float = 250.0
 @export var disengage_range: float = 300.0
-@export var attack_range: float = 30.0
+@export var attack_range: float = 135.0
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
@@ -43,8 +44,8 @@ var hit_flash_time_left: float = 0.0
 
 @export_category("Lunge")
 @export var windup_duration: float = 0.4
-@export var lunge_duration: float = 0.22
-@export var lunge_speed: float = 145.0
+@export var lunge_duration: float = 0.45
+@export var lunge_speed: float = 285.0
 @export var recover_duration: float = 0.5
 @export var attack_knockback: float = 135.0
 @export var shield_durability_cost: float = 25.0
@@ -93,16 +94,31 @@ var spawn_position: Vector2
 var wander_direction: Vector2 = Vector2.ZERO
 var locked_target_position: Vector2
 var lunge_direction: Vector2 = Vector2.DOWN
+var attack_state_elapsed: float = 0.0
 var hurt_velocity: Vector2 = Vector2.ZERO
 var attacked_targets: Dictionary = {}
 var target: Node2D
 var animation_time: float = 0.0
+
+@export_category("Jelly Animation")
+@export_range(0.2, 1.0, 0.01) var wander_hop_period: float = 0.43
+@export_range(0.2, 1.0, 0.01) var chase_hop_period: float = 0.32
+@export_range(0.5, 2.0, 0.05) var chase_hop_amplitude: float = 1.12
+@export_range(5.0, 40.0, 1.0) var visual_smoothing: float = 24.0
+
+var hop_elapsed: float = 0.0
+var jelly_visual_scale: Vector2 = Vector2.ONE
+var jelly_visual_offset: float = 0.0
+var jelly_visual_airborne: float = 0.0
+var jelly_base_position: Vector2 = Vector2.ZERO
+var jelly_hopping: bool = false
 var facing: Vector2 = Vector2.DOWN
 var current_attack_id: int = 0
 var current_attack_parried: bool = false
 var combat_paused: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var shadow: Node2D = $JellyShadow
 @onready var body_collision: CollisionShape2D = $CollisionShape2D
 @onready var attack_area: Area2D = $AttackArea
 @onready var attack_sound: AudioStreamPlayer2D = $AttackSound
@@ -112,6 +128,7 @@ var combat_paused: bool = false
 
 
 func _ready() -> void:
+	jelly_base_position = sprite.position
 	_apply_combat_tuning()
 	current_health = max_health
 	spawn_position = global_position
@@ -129,6 +146,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if state == SlimeState.DEAD or combat_paused:
 		return
+	if state == SlimeState.WINDUP or state == SlimeState.LUNGE:
+		attack_state_elapsed += delta
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
 	if state != SlimeState.STUNNED:
 		stun_immunity_left = maxf(stun_immunity_left - delta, 0.0)
@@ -229,6 +248,7 @@ func _process_chase() -> void:
 		_next_attack_id += 1
 		current_attack_parried = false
 		_change_state(SlimeState.WINDUP)
+		attack_state_elapsed = 0.0
 		state_time_left = windup_duration
 		return
 	if is_instance_valid(target):
@@ -248,6 +268,7 @@ func _process_windup() -> void:
 		if attack_sound.stream != null:
 			attack_sound.play()
 		_change_state(SlimeState.LUNGE)
+		attack_state_elapsed = 0.0
 		state_time_left = lunge_duration
 
 
@@ -586,7 +607,7 @@ func _die() -> void:
 	attack_area.set_deferred("monitoring", false)
 	body_collision.set_deferred("disabled", true)
 	var drops := _prepare_fish_drop_records()
-	var materials: Array[Dictionary] = _prepare_material_drop_records() if ExpeditionManager.run_active else []
+	var materials := _prepare_material_drop_records()
 	if ExpeditionManager.run_active:
 		ExpeditionManager.complete_enemy_with_drops(String(name), experience_reward, drops, materials)
 	call_deferred("_drop_fish", drops)
@@ -594,6 +615,11 @@ func _die() -> void:
 		call_deferred("_drop_materials", materials)
 	if death_sound.stream != null:
 		death_sound.play()
+	# Flatten once. The existing death tween owns scale and alpha afterwards;
+	# _physics_process deliberately stops updating the sprite in DEAD state.
+	sprite.scale = Vector2(1.28, 0.62)
+	sprite.position = jelly_base_position + Vector2(0.0, 4.0)
+	shadow.set_airborne(0.0)
 	died.emit(self)
 	for ui in get_tree().get_nodes_in_group("battle_ui"):
 		if ui.has_method("hide_enemy"):
@@ -620,6 +646,8 @@ func _prepare_fish_drop_records() -> Array[Dictionary]:
 ## the material type. IDs are saved before spawning, so reloading cannot reroll.
 func _prepare_material_drop_records() -> Array[Dictionary]:
 	var records: Array[Dictionary] = []
+	if not ExpeditionManager.run_active:
+		return records
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var ids: Array[String] = MaterialLoot.roll_material_ids(rng)
@@ -702,15 +730,66 @@ func _update_sprite(delta: float) -> void:
 		sprite.texture = RIGHT_TEXTURE
 	else:
 		sprite.texture = FRONT_TEXTURE
+	# Only the Sprite2D and its floor shadow animate; the CharacterBody2D,
+	# collision shape, hit areas and movement speed are never modified.
 	var state_color := Color.WHITE
-	if state == SlimeState.WINDUP:
-		state_color = Color(1.0, 0.58, 0.42, 1.0)
-		sprite.scale = Vector2(1.08, 0.86)
+	var target_scale := Vector2.ONE
+	var target_offset := 0.0
+	var target_airborne := 0.0
+	var moving := bind_time_left <= 0.0 and (state == SlimeState.WANDER or state == SlimeState.CHASE) and velocity.length_squared() > 1.0
+	if moving and not jelly_hopping:
+		hop_elapsed = 0.0
+	jelly_hopping = moving
+	if moving:
+		var period := wander_hop_period if state == SlimeState.WANDER else chase_hop_period
+		var amplitude := 0.80 if state == SlimeState.WANDER else chase_hop_amplitude
+		var motion: Dictionary = JellyMotion.sample(fposmod(hop_elapsed / period, 1.0), amplitude)
+		target_scale = motion["scale"]
+		target_offset = float(motion["offset"])
+		target_airborne = float(motion["airborne"])
+		hop_elapsed += delta
+	elif bind_time_left > 0.0:
+		target_scale = Vector2(1.11, 0.88)
+		target_offset = 1.0 + sin(animation_time * 7.0) * 0.45
+	elif state == SlimeState.WINDUP:
+		# Clearly telegraphed charge-up: hold still and gradually squash lower.
+		# Orange flashes toward the end, giving the cat time to dodge/parry.
+		var charge := clampf(attack_state_elapsed / maxf(windup_duration, 0.01), 0.0, 1.0)
+		var pulse := 0.02 * sin(charge * PI * 12.0) * charge
+		state_color = Color(1.0, 0.76 - 0.20 * charge, 0.64 - 0.23 * charge, 1.0)
+		target_scale = Vector2(1.07 + charge * 0.23 + pulse, 0.94 - charge * 0.22)
+		target_offset = 1.0 + charge * 3.0
 	elif state == SlimeState.LUNGE:
+		# Real CharacterBody movement is driven by _process_lunge.
+		# The body artwork traces a dramatic airborne arc on top of that move.
+		var flight := clampf(attack_state_elapsed / maxf(lunge_duration, 0.01), 0.0, 1.0)
+		var lift := sin(flight * PI)
 		state_color = Color(1.0, 0.82, 0.68, 1.0)
-		sprite.scale = Vector2(0.92, 1.12)
+		target_scale = Vector2(0.87 + 0.28 * flight, 1.18 - 0.34 * flight)
+		target_offset = -19.0 * lift + 1.5 * flight
+		target_airborne = lift
+	elif state == SlimeState.HURT:
+		var hit_wave := clampf(state_time_left / maxf(hurt_duration, 0.01), 0.0, 1.0)
+		target_scale = Vector2(1.0 + 0.19 * hit_wave, 1.0 - 0.22 * hit_wave)
+		target_offset = 1.5 * hit_wave
+	elif state == SlimeState.STUNNED:
+		target_scale = Vector2(1.06, 0.92)
+		target_offset = 1.0
+	elif state == SlimeState.RECOVER:
+		target_scale = Vector2(1.09, 0.91)
+		target_offset = 1.0
 	else:
-		sprite.scale = Vector2.ONE
+		# Subtle idle breathing; not a hovering jump.
+		var breath := sin(animation_time * TAU / 1.2)
+		target_scale = Vector2(1.0 + 0.025 * breath, 1.0 - 0.025 * breath)
+		target_offset = -0.55 * maxf(breath, 0.0)
+	var alpha := clampf(delta * visual_smoothing, 0.0, 1.0)
+	jelly_visual_scale = jelly_visual_scale.lerp(target_scale, alpha)
+	jelly_visual_offset = lerpf(jelly_visual_offset, target_offset, alpha)
+	jelly_visual_airborne = lerpf(jelly_visual_airborne, target_airborne, alpha)
+	sprite.scale = jelly_visual_scale
+	sprite.position = jelly_base_position + Vector2(0.0, jelly_visual_offset)
+	shadow.set_airborne(jelly_visual_airborne)
 	var flash_strength := clampf(hit_flash_time_left / HIT_FLASH_DURATION, 0.0, 1.0)
 	sprite.modulate = state_color.lerp(Color(3.0, 3.0, 3.0, 1.0), flash_strength)
 	hit_flash_time_left = maxf(hit_flash_time_left - delta, 0.0)

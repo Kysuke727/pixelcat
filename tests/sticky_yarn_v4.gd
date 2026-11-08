@@ -73,7 +73,10 @@ func _run() -> void:
 	_check(is_equal_approx(target.bind_resistance_left, RESISTANCE_DURATION), "bind end grants exactly 1 s resistance")
 	var position_at_release: Vector2 = target.global_position
 	target._physics_process(0.1)
-	_check(target.global_position.distance_to(position_at_release) > 0.0, "AI movement resumes after bind ends")
+	_check(
+		target.global_position.distance_to(position_at_release) > 0.0 or target.state == target.SlimeState.WINDUP,
+		"AI resumes: approaches player or charges long leap after bind ends"
+	)
 
 	# 3) Resistance lasts 1 s and rejects a new bind without refreshing itself.
 	target._physics_process(0.25)
