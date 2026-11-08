@@ -6,8 +6,8 @@
 script = ExtResource("1_recipe")
 recipe_id = "craft_cat_teaser"
 display_name = "毛线逗猫棒"
-description = "把木材和粉色毛线绑在一起做成的小玩具。需要工作台。"
-ingredients = {"wood": 2, "yarn": 1}
+description = "木材和二级材料毛线球组合的手工玩具，使用可增加20心情。需要工作台。"
+ingredients = {"wood": 2, "yarn_ball": 1}
 result_item_id = "cat_teaser"
 result_quantity = 1
 requires_workbench = true

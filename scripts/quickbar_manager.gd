@@ -100,8 +100,7 @@ func has_usable_quantity(slot_index: int) -> bool:
 	return get_bound_item_count(slot_index) > 0
 
 
-## Number-key activation hook. Item use is intentionally not implemented yet:
-## this returns handled=false and never consumes inventory.
+## Number keys use the same validated item action as the inventory detail panel.
 func activate_slot(slot_index: int) -> Dictionary:
 	if not _is_valid_slot_index(slot_index):
 		return {"handled": false, "reason": "invalid_slot", "slot": slot_index}
@@ -112,14 +111,38 @@ func activate_slot(slot_index: int) -> Dictionary:
 		return {"handled": false, "reason": "not_usable", "slot": slot_index, "item_id": item.item_id}
 	if get_bound_item_count(slot_index) <= 0:
 		return {"handled": false, "reason": "out_of_stock", "slot": slot_index, "item_id": item.item_id}
-	quickbar_slot_activated.emit(slot_index, item.item_id)
-	return {
-		"handled": false,
-		"reason": "item_use_not_implemented",
-		"slot": slot_index,
-		"item_id": item.item_id,
-		"quantity": get_bound_item_count(slot_index),
-	}
+	var result: Dictionary = use_item(item.item_id)
+	if bool(result.get("handled", false)):
+		quickbar_slot_activated.emit(slot_index, item.item_id)
+	result["slot"] = slot_index
+	return result
+
+
+func use_item(item_id: String) -> Dictionary:
+	var item = InventoryManager.get_item_data(item_id)
+	if item == null:
+		return {"handled": false, "reason": "invalid_item", "item_id": item_id}
+	if not bool(item.usable):
+		return {"handled": false, "reason": "not_usable", "item_id": item_id}
+	if InventoryManager.get_item_count(item_id) < 1:
+		return {"handled": false, "reason": "out_of_stock", "item_id": item_id}
+	if item_id == "cat_teaser":
+		var player: Node = get_tree().get_first_node_in_group("player")
+		if player == null or bool(player.get("dead")):
+			return {"handled": false, "reason": "no_player", "item_id": item_id}
+		var stats: Node = player.get_node_or_null("Stats")
+		if stats == null:
+			return {"handled": false, "reason": "no_stats", "item_id": item_id}
+		if float(stats.get("mood")) >= 100.0:
+			return {"handled": false, "reason": "mood_full", "item_id": item_id}
+		var before_mood: float = float(stats.get("mood"))
+		stats.add_mood(20)
+		var removed: Dictionary = InventoryManager.remove_item(item_id, 1)
+		if not bool(removed.get("success", false)):
+			stats.set("mood", before_mood)
+			return {"handled": false, "reason": "consume_failed", "item_id": item_id}
+		return {"handled": true, "reason": "used_cat_teaser", "item_id": item_id, "mood_after": float(stats.get("mood"))}
+	return {"handled": false, "reason": "item_use_not_implemented", "item_id": item_id}
 
 
 func get_save_data() -> Array[String]:

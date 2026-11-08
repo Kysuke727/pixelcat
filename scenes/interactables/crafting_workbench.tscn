@@ -1,6 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/crafting_workbench.gd" id="1_workbench"]
+
+[ext_resource type="Texture2D" path="res://assets/objects/furniture/crafting_workbench.png" id="2_sprite"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_workbench"]
 radius = 43.0
@@ -10,3 +12,9 @@ script = ExtResource("1_workbench")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_workbench")
+
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("2_sprite")
+scale = Vector2(0.7, 0.7)

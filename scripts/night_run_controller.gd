@@ -24,6 +24,7 @@ func _initialize_run() -> void:
 		elif enemy.has_signal("died"):
 			enemy.died.connect(_on_enemy_died.bind(enemy_id), CONNECT_ONE_SHOT)
 	_restore_saved_drops()
+	_restore_material_drops()
 	ExpeditionManager.set_objectives(enemy_ids)
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
@@ -45,6 +46,16 @@ func _restore_saved_drops() -> void:
 		var record: Dictionary = ExpeditionManager.fish_drops[drop_id]
 		var pickup: Area2D = load("res://scenes/pickups/dried_fish_pickup.tscn").instantiate()
 		pickup.setup_saved_drop(str(drop_id), int(record.get("amount", 1)))
+		get_parent().add_child(pickup)
+		var position_data: Array = record.get("position", [0.0, 0.0])
+		pickup.global_position = Vector2(float(position_data[0]), float(position_data[1]))
+
+
+func _restore_material_drops() -> void:
+	for drop_id in ExpeditionManager.material_drops:
+		var record: Dictionary = ExpeditionManager.material_drops[drop_id]
+		var pickup: Area2D = load("res://scenes/pickups/material_drop_pickup.tscn").instantiate()
+		pickup.setup_saved_drop(str(drop_id), str(record.get("item_id", "")), int(record.get("amount", 1)))
 		get_parent().add_child(pickup)
 		var position_data: Array = record.get("position", [0.0, 0.0])
 		pickup.global_position = Vector2(float(position_data[0]), float(position_data[1]))

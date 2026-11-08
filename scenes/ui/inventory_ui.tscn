@@ -150,6 +150,11 @@ theme_override_font_sizes/font_size = 12
 text = "I / Esc 关闭"
 horizontal_alignment = 1
 
+[node name="UseItemButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail"]
+layout_mode = 2
+disabled = true
+text = "使用物品"
+
 [node name="CraftButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail"]
 layout_mode = 2
 text = "♡ 制作物品 ♡"

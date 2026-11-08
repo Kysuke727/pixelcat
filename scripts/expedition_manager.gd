@@ -15,6 +15,7 @@ var objectives_total: int = 0
 var objectives_completed: int = 0
 var defeated_enemy_ids: Array[String] = []
 var fish_drops: Dictionary = {}
+var material_drops: Dictionary = {}
 var exploration_reward_claimed: bool = false
 var active_safe_position: Vector2 = Vector2(500.0, 350.0)
 var saved_player_position: Vector2 = Vector2(500.0, 350.0)
@@ -36,6 +37,7 @@ func begin_run() -> void:
 	objectives_completed = 0
 	defeated_enemy_ids.clear()
 	fish_drops.clear()
+	material_drops.clear()
 	exploration_reward_claimed = false
 	active_safe_position = Vector2(500.0, 350.0)
 	saved_player_position = active_safe_position
@@ -88,7 +90,7 @@ func complete_enemy_objective(enemy_id: String, experience_reward: int = 0) -> v
 	expedition_changed.emit()
 
 
-func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: Array[Dictionary]) -> void:
+func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: Array[Dictionary], material_records: Array[Dictionary] = []) -> void:
 	if not run_active or ProgressionManager.debug_session or enemy_id.is_empty() or defeated_enemy_ids.has(enemy_id):
 		return
 	for drop in drops:
@@ -96,6 +98,12 @@ func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: 
 		if drop_id.is_empty():
 			continue
 		fish_drops[drop_id] = drop.duplicate(true)
+	for record in material_records:
+		var drop_id := str(record.get("id", ""))
+		var item_id := str(record.get("item_id", ""))
+		if drop_id.is_empty() or not ["yarn", "stone", "wood"].has(item_id):
+			continue
+		material_drops[drop_id] = record.duplicate(true)
 	defeated_enemy_ids.append(enemy_id)
 	objectives_completed = mini(objectives_completed + 1, objectives_total)
 	ProgressionManager.add_experience(maxi(experience_reward, 0))
@@ -104,6 +112,27 @@ func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: 
 		ProgressionManager.add_experience(exploration_clear_experience)
 	ProgressionManager.save_now()
 	expedition_changed.emit()
+
+
+## Successful pickup modifies the material count and pending drop table together.
+## add_item(..., false) skips an intermediate save; the final save includes both.
+func collect_saved_material_drop(drop_id: String) -> bool:
+	if ProgressionManager.debug_session or not run_active or not material_drops.has(drop_id):
+		return false
+	var record: Dictionary = material_drops[drop_id]
+	var item_id: String = str(record.get("item_id", ""))
+	var amount: int = int(record.get("amount", 1))
+	if not ["yarn", "stone", "wood"].has(item_id) or amount <= 0:
+		return false
+	if InventoryManager.get_addable_quantity(item_id, amount) < amount:
+		return false
+	var result: Dictionary = InventoryManager.add_item(item_id, amount, false)
+	if not bool(result.get("success", false)):
+		return false
+	material_drops.erase(drop_id)
+	ProgressionManager.save_now()
+	expedition_changed.emit()
+	return true
 
 
 func collect_saved_fish_drop(drop_id: String) -> bool:
@@ -217,6 +246,7 @@ func get_save_data() -> Dictionary:
 		"objectives_completed": objectives_completed,
 		"defeated_enemy_ids": defeated_enemy_ids.duplicate(),
 		"fish_drops": fish_drops.duplicate(true),
+		"material_drops": material_drops.duplicate(true),
 		"exploration_reward_claimed": exploration_reward_claimed,
 		"safe_position": [active_safe_position.x, active_safe_position.y],
 		"player_position": [saved_player_position.x, saved_player_position.y],
@@ -236,6 +266,7 @@ func load_save_data(data: Dictionary) -> void:
 	for enemy_id in data.get("defeated_enemy_ids", []):
 		defeated_enemy_ids.append(str(enemy_id))
 	fish_drops = data.get("fish_drops", {}).duplicate(true)
+	material_drops = data.get("material_drops", {}).duplicate(true)
 	exploration_reward_claimed = bool(data.get("exploration_reward_claimed", objectives_completed >= objectives_total and objectives_total > 0))
 	active_safe_position = _vector_from_data(data.get("safe_position", [500.0, 350.0]))
 	saved_player_position = _vector_from_data(data.get("player_position", [500.0, 350.0]))

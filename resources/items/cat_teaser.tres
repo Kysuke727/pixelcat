@@ -7,7 +7,8 @@
 script = ExtResource("1_item")
 item_id = "cat_teaser"
 display_name = "毛线逗猫棒"
-description = "手工台制作的猫咪玩具。后续可用于互动。"
+description = "一次性的粉色逗猫棒。使用后心情 +20，心情已满时不会浪费。"
 category = 2
+usable = true
 icon = ExtResource("2_icon")
 max_stack = 10

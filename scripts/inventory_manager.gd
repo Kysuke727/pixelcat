@@ -111,7 +111,7 @@ func can_add_item(item_id: String, quantity: int) -> bool:
 	return quantity > 0 and get_addable_quantity(item_id, quantity) >= quantity
 
 
-func add_item(item_id: String, quantity: int) -> Dictionary:
+func add_item(item_id: String, quantity: int, persist: bool = true) -> Dictionary:
 	if quantity <= 0:
 		return _result(false, quantity, 0, quantity, "invalid_quantity")
 	var item = get_item_data(item_id)
@@ -124,7 +124,8 @@ func add_item(item_id: String, quantity: int) -> Dictionary:
 	var remaining := quantity - added
 	item_added.emit(item_id, added)
 	inventory_changed.emit()
-	_persist_change()
+	if persist:
+		_persist_change()
 	return _result(remaining == 0, quantity, added, remaining, "" if remaining == 0 else "inventory_full")
 
 

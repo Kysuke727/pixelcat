@@ -39,17 +39,9 @@ func _run() -> void:
 	_check(crafting._selected_recipe == "craft_cat_teaser", "advanced recipe selectable at workbench")
 	crafting.close_crafting()
 	_check(not inventory.ui_open, "workbench close releases movement lock")
-	var yarn_pickup = scene.get_node("World/MaterialPickupYarn")
-	var wood_pickup = scene.get_node("World/MaterialPickupWood")
-	var stone_pickup = scene.get_node("World/MaterialPickupStone")
-	for pickup in [yarn_pickup, wood_pickup, stone_pickup]:
-		pickup.cat_nearby = cat
-		pickup.interact()
-	_check(inventory.get_item_count("yarn") == 5, "day prototype pickup grants yarn")
-	_check(inventory.get_item_count("wood") == 5, "day prototype pickup grants wood")
-	_check(inventory.get_item_count("stone") == 5, "day prototype pickup grants stone")
-	await process_frame
-	_check(not is_instance_valid(yarn_pickup), "collected pickup is removed from scene")
+	_check(scene.get_node_or_null("World/MaterialPickupYarn") == null, "house no longer supplies free infinite materials")
+	var scene_workbench_sprite: Sprite2D = bench.get_node("Sprite2D")
+	_check(scene_workbench_sprite.texture != null, "workbench now uses polished pixel-art asset")
 	inventory.clear_all()
 	scene.queue_free()
 	await process_frame
