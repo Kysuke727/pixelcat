@@ -1,6 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://2vutp67l1g3v"]
 
-[ext_resource type="Script" path="res://scripts/inventory_slot.gd" id="1_slot"]
+[ext_resource type="Script" uid="uid://bbxliigmeu4up" path="res://scripts/inventory_slot.gd" id="1_slot"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
 bg_color = Color(1, 0.9411765, 0.9529412, 1)
@@ -14,34 +14,31 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
-[node name="InventorySlot" type="PanelContainer"]
+[node name="InventorySlot" type="PanelContainer" unique_id=280103038]
 custom_minimum_size = Vector2(72, 84)
-mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 script = ExtResource("1_slot")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1107222716]
 layout_mode = 2
 theme_override_constants/separation = 1
 
-[node name="Icon" type="TextureRect" parent="VBox"]
+[node name="Icon" type="TextureRect" parent="VBox" unique_id=2130762400]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_vertical = 3
 expand_mode = 1
 stretch_mode = 5
 
-[node name="NameLabel" type="Label" parent="VBox"]
+[node name="NameLabel" type="Label" parent="VBox" unique_id=1207309299]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.28, 0.35, 1)
 theme_override_font_sizes/font_size = 10
-text = ""
 horizontal_alignment = 1
 clip_text = true
 
-[node name="QuantityLabel" type="Label" parent="VBox"]
+[node name="QuantityLabel" type="Label" parent="VBox" unique_id=1110293014]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
 theme_override_font_sizes/font_size = 10
-text = ""
 horizontal_alignment = 2

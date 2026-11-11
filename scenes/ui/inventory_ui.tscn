@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://dd5viuhr0oxlx"]
 
-[ext_resource type="Script" path="res://scripts/inventory_ui.gd" id="1_ui"]
+[ext_resource type="Script" uid="uid://bk6epd33ulqdq" path="res://scripts/inventory_ui.gd" id="1_ui"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(1, 0.9607843, 0.9372549, 1)
@@ -26,11 +26,21 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
-[node name="InventoryUI" type="CanvasLayer"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kscix"]
+bg_color = Color(1, 0.9607843, 0.96862745, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+
+[node name="InventoryUI" type="CanvasLayer" unique_id=437246366]
 layer = 50
 script = ExtResource("1_ui")
 
-[node name="Root" type="Control" parent="."]
+[node name="Root" type="Control" parent="." unique_id=622893323]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -38,9 +48,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 
-[node name="Dim" type="ColorRect" parent="Root"]
+[node name="Dim" type="ColorRect" parent="Root" unique_id=737370336]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -50,7 +59,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.45)
 
-[node name="Center" type="CenterContainer" parent="Root"]
+[node name="Center" type="CenterContainer" parent="Root" unique_id=532451952]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -59,23 +68,23 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Root/Center"]
-custom_minimum_size = Vector2(620, 620)
+[node name="Panel" type="PanelContainer" parent="Root/Center" unique_id=1600065940]
+custom_minimum_size = Vector2(340, 380)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
+[node name="Margin" type="MarginContainer" parent="Root/Center/Panel" unique_id=1037423666]
 layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
-[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel/Margin"]
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel/Margin" unique_id=1566695265]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Root/Center/Panel/Margin/VBox"]
+[node name="Title" type="Label" parent="Root/Center/Panel/Margin/VBox" unique_id=1284994313]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.57254905, 0.46666667, 0.5137255, 1)
 theme_override_font_sizes/font_size = 24
@@ -83,41 +92,38 @@ text = "我的背包 ♡"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/VBox"]
+[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/VBox" unique_id=607948909]
 custom_minimum_size = Vector2(456, 354)
 layout_mode = 2
 size_flags_horizontal = 4
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
 columns = 6
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
 
-[node name="Separator" type="HSeparator" parent="Root/Center/Panel/Margin/VBox"]
+[node name="Separator" type="HSeparator" parent="Root/Center/Panel/Margin/VBox" unique_id=1797828398]
 layout_mode = 2
 
-[node name="Detail" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox"]
+[node name="Detail" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox" unique_id=281809174]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="DetailName" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="DetailName" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=240659611]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
 theme_override_font_sizes/font_size = 18
-text = "我的背包 ♡"
 
-[node name="DetailType" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="DetailType" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1094726826]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.45, 0.55, 1)
 theme_override_font_sizes/font_size = 12
-text = ""
 
-[node name="DetailQuantity" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="DetailQuantity" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1396188122]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.4, 0.45, 1)
 theme_override_font_sizes/font_size = 12
-text = ""
 
-[node name="DetailDescription" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="DetailDescription" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=898287144]
 custom_minimum_size = Vector2(0, 76)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.36, 0.4, 1)
@@ -125,36 +131,37 @@ theme_override_font_sizes/font_size = 13
 text = "背包是空的。以后获得的材料与道具会出现在这里。"
 autowrap_mode = 2
 
-[node name="BindQuickbarButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="BindQuickbarButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=199452017]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
 theme_override_colors/font_disabled_color = Color(0.65, 0.55, 0.6, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button")
 disabled = true
 text = "设置快捷栏"
 
-[node name="EmptyHint" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail"]
+[node name="EmptyHint" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1917918098]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.5, 0.55, 1)
 theme_override_font_sizes/font_size = 11
 text = "I 键打开 / 关闭背包"
 autowrap_mode = 2
 
-[node name="Hint" type="Label" parent="Root/Center/Panel/Margin/VBox"]
+[node name="UseItemButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1718111138]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_kscix")
+disabled = true
+text = "使用物品"
+
+[node name="CraftButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=2055542300]
+layout_mode = 2
+text = "♡ 制作物品 ♡"
+
+[node name="Hint" type="Label" parent="Root/Center/Panel/Margin/VBox" unique_id=96073327]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.5, 0.55, 1)
 theme_override_font_sizes/font_size = 12
 text = "I / Esc 关闭"
 horizontal_alignment = 1
-
-[node name="UseItemButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail"]
-layout_mode = 2
-disabled = true
-text = "使用物品"
-
-[node name="CraftButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail"]
-layout_mode = 2
-text = "♡ 制作物品 ♡"

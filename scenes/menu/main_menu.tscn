@@ -50,12 +50,15 @@ direction = Vector3(0, -1, 0)
 spread = 35.0
 initial_velocity_min = 8.0
 initial_velocity_max = 18.0
+angular_velocity_min = 9.999984
+angular_velocity_max = 19.999983
 gravity = Vector3(0, 98, 0)
 scale_min = 0.01
 scale_max = 0.03
 scale_curve = SubResource("CurveTexture_qe648")
 color = Color(1, 0.9490196, 0.7411765, 1)
 color_ramp = SubResource("GradientTexture1D_fojya")
+turbulence_enabled = true
 turbulence_noise_strength = 1.5
 turbulence_noise_scale = 3.0
 
