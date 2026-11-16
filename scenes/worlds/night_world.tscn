@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" uid="uid://dwmtx50eqnjrx" path="res://scenes/ui/coin_ui.tscn" id="4_ji3sx"]
 [ext_resource type="PackedScene" uid="uid://crdk4cmg23b4j" path="res://scenes/ui/battle_ui.tscn" id="6_dsh4f"]
 [ext_resource type="Texture2D" path="res://assets/objects/street_lamp.png" id="7_lamp"]
-[ext_resource type="PackedScene" path="res://scenes/combat/yarn_wrap_point.tscn" id="13_wrap_point"]
 [ext_resource type="Script" path="res://scripts/progression_panel.gd" id="8_progression"]
 [ext_resource type="Script" path="res://scripts/debug_panel.gd" id="9_debug"]
 [ext_resource type="Script" path="res://scripts/night_run_controller.gd" id="10_run"]
@@ -28,6 +27,9 @@ size = Vector2(40, 648)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fojya"]
 size = Vector2(40, 648)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_lamp"]
+radius = 10.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_exit"]
 radius = 24.0
@@ -96,20 +98,29 @@ position = Vector2(686, 570)
 texture = ExtResource("7_lamp")
 scale = Vector2(0.75, 0.75)
 
-[node name="LampWrapPoint1" parent="Decorations" instance=ExtResource("13_wrap_point")]
+[node name="LampCollider1" type="StaticBody2D" parent="Decorations"]
 position = Vector2(686, 210)
-yarn_wrap_radius = 11.0
-entity_collision_radius = 10.0
+collision_layer = 1
+collision_mask = 0
 
-[node name="LampWrapPoint2" parent="Decorations" instance=ExtResource("13_wrap_point")]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Decorations/LampCollider1"]
+shape = SubResource("CircleShape2D_lamp")
+
+[node name="LampCollider2" type="StaticBody2D" parent="Decorations"]
 position = Vector2(686, 396)
-yarn_wrap_radius = 11.0
-entity_collision_radius = 10.0
+collision_layer = 1
+collision_mask = 0
 
-[node name="LampWrapPoint3" parent="Decorations" instance=ExtResource("13_wrap_point")]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Decorations/LampCollider2"]
+shape = SubResource("CircleShape2D_lamp")
+
+[node name="LampCollider3" type="StaticBody2D" parent="Decorations"]
 position = Vector2(687, 541)
-yarn_wrap_radius = 11.0
-entity_collision_radius = 10.0
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Decorations/LampCollider3"]
+shape = SubResource("CircleShape2D_lamp")
 
 [node name="Tree1" type="Polygon2D" parent="Decorations" unique_id=1516793081]
 color = Color(0.09411765, 0.22745098, 0.19215687, 1)

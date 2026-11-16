@@ -39,7 +39,6 @@ const HIT_FLASH_DURATION := 0.14
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
-@export_range(8.0, 32.0, 1.0) var yarn_wrap_radius: float = 14.0
 var hit_flash_time_left: float = 0.0
 
 @export_category("Lunge")
