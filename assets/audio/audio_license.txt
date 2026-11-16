@@ -40,3 +40,21 @@ Source: 小森平
 
 coin04.mp3
 Source: 小森平
+
+決定ボタンを押す4.mp3
+source:soundeffect-lab.info
+
+決定ボタンを押す12.mp3
+source:soundeffect-lab.info
+
+決定ボタンを押す42.mp3
+source:soundeffect-lab.info
+
+カーソル移動7.mp3
+source:soundeffect-lab.info
+
+キャンセル3.mp3
+source:soundeffect-lab.info
+
+キャンセル9.mp3
+source:soundeffect-lab.info
