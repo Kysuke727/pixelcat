@@ -46,21 +46,40 @@ func _run() -> void:
 	slime.facing = Vector2.DOWN
 	slime.animation_time = 0.2
 	slime.state = slime.SlimeState.IDLE
-	slime._update_sprite(0.0)
+	_settle(slime)
 	_check(sprite.frame == 0, "idle animation does not cycle cropped frames")
-	_check(sprite.scale == Vector2.ONE, "idle scale is neutral")
+	_check(
+		absf(sprite.scale.x - 1.0) <= 0.03 and absf(sprite.scale.y - 1.0) <= 0.03,
+		"idle scale stays within the subtle breathing range"
+	)
+	_check(_stays_centered(slime, sprite, 2.0), "idle breathing only moves the Sprite2D vertically, by a little")
 
-	# Preserve the existing scale-based bounce.
+	# Jelly motion is smoothed, so settle on the target before asserting.
+	# A full wind-up squashes wide and low (pulse term is zero at full charge).
 	slime.state = slime.SlimeState.WINDUP
-	slime._update_sprite(0.0)
-	_check(sprite.scale == Vector2(1.08, 0.86), "wind-up squash/stretch bounce is preserved")
-	_check(sprite.position == Vector2.ZERO, "wind-up bounce does not move the Sprite2D off-center")
+	slime.attack_state_elapsed = slime.windup_duration
+	_settle(slime)
+	_check(
+		sprite.scale.is_equal_approx(Vector2(1.30, 0.72)),
+		"wind-up squash/stretch bounce is preserved"
+	)
+	_check(_stays_centered(slime, sprite, 6.0), "wind-up bounce does not move the Sprite2D off-center")
 
+	# Mid-flight of the lunge: scale crosses through (1.01, 1.01) and the
+	# artwork is lifted about 18 px above its resting position.
 	slime.state = slime.SlimeState.LUNGE
-	slime._update_sprite(0.0)
-	_check(sprite.scale == Vector2(0.92, 1.12), "lunge stretch bounce is preserved")
+	slime.attack_state_elapsed = slime.lunge_duration * 0.5
+	_settle(slime)
+	_check(
+		sprite.scale.is_equal_approx(Vector2(1.01, 1.01)),
+		"lunge stretch bounce is preserved"
+	)
+	_check(
+		sprite.position.y < slime.jelly_base_position.y - 15.0,
+		"lunge lifts the artwork off the ground"
+	)
 	_check(sprite.frame == 0, "lunge does not jump to a cropped frame")
-	_check(sprite.position == Vector2.ZERO, "lunge bounce does not move the Sprite2D off-center")
+	_check(_stays_centered(slime, sprite, 24.0), "lunge bounce does not move the Sprite2D off-center")
 
 	# Unrelated gameplay configuration must remain untouched.
 	var body_shape: CollisionShape2D = slime.get_node("CollisionShape2D")
@@ -88,3 +107,16 @@ func _check(condition: bool, description: String) -> void:
 		print("PASS: ", description)
 	else:
 		failures.append(description)
+
+
+# Run the smoothed visual update long enough to reach its target values.
+func _settle(slime: Node) -> void:
+	for _i in 120:
+		slime._update_sprite(0.1)
+
+
+# Jelly offsets are vertical only: x must stay on the base position and the
+# vertical travel must stay within max_travel pixels.
+func _stays_centered(slime: Node, sprite: Sprite2D, max_travel: float) -> bool:
+	var delta: Vector2 = sprite.position - slime.jelly_base_position
+	return is_zero_approx(delta.x) and absf(delta.y) <= max_travel

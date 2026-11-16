@@ -92,7 +92,7 @@ func _run() -> void:
 	night_scene.add_child(slime)
 	slime.set_physics_process(false)
 	_check(slime.max_health == 5, "normal slime HP is five")
-	_check(is_equal_approx(slime.windup_duration, 0.4), "slime windup warning lasts 0.4 seconds")
+	_check(is_equal_approx(slime.windup_duration, 0.68), "slime windup (charge-up) lasts the tuned 0.68 seconds")
 	_check(is_equal_approx(slime.recover_duration, 0.5), "slime recovers for 0.5 seconds")
 	slime.apply_yarn_bind(0.3)
 	_check(is_equal_approx(slime.bind_time_left, 0.3), "initial binding applies normally")

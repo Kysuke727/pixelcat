@@ -1,5 +1,13 @@
 extends SceneTree
 
+# Three-stage restart test. Run the stages in order against ONE user-data dir
+# (e.g. set XDG_DATA_HOME to a temp folder) so the save written by `write` is
+# what `verify` reads back:
+#   godot --headless --path . --script res://tests/profile_bootstrap.gd -- new
+#   godot --headless --path . --script res://tests/profile_bootstrap.gd -- write
+#   godot --headless --path . --script res://tests/profile_bootstrap.gd -- verify
+# `verify` on an empty profile fails (it does not hang).
+
 var failures: Array[String] = []
 
 
@@ -42,7 +50,8 @@ func _run() -> void:
 		_check(expedition.run_active and expedition.lives_left == 1, "restart restores active expedition and lives")
 		_check(expedition.ordinary_fish == 5 and expedition.defeated_enemy_ids.size() == 2, "restart restores expedition resources and defeats")
 		_check(expedition.fish_drops.has("BootA:fish:0"), "restart restores an unclaimed fish drop record")
-		_check(int(expedition.fish_drops["BootA:fish:0"].get("amount", 0)) == 2, "restart preserves drop quantity and pickup identity")
+		var restored_drop: Dictionary = expedition.fish_drops.get("BootA:fish:0", {})
+		_check(int(restored_drop.get("amount", 0)) == 2, "restart preserves drop quantity and pickup identity")
 	else:
 		failures.append("Unknown profile bootstrap mode: " + mode)
 	if failures.is_empty():
