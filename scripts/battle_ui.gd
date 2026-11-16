@@ -53,6 +53,12 @@ func _update_combat_readout() -> void:
 	if player.get("guard_break_left") > 0.0:
 		combat_feedback.text = "防御破碎 %.1fs" % float(player.get("guard_break_left"))
 		combat_feedback.add_theme_color_override("font_color", Color(1.0, 0.38, 0.32))
+	elif float(player.get("slip_time_left")) > 0.0:
+		combat_feedback.text = "滑倒了！"
+		combat_feedback.add_theme_color_override("font_color", Color(0.6, 0.9, 1.0))
+	elif float(player.get("stick_time_left")) > 0.0:
+		combat_feedback.text = "被史莱姆黏住了！移动变慢，不能冲刺和闪避"
+		combat_feedback.add_theme_color_override("font_color", Color(0.65, 1.0, 0.65))
 	elif player.get("perfect_guard_flash_left") > 0.0:
 		combat_feedback.text = "完美防御！"
 		combat_feedback.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))

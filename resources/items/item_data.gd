@@ -19,6 +19,8 @@ enum Category {
 @export_range(1, 999, 1) var max_stack: int = 99
 @export var usable: bool = false
 @export var discardable: bool = true
+## true = this item is never lost when the cat dies (key items, crafted gear, ...).
+@export var keep_on_death: bool = false
 
 
 func is_valid_item() -> bool:

@@ -5,6 +5,8 @@ signal health_changed(current_health: float, max_health: float)
 signal died
 signal dashed
 signal perfect_dodged(source_position: Vector2)
+signal slipped(source: Node)
+signal got_stuck(source: Node)
 
 @export var max_health: int = 5
 @export var invincibility_duration: float = 1.0
@@ -55,6 +57,22 @@ var pounce_window_left: float = 0.0
 var pounce_time_left: float = 0.0
 var pounce_direction: Vector2 = Vector2.ZERO
 var pounce_speed: float = 0.0
+# Touching a slime: a chance to slip (lose control for a moment) or get stuck (slowed, no
+# dash / dodge). Tuned in CombatV3Tuning ("史莱姆接触").
+var slime_contact_chance: float = 0.35
+var contact_roll_interval: float = 0.5
+var slip_share: float = 0.5
+var slip_duration: float = 0.6
+var slip_speed: float = 220.0
+var stick_duration: float = 1.2
+var stick_speed_multiplier: float = 0.25
+var contact_immunity_duration: float = 2.0
+var slip_time_left: float = 0.0
+var slip_velocity: Vector2 = Vector2.ZERO
+var stick_time_left: float = 0.0
+var contact_immunity_left: float = 0.0
+var contact_roll_left: float = 0.0
+var contact_rng := RandomNumberGenerator.new()
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
@@ -80,6 +98,7 @@ func _ready() -> void:
 	current_health = max_health
 	shield_durability = shield_max_durability
 	dash_charges = dash_max_charges
+	contact_rng.randomize()
 	add_to_group("player")
 	animated_sprite.play("idle")
 	var time_controller := get_node_or_null("/root/CombatTimeController")
@@ -101,6 +120,13 @@ func _physics_process(delta: float) -> void:
 	counter_window_left = maxf(counter_window_left - delta, 0.0)
 	pounce_window_left = maxf(pounce_window_left - delta, 0.0)
 	hitstun_left = maxf(hitstun_left - delta, 0.0)
+	slip_time_left = maxf(slip_time_left - delta, 0.0)
+	contact_immunity_left = maxf(contact_immunity_left - delta, 0.0)
+	contact_roll_left = maxf(contact_roll_left - delta, 0.0)
+	if stick_time_left > 0.0:
+		stick_time_left = maxf(stick_time_left - delta, 0.0)
+		if stick_time_left <= 0.0:
+			animated_sprite.modulate = Color.WHITE
 	_update_dash_recharge(delta)
 
 	if dead:
@@ -124,6 +150,12 @@ func _physics_process(delta: float) -> void:
 			Vector2.ZERO,
 			received_knockback_decay * delta
 		)
+		move_and_slide()
+		return
+
+	if slip_time_left > 0.0:
+		# Slipping: no steering, the slide fades out.
+		velocity = slip_velocity * (slip_time_left / maxf(slip_duration, 0.001))
 		move_and_slide()
 		return
 
@@ -159,12 +191,15 @@ func _physics_process(delta: float) -> void:
 	var movement_multiplier := defense_movement_multiplier if is_defending else 1.0
 	if combat != null and combat.has_method("get_movement_multiplier"):
 		movement_multiplier *= combat.get_movement_multiplier()
+	if stick_time_left > 0.0:
+		movement_multiplier *= stick_speed_multiplier
 	velocity = direction * get_effective_move_speed() * movement_multiplier
 
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
 		update_animation(direction)
 
 	move_and_slide()
+	_check_slime_contact()
 
 
 func update_animation(direction: Vector2) -> void:
@@ -212,6 +247,7 @@ func is_in_hitstun() -> bool:
 func can_perform_combat_action() -> bool:
 	return (
 		not dead
+		and slip_time_left <= 0.0
 		and hitstun_left <= 0.0
 		and guard_break_left <= 0.0
 		and not is_defending
@@ -219,7 +255,7 @@ func can_perform_combat_action() -> bool:
 
 
 func _try_start_dodge(input_direction: Vector2) -> bool:
-	if dodge_cooldown_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0 or dead or is_defending:
+	if dodge_cooldown_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0 or dead or is_defending or stick_time_left > 0.0:
 		return false
 	dodge_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
 	if dodge_direction == Vector2.ZERO:
@@ -241,7 +277,7 @@ func _move_during_dodge(delta: float) -> void:
 ## Cat-step dash: a short burst of movement with NO invulnerability. It can cancel a
 ## melee swing, so dash-cancelling is a skill expression, not a safety button.
 func _try_start_dash(input_direction: Vector2) -> bool:
-	if dash_charges <= 0 or dead or guard_break_left > 0.0 or hitstun_left > 0.0 or is_defending:
+	if dash_charges <= 0 or dead or guard_break_left > 0.0 or hitstun_left > 0.0 or is_defending or stick_time_left > 0.0:
 		return false
 	dash_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
 	if dash_direction == Vector2.ZERO:
@@ -268,6 +304,7 @@ func _move_during_dash(delta: float) -> void:
 	velocity = dash_direction * speed * (step_time / maxf(delta, 0.0001))
 	update_animation(dash_direction)
 	move_and_slide()
+	_check_slime_contact()
 	HitFeel.afterimage(animated_sprite, Color(1.0, 0.8, 0.9, 0.4))
 
 
@@ -301,7 +338,53 @@ func _move_during_pounce(delta: float) -> void:
 	velocity = pounce_direction * pounce_speed * (step_time / maxf(delta, 0.0001))
 	update_animation(pounce_direction)
 	move_and_slide()
+	_check_slime_contact()
 	HitFeel.afterimage(animated_sprite, Color(1.0, 0.75, 0.6, 0.4))
+
+
+## Touching a living, active slime: every contact_roll_interval there is a slime_contact_chance
+## to slip or get stuck, and after an effect the cat is immune for a while.
+func _check_slime_contact() -> void:
+	if dead or contact_immunity_left > 0.0 or contact_roll_left > 0.0:
+		return
+	if dodge_iframes_left > 0.0 or hitstun_left > 0.0 or guard_break_left > 0.0:
+		return
+	for index in range(get_slide_collision_count()):
+		var other := get_slide_collision(index).get_collider()
+		if other is Node and other.is_in_group("enemies") and other.has_method("is_contact_harmful") and other.is_contact_harmful():
+			contact_roll_left = contact_roll_interval
+			if contact_rng.randf() < slime_contact_chance:
+				_apply_slime_contact_effect(other)
+			return
+
+
+func _apply_slime_contact_effect(source: Node) -> void:
+	contact_immunity_left = contact_immunity_duration
+	dash_time_left = 0.0
+	pounce_time_left = 0.0
+	if combat != null and combat.has_method("cancel_action"):
+		combat.cancel_action()
+	if contact_rng.randf() < slip_share:
+		_start_slip(source)
+	else:
+		_start_stick(source)
+
+
+func _start_slip(source: Node) -> void:
+	var direction := velocity.normalized() if velocity.length() > 10.0 else (global_position - (source as Node2D).global_position).normalized()
+	if direction == Vector2.ZERO:
+		direction = -last_facing
+	slip_velocity = direction * slip_speed
+	slip_time_left = slip_duration
+	slipped.emit(source)
+	HitFeel.damage_number(global_position + Vector2(0.0, -22.0), "滑倒！", HitFeel.CYAN, 15)
+
+
+func _start_stick(source: Node) -> void:
+	stick_time_left = stick_duration
+	animated_sprite.modulate = Color(0.7, 1.0, 0.7, 1.0)
+	got_stuck.emit(source)
+	HitFeel.damage_number(global_position + Vector2(0.0, -22.0), "被黏住了！", HitFeel.GREEN, 15)
 
 
 ## Spend the counter window (the counter claw uses it up).
@@ -541,6 +624,10 @@ func revive_from_expedition(respawn_position: Vector2) -> void:
 	dash_time_left = 0.0
 	pounce_time_left = 0.0
 	pounce_window_left = 0.0
+	slip_time_left = 0.0
+	stick_time_left = 0.0
+	contact_immunity_left = 0.0
+	animated_sprite.modulate = Color.WHITE
 	if combat != null and combat.has_method("set_combat_enabled"):
 		combat.set_combat_enabled(true)
 	animated_sprite.modulate = Color.WHITE
@@ -599,6 +686,18 @@ func _apply_combat_tuning() -> void:
 	dash_recharge_time = tuning.dash_recharge_time
 	perfect_dodge_counter_window = tuning.perfect_dodge_counter_window
 	pounce_window_after_dash = tuning.pounce_window_after_dash
+	slime_contact_chance = tuning.slime_contact_chance
+	contact_roll_interval = tuning.contact_roll_interval
+	slip_share = tuning.slip_share
+	slip_duration = tuning.slip_duration
+	slip_speed = tuning.slip_speed
+	stick_duration = tuning.stick_duration
+	stick_speed_multiplier = tuning.stick_speed_multiplier
+	contact_immunity_duration = tuning.contact_immunity_duration
+	# Automated tests must not be disturbed by random slips; tests that cover the effect
+	# switch the chance on explicitly.
+	if OS.get_environment("PIXELCAT_TEST_MODE") == "1":
+		slime_contact_chance = 0.0
 	shield_max_durability = tuning.shield_max_durability
 	slime_attack_shield_cost = tuning.slime_lunge_shield_cost
 	defense_movement_multiplier = tuning.shield_movement_multiplier

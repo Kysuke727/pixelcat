@@ -219,24 +219,27 @@ func _run() -> void:
 	await scene_changed
 	await physics_frame
 	var current_player := get_first_node_in_group("player")
+	# Dying now ends the run and shows the settlement screen; there is no respawn.
+	var settlement := root.get_node("SettlementScreen")
+	settlement.show_delay = 0.0
 	expedition.activate_safe_point(Vector2(280.0, 460.0))
-	current_player.die()
-	_check(expedition.saved_player_position.is_equal_approx(Vector2(280.0, 460.0)), "death autosave records the safe-point respawn position")
-	_check(is_equal_approx(expedition.saved_health, current_player.max_health) and is_equal_approx(expedition.saved_shield, current_player.shield_max_durability * 0.5), "death autosave records the intended restored HP and half shield")
-	await process_frame
-	_check(not current_player.dead, "player returns from the death state after respawning")
-	_check(expedition.lives_left == 1, "first death consumes exactly one exploration life")
-	_check(current_player.global_position.is_equal_approx(Vector2(280.0, 460.0)), "death respawns at the most recently activated safe point")
-	_check(is_equal_approx(current_player.current_health, current_player.max_health), "respawn restores full health")
-	_check(is_equal_approx(current_player.shield_durability, current_player.shield_max_durability * 0.5), "respawn restores half shield")
 	expedition.add_ordinary_fish(5)
-	var currency_before_exhaustion: int = currency.fish_count
+	var currency_before_death: int = currency.fish_count
 	var night_scene_before_failure := current_scene
+	var death_position: Vector2 = current_player.global_position
 	current_player.die()
+	await process_frame
+	await process_frame
+	_check(not expedition.run_active and expedition.lives_left == 0, "death ends the exploration run immediately")
+	_check(expedition.last_outcome == "failed", "death records a failed outcome")
+	_check(currency.fish_count == currency_before_death + 3, "death applies the configured loss and banks the retained loot")
+	_check(settlement.is_open() and paused, "death opens the settlement screen and pauses the game")
+	_check(current_player.dead and current_player.global_position == death_position, "the cat is NOT respawned or teleported")
+	_check(day_manager.current_state == 1, "still at night until the player presses go home")
+	settlement.confirm()
 	await scene_changed
-	_check(expedition.lives_left == 0 and not expedition.run_active, "last death exhausts exploration lives and fails the run")
-	_check(currency.fish_count == currency_before_exhaustion + 3, "life exhaustion applies the same configured loss and banks retained loot")
-	_check(day_manager.current_state == 0 and current_scene.scene_file_path == "res://scenes/main.tscn", "life exhaustion automatically returns the player to the day")
+	_check(not paused, "going home unpauses the game")
+	_check(day_manager.current_state == 0 and current_scene.scene_file_path == "res://scenes/main.tscn", "going home returns the player to the day")
 
 	var active_scene := current_scene
 	if is_instance_valid(active_scene):

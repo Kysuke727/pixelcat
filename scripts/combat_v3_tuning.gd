@@ -49,6 +49,28 @@ class_name CombatV3Tuning
 @export var pounce_hitbox_scale: float = 1.4
 @export var counter_claw_damage: float = 2.0
 @export var counter_claw_hitbox_scale: float = 1.25
+@export_category("绕背暴击")
+## Hitting an enemy from behind has this chance to be a critical hit.
+@export_range(0.0, 1.0) var backstab_crit_chance: float = 0.5
+@export var crit_damage_multiplier: float = 2.0
+## "Behind" = the angle between the enemy's facing and the direction to the cat is wider than
+## this (dot product of the two unit vectors; -0.5 = 120 degrees, -1 = exactly behind).
+@export_range(-1.0, 0.0) var backstab_dot_threshold: float = -0.5
+
+@export_category("史莱姆接触")
+## Touching a slime is NOT always bad: each roll has only this chance to trigger an effect.
+@export_range(0.0, 1.0) var slime_contact_chance: float = 0.35
+## Seconds between rolls while the cat keeps touching a slime.
+@export var contact_roll_interval: float = 0.5
+## When an effect triggers: this share are slips, the rest are "stuck".
+@export_range(0.0, 1.0) var slip_share: float = 0.5
+@export var slip_duration: float = 0.6
+@export var slip_speed: float = 220.0
+@export var stick_duration: float = 1.2
+@export_range(0.0, 1.0) var stick_speed_multiplier: float = 0.25
+## After an effect the cat cannot be affected again for this long (no chain-locking).
+@export var contact_immunity_duration: float = 2.0
+
 @export_category("连招奖励")
 ## A finishing move rewards either fish or mood (50/50). Once per swing.
 @export var combo_reward_fish: int = 1

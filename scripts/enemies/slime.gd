@@ -545,6 +545,11 @@ func _apply_combat_tuning() -> void:
 	control_immunity_duration = tuning.control_immunity_duration
 
 
+## Can touching this slime make the cat slip or stick? Not when it is dead, stunned or bound.
+func is_contact_harmful() -> bool:
+	return state != SlimeState.DEAD and state != SlimeState.STUNNED and bind_time_left <= 0.0
+
+
 func is_alive() -> bool:
 	return state != SlimeState.DEAD
 

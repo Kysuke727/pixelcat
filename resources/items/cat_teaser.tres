@@ -12,3 +12,4 @@ category = 2
 usable = true
 icon = ExtResource("2_icon")
 max_stack = 10
+keep_on_death = true

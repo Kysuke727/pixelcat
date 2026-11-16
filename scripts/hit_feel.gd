@@ -25,6 +25,7 @@ const GOLD := Color("#ffd84d")
 const PINK := Color("#f07aa0")
 const CYAN := Color("#8fe3ff")
 const RED := Color("#ff6a6a")
+const CRIT := Color("#ff7a3d")
 const GREEN := Color("#9be39b")
 
 
@@ -42,12 +43,24 @@ func _exit_tree() -> void:
 # Semantic helpers called by gameplay code
 # ---------------------------------------------------------------------------
 
-func melee_hit(world_position: Vector2, amount: float, is_finisher: bool = false, is_heavy: bool = false) -> void:
+func melee_hit(world_position: Vector2, amount: float, is_finisher: bool = false, is_heavy: bool = false, is_crit: bool = false) -> void:
+	if is_crit:
+		_crit_hit(world_position, amount)
+		return
 	var big := is_finisher or is_heavy
 	spark(world_position, GOLD if big else CREAM, 12 if is_heavy else (9 if is_finisher else 5), 150.0 if is_heavy else (130.0 if is_finisher else 100.0))
 	damage_number(world_position, _format_amount(amount), GOLD if big else CREAM, 22 if is_heavy else (18 if is_finisher else 14))
 	hit_stop(0.1 if is_heavy else (0.075 if is_finisher else 0.04))
 	shake(0.45 if is_heavy else (0.32 if is_finisher else 0.16))
+
+
+## A backstab crit: bigger, orange-red, longer freeze.
+func _crit_hit(world_position: Vector2, amount: float) -> void:
+	spark(world_position, CRIT, 14, 170.0)
+	spark(world_position, CREAM, 6, 110.0)
+	damage_number(world_position, "暴击 %s" % _format_amount(amount), CRIT, 22)
+	hit_stop(0.11)
+	shake(0.5)
 
 
 func yarn_hit(world_position: Vector2, amount: float) -> void:

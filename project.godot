@@ -29,6 +29,7 @@ DayManager="*uid://b7ucns7eojso8"
 HitFeel="*res://scripts/hit_feel.gd"
 MoveBanner="*res://scripts/move_banner.gd"
 MapSelect="*res://scripts/map_select.gd"
+SettlementScreen="*res://scripts/settlement_screen.gd"
 
 [display]
 

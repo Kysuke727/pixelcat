@@ -2,13 +2,18 @@ extends Node
 
 signal expedition_changed
 signal expedition_finished(success: bool, retained_fish: int, lost_fish: int)
+## Emitted when the cat dies: the run is over and the settlement screen should be shown.
+signal death_settlement(report: Dictionary)
 
-@export var starting_lives: int = 2
+## Dying ends the run (see on_player_died), so there is only one "life".
+@export var starting_lives: int = 1
 @export_range(0.0, 1.0) var failure_loss_ratio: float = 0.5
 @export var odd_loot_rounding: String = "floor"
 @export var exploration_clear_experience: int = 50
 
 var run_active: bool = false
+## Summary of the run that just ended: {success, retained, lost, map_id, objectives_*}.
+var last_result: Dictionary = {}
 ## Ids of the enemies that count toward the objective (set by set_objectives, not saved).
 ## Empty = unknown, in which case every defeated enemy counts (the original behaviour).
 var objective_ids: Array[String] = []
@@ -172,23 +177,20 @@ func award_quest_experience(amount: int) -> int:
 	return ProgressionManager.add_experience(maxi(amount, 0))
 
 
+## Dying ends the run: fish are halved (as before), the backpack loses a random half of its
+## loseable items, and the settlement screen is shown. There is no respawn.
 func on_player_died(player: Node) -> void:
 	if not run_active or ProgressionManager.debug_session:
 		return
-	lives_left = maxi(lives_left - 1, 0)
-	if lives_left > 0 and is_instance_valid(player):
-		saved_player_position = active_safe_position
-		saved_health = float(player.get("max_health"))
-		saved_shield = float(player.get("shield_max_durability")) * 0.5
-	else:
-		saved_health = -1.0
-		saved_shield = -1.0
+	lives_left = 0
+	saved_health = -1.0
+	saved_shield = -1.0
 	expedition_changed.emit()
-	ProgressionManager.save_now()
-	if lives_left <= 0:
-		finish_run(false, DayManager.current_state == DayManager.TimeState.NIGHT)
-	else:
-		call_deferred("_respawn_player", player)
+	finish_run(false, false)  # banks the surviving fish, ends the run, saves
+	var report: Dictionary = last_result.duplicate(true)
+	report["reason"] = "death"
+	report["items"] = InventoryManager.apply_death_loss()
+	death_settlement.emit(report)
 
 
 func _respawn_player(player: Node) -> void:
@@ -217,6 +219,14 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 	_is_resuming = false
 	if retained > 0:
 		CurrencyManager.add_permanent_fish(retained)
+	last_result = {
+		"success": success,
+		"retained": retained,
+		"lost": lost,
+		"map_id": current_map_id,
+		"objectives_completed": objectives_completed,
+		"objectives_total": objectives_total,
+	}
 	expedition_finished.emit(success, retained, lost)
 	expedition_changed.emit()
 	ProgressionManager.save_now()

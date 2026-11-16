@@ -42,6 +42,11 @@ var combo_reward_mood: float = 3.0
 var combo_next_step: int = 2
 var reward_given_attack_id: int = 0
 var reward_rng := RandomNumberGenerator.new()
+# Backstab crit (tuned in CombatV3Tuning, "绕背暴击").
+var backstab_crit_chance: float = 0.5
+var crit_damage_multiplier: float = 2.0
+var backstab_dot_threshold: float = -0.5
+var crit_rng := RandomNumberGenerator.new()
 
 static var _next_melee_attack_id: int = 1000000
 var current_melee_attack_id: int = 0
@@ -91,6 +96,7 @@ func _ready() -> void:
 	_apply_combat_tuning()
 	stun_rng.randomize()
 	reward_rng.randomize()
+	crit_rng.randomize()
 	sprite_base_position = sprite.position
 	sprite_base_rotation = sprite.rotation
 	sprite_base_scale = sprite.scale
@@ -381,11 +387,16 @@ func _try_damage_target(target: Node) -> void:
 		* ProgressionManager.get_attack_multiplier()
 		* DayManager.get_night_attack_multiplier()
 	)
+	# Backstab: attacking an enemy that is facing away has a chance to crit.
+	var is_crit := false
+	if _is_behind(target) and crit_rng.randf() < backstab_crit_chance:
+		is_crit = true
+		attack_damage *= crit_damage_multiplier
 	var accepted: bool = target.receive_damage(attack_damage, player.global_position, knockback)
 	if not accepted:
 		return
 	var hit_position: Vector2 = (target as Node2D).global_position if target is Node2D else player.global_position
-	HitFeel.melee_hit(hit_position, attack_damage, state != ActionState.ATTACK1, state == ActionState.ATTACK3 or state == ActionState.POUNCE)
+	HitFeel.melee_hit(hit_position, attack_damage, state != ActionState.ATTACK1, state == ActionState.ATTACK3 or state == ActionState.POUNCE, is_crit)
 	if state == ActionState.ATTACK1:
 		if not combo_window_open:
 			combo_window_open = true
@@ -424,6 +435,20 @@ func _try_damage_target(target: Node) -> void:
 				combo_feedback_text = "反击命中！史莱姆被击晕"
 		_apply_guaranteed_stun(target)
 		_grant_combo_reward(hit_position)
+	if is_crit:
+		combo_feedback_text = "绕背暴击！"
+		combo_hit_feedback_left = 0.65
+
+
+## Is the cat behind this enemy (the enemy is facing away from the cat)?
+func _is_behind(target: Node) -> bool:
+	if not (target is Node2D):
+		return false
+	var facing_value: Variant = target.get("facing")
+	if not (facing_value is Vector2) or facing_value == Vector2.ZERO:
+		return false
+	var to_cat: Vector2 = (player.global_position - (target as Node2D).global_position).normalized()
+	return (facing_value as Vector2).normalized().dot(to_cat) <= backstab_dot_threshold
 
 
 func _apply_guaranteed_stun(target: Node) -> void:
@@ -469,6 +494,12 @@ func _apply_combat_tuning() -> void:
 	counter_claw_hitbox_scale = tuning.counter_claw_hitbox_scale
 	combo_reward_fish = tuning.combo_reward_fish
 	combo_reward_mood = tuning.combo_reward_mood
+	backstab_crit_chance = tuning.backstab_crit_chance
+	crit_damage_multiplier = tuning.crit_damage_multiplier
+	backstab_dot_threshold = tuning.backstab_dot_threshold
+	# Automated tests must stay deterministic; tests that cover crits switch the chance on.
+	if OS.get_environment("PIXELCAT_TEST_MODE") == "1":
+		backstab_crit_chance = 0.0
 
 
 func _spawn_projectile() -> void:

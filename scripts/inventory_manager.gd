@@ -288,6 +288,54 @@ func _add_to_slots(target_slots: Array[Dictionary], item, quantity: int) -> int:
 	return added
 
 
+## What a death costs: a random half (rounded down) of the items in the backpack, counted
+## one by one, so 7 yarn + 12 wood (19 items) loses 9 random ones. Items marked
+## keep_on_death are never lost and do not count. Returns
+## {"lost": {item_id: quantity}, "kept": {item_id: quantity}, "total": int, "lost_total": int}
+## where "kept" lists the protected items the cat still has.
+func apply_death_loss(rng: RandomNumberGenerator = null) -> Dictionary:
+	_ensure_ready()
+	var generator := rng if rng != null else RandomNumberGenerator.new()
+	if rng == null:
+		generator.randomize()
+	var units: Array[int] = []  # one entry per loseable item: the slot it sits in
+	var kept := {}
+	for index in range(slots.size()):
+		var slot: Dictionary = slots[index]
+		var item_id := str(slot.get("item_id", ""))
+		var quantity := int(slot.get("quantity", 0))
+		if item_id.is_empty() or quantity <= 0:
+			continue
+		var item = get_item_data(item_id)
+		if item != null and bool(item.keep_on_death):
+			kept[item_id] = int(kept.get(item_id, 0)) + quantity
+			continue
+		for _unit in range(quantity):
+			units.append(index)
+	var total := units.size()
+	var lose_count := total / 2
+	# Random choice without replacement (Fisher-Yates partial shuffle).
+	for i in range(lose_count):
+		var j := generator.randi_range(i, total - 1)
+		var swap := units[i]
+		units[i] = units[j]
+		units[j] = swap
+	var lost := {}
+	for i in range(lose_count):
+		var slot_index := units[i]
+		var item_id := str(slots[slot_index]["item_id"])
+		lost[item_id] = int(lost.get(item_id, 0)) + 1
+		slots[slot_index]["quantity"] = int(slots[slot_index]["quantity"]) - 1
+		if int(slots[slot_index]["quantity"]) <= 0:
+			slots[slot_index] = {"item_id": "", "quantity": 0}
+	if lose_count > 0:
+		for item_id in lost:
+			item_removed.emit(str(item_id), int(lost[item_id]))
+		inventory_changed.emit()
+		_persist_change()
+	return {"lost": lost, "kept": kept, "total": total, "lost_total": lose_count}
+
+
 func _persist_change() -> void:
 	if _loading:
 		return

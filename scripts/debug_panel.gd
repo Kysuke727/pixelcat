@@ -47,7 +47,6 @@ func _build_ui() -> void:
 	_add_button(column, "护盾 +10", func(): _change_player("shield_durability", 10.0))
 	_add_button(column, "护盾 -10", func(): _change_player("shield_durability", -10.0))
 	_add_button(column, "增加 100 经验", func(): ProgressionManager.add_experience(100))
-	_add_button(column, "增加探索生命", func(): ExpeditionManager.lives_left += 1)
 	_add_button(column, "测试死亡/安全点复活", _test_player_death)
 	_add_button(column, "模拟成功结算", func(): _simulate_settlement(true))
 	_add_button(column, "模拟失败结算", func(): _simulate_settlement(false))
@@ -90,7 +89,7 @@ func _refresh() -> void:
 	var hp := "无玩家"
 	if is_instance_valid(player):
 		hp = "HP %.1f/%.1f · 护盾 %.1f/%.1f" % [float(player.get("current_health")), float(player.get("max_health")), float(player.get("shield_durability")), float(player.get("shield_max_durability"))]
-	status.text = "%s · 等级 %d · XP %d/%d\n夜晚生命 %d · 本次鱼干 %d · 目标 %d/%d" % [hp, ProgressionManager.level, ProgressionManager.experience, ProgressionManager.required_experience(), ExpeditionManager.lives_left, ExpeditionManager.ordinary_fish, ExpeditionManager.objectives_completed, ExpeditionManager.objectives_total]
+	status.text = "%s · 等级 %d · XP %d/%d\n本次鱼干 %d · 目标 %d/%d" % [hp, ProgressionManager.level, ProgressionManager.experience, ProgressionManager.required_experience(), ExpeditionManager.ordinary_fish, ExpeditionManager.objectives_completed, ExpeditionManager.objectives_total]
 	var enemy_lines: Array[String] = []
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		enemy_lines.append("%s: %s · HP %s · bind %.1f (免疫 %.1f) · stun %.1f (免疫 %.1f)" % [enemy.name, str(enemy.get("state")), str(enemy.get("current_health")), float(enemy.get("bind_time_left")), float(enemy.get("bind_resistance_left")), float(enemy.get("stun_time_left")), float(enemy.get("stun_immunity_left"))])

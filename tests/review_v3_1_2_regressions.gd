@@ -20,7 +20,7 @@ func _run() -> void:
 	await day_manager.switch_to_night()
 	var world := current_scene
 	await physics_frame
-	expedition.lives_left = 2
+	expedition.lives_left = 1
 	expedition.ordinary_fish = 4
 	expedition.objectives_total = 3
 	expedition.objectives_completed = 1
@@ -47,7 +47,7 @@ func _run() -> void:
 	progression.attributes["vitality"] += 2
 	progression.progression_changed.emit()
 	currency.add_permanent_fish(17)
-	expedition.lives_left = 1
+	expedition.lives_left = 0
 	expedition.ordinary_fish = 99
 	expedition.objectives_completed = 3
 	expedition.defeated_enemy_ids.append("SlimeB")

@@ -69,8 +69,7 @@ func _refresh() -> void:
 	var ready_to_leave := ExpeditionManager.objectives_complete()
 	exit_gate.set_deferred("monitoring", ready_to_leave)
 	exit_gate.set_deferred("monitorable", ready_to_leave)
-	objective_label.text = "夜晚探索  ·  生命 %d/2  ·  目标 %d/%d  ·  本次小鱼干 %d\n%s" % [
-		ExpeditionManager.lives_left,
+	objective_label.text = "夜晚探索  ·  目标 %d/%d  ·  本次小鱼干 %d\n%s" % [
 		ExpeditionManager.objectives_completed,
 		ExpeditionManager.objectives_total,
 		ExpeditionManager.ordinary_fish,
