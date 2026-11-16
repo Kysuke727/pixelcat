@@ -614,6 +614,7 @@ func _die() -> void:
 		call_deferred("_drop_materials", materials)
 	if death_sound.stream != null:
 		death_sound.play()
+	HitFeel.enemy_died(global_position)
 	# Flatten once. The existing death tween owns scale and alpha afterwards;
 	# _physics_process deliberately stops updating the sprite in DEAD state.
 	sprite.scale = Vector2(1.28, 0.62)

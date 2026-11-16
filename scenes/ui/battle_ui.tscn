@@ -48,6 +48,10 @@ show_percentage = false
 layout_mode = 2
 text = "毛线：就绪"
 
+[node name="DashLabel" type="Label" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+text = "冲刺 ●● · 闪避 就绪"
+
 [node name="CombatFeedback" type="Label" parent="PanelContainer/VBoxContainer"]
 layout_mode = 2
 text = "J 爪击 · K 毛线 · Z 防御 · Q 剪线"

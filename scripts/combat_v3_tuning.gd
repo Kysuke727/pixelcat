@@ -29,6 +29,17 @@ class_name CombatV3Tuning
 @export var dodge_invulnerability_duration: float = 0.15
 @export var dodge_cooldown: float = 15.0
 
+@export_category("猫步冲刺")
+## Pure movement: NO invulnerability, so it can be offered often without trivialising fights.
+@export var dash_distance: float = 90.0
+@export var dash_duration: float = 0.12
+@export var dash_max_charges: int = 2
+@export var dash_recharge_time: float = 1.2
+
+@export_category("完美闪避")
+## Seconds after a perfect dodge during which a counter attack is possible (used by combos).
+@export var perfect_dodge_counter_window: float = 1.0
+
 @export_category("护盾与完美格挡")
 @export var shield_max_durability: float = 100.0
 @export var slime_lunge_shield_cost: float = 25.0

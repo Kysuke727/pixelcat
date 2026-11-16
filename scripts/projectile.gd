@@ -77,7 +77,9 @@ func _handle_hit(body: Node2D) -> void:
 	# the same projectile cannot deal a second hit.
 	hit_targets[body_id] = true
 	if body.has_method("receive_damage"):
-		body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
+		var yarn_accepted = body.receive_damage(damage, global_position - direction * 4.0, knockback_force)
+		if yarn_accepted and body.is_in_group("enemies"):
+			HitFeel.yarn_hit(global_position, float(damage))
 	var bind_handled := false
 	if body.is_in_group("enemies"):
 		# Bind is attempted through the existing enemy control interface. A

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/combat_camera.gd" id="1_cam"]
+
+[node name="CombatCamera" type="Camera2D"]
+anchor_mode = 0
+script = ExtResource("1_cam")

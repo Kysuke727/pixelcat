@@ -248,6 +248,8 @@ func _try_damage_target(target: Node) -> void:
 	var accepted: bool = target.receive_damage(attack_damage, player.global_position, melee_knockback)
 	if not accepted:
 		return
+	var hit_position: Vector2 = (target as Node2D).global_position if target is Node2D else player.global_position
+	HitFeel.melee_hit(hit_position, attack_damage, is_combo_finisher)
 	if action_state == ActionState.ATTACK1:
 		if not combo_window_open:
 			combo_window_open = true

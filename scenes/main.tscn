@@ -18,6 +18,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/ui/crafting_ui.tscn" id="crafting_ui"]
 [ext_resource type="PackedScene" path="res://scenes/interactables/crafting_workbench.tscn" id="crafting_workbench"]
+[ext_resource type="PackedScene" path="res://scenes/combat/combat_camera.tscn" id="cam_camera"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ab0bu"]
 size = Vector2(1152, 40)
@@ -149,3 +150,5 @@ offset_bottom = 80.0
 [node name="CraftingWorkbench" parent="World" instance=ExtResource("crafting_workbench")]
 position = Vector2(740, 525)
 scale = Vector2(1.5, 1.5)
+
+[node name="CombatCamera" parent="." instance=ExtResource("cam_camera")]

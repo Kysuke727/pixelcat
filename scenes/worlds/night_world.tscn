@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/crafting_ui.tscn" id="crafting_ui"]
+[ext_resource type="PackedScene" path="res://scenes/combat/combat_camera.tscn" id="cam_camera"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ynyhv"]
 size = Vector2(1152, 40)
@@ -257,3 +258,5 @@ script = ExtResource("9_debug")
 [node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]
 
 [node name="CraftingUI" parent="." instance=ExtResource("crafting_ui")]
+
+[node name="CombatCamera" parent="." instance=ExtResource("cam_camera")]

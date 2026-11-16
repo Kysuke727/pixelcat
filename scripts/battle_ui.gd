@@ -4,6 +4,7 @@ extends Control
 @onready var shield_label: Label = $PanelContainer/VBoxContainer/ShieldLabel
 @onready var shield_bar: ProgressBar = $PanelContainer/VBoxContainer/ShieldBar
 @onready var yarn_label: Label = $PanelContainer/VBoxContainer/YarnLabel
+@onready var dash_label: Label = $PanelContainer/VBoxContainer/DashLabel
 @onready var combat_feedback: Label = $PanelContainer/VBoxContainer/CombatFeedback
 @onready var enemy_name: Label = $PanelContainer/VBoxContainer/EnemyName
 @onready var enemy_hp_bar: ProgressBar = $PanelContainer/VBoxContainer/EnemyHPBar
@@ -62,14 +63,27 @@ func _update_combat_readout() -> void:
 		combat_feedback.text = "二连命中！史莱姆可能眩晕"
 		combat_feedback.add_theme_color_override("font_color", Color(1.0, 0.87, 0.45))
 	else:
-		combat_feedback.text = "J 爪击 · K 黏黏球 · Z 防御"
+		combat_feedback.text = "J 爪击 · K 黏黏球 · Z 防御 · 空格 冲刺 · Shift 闪避"
 		combat_feedback.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	_update_dash_readout()
 	if is_instance_valid(combat):
 		var remaining: float = float(combat.get("ranged_cooldown_left"))
 		var yarn_state := "就绪" if remaining <= 0.0 else "冷却 %.1fs" % remaining
 		if bool(combat.get("yarn_projectile_in_flight")):
 			yarn_state += " · 飞行中"
 		yarn_label.text = "黏黏球：" + yarn_state
+
+
+## "冲刺 ●○ · 闪避 就绪/冷却" - filled dots are available dash charges.
+func _update_dash_readout() -> void:
+	var charges: int = int(player.get("dash_charges"))
+	var max_charges: int = int(player.get("dash_max_charges"))
+	var dots := "●".repeat(charges) + "○".repeat(maxi(max_charges - charges, 0))
+	var dodge_left: float = float(player.get("dodge_cooldown_left"))
+	var dodge_state := "就绪" if dodge_left <= 0.0 else "冷却 %.0fs" % ceilf(dodge_left)
+	dash_label.text = "冲刺 %s · 闪避 %s" % [dots, dodge_state]
+	if bool(player.call("is_counter_window_open")):
+		dash_label.text += " · 反击机会！"
 
 
 func _on_player_health_changed(current_health: float, max_health: float) -> void:

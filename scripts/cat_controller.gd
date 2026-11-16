@@ -3,6 +3,8 @@ extends CharacterBody2D
 const SPEED = 200.0
 signal health_changed(current_health: float, max_health: float)
 signal died
+signal dashed
+signal perfect_dodged(source_position: Vector2)
 
 @export var max_health: int = 5
 @export var invincibility_duration: float = 1.0
@@ -14,6 +16,14 @@ signal died
 @export var dodge_invulnerability_duration: float = 0.15
 @export var dodge_cooldown: float = 15.0
 @export var dodge_duration: float = 0.15
+
+@export_category("Dash")
+## Pure movement (no invulnerability). Tuned in CombatV3Tuning.
+@export var dash_distance: float = 90.0
+@export var dash_duration: float = 0.12
+@export var dash_max_charges: int = 2
+@export var dash_recharge_time: float = 1.2
+@export var perfect_dodge_counter_window: float = 1.0
 
 @export_category("Defense")
 @export var shield_max_durability: float = 100.0
@@ -33,6 +43,13 @@ var invincibility_left: float = 0.0
 var dodge_cooldown_left: float = 0.0
 var dodge_time_left: float = 0.0
 var dodge_direction: Vector2 = Vector2.ZERO
+var dodge_iframes_left: float = 0.0
+var perfect_dodge_triggered: bool = false
+var counter_window_left: float = 0.0
+var dash_time_left: float = 0.0
+var dash_direction: Vector2 = Vector2.ZERO
+var dash_charges: int = 2
+var dash_recharge_left: float = 0.0
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
@@ -57,6 +74,7 @@ func _ready() -> void:
 	_apply_progression_stats(true)
 	current_health = max_health
 	shield_durability = shield_max_durability
+	dash_charges = dash_max_charges
 	add_to_group("player")
 	animated_sprite.play("idle")
 	var time_controller := get_node_or_null("/root/CombatTimeController")
@@ -74,7 +92,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	invincibility_left = maxf(invincibility_left - delta, 0.0)
 	dodge_cooldown_left = maxf(dodge_cooldown_left - delta, 0.0)
+	dodge_iframes_left = maxf(dodge_iframes_left - delta, 0.0)
+	counter_window_left = maxf(counter_window_left - delta, 0.0)
 	hitstun_left = maxf(hitstun_left - delta, 0.0)
+	_update_dash_recharge(delta)
 
 	if dead:
 		velocity = Vector2.ZERO
@@ -116,8 +137,14 @@ func _physics_process(delta: float) -> void:
 	if dodge_time_left > 0.0:
 		_move_during_dodge(delta)
 		return
+	if dash_time_left > 0.0:
+		_move_during_dash(delta)
+		return
 	if Input.is_action_just_pressed("dodge") and _try_start_dodge(direction):
 		_move_during_dodge(delta)
+		return
+	if Input.is_action_just_pressed("dash") and _try_start_dash(direction):
+		_move_during_dash(delta)
 		return
 
 	var movement_multiplier := defense_movement_multiplier if is_defending else 1.0
@@ -191,6 +218,8 @@ func _try_start_dodge(input_direction: Vector2) -> bool:
 	dodge_time_left = dodge_duration
 	dodge_cooldown_left = dodge_cooldown
 	invincibility_left = maxf(invincibility_left, dodge_invulnerability_duration)
+	dodge_iframes_left = dodge_invulnerability_duration
+	perfect_dodge_triggered = false
 	return true
 
 
@@ -198,6 +227,68 @@ func _move_during_dodge(delta: float) -> void:
 	dodge_time_left = maxf(dodge_time_left - delta, 0.0)
 	velocity = dodge_direction * (dodge_distance / maxf(dodge_duration, 0.001))
 	move_and_slide()
+
+
+## Cat-step dash: a short burst of movement with NO invulnerability. It can cancel a
+## melee swing, so dash-cancelling is a skill expression, not a safety button.
+func _try_start_dash(input_direction: Vector2) -> bool:
+	if dash_charges <= 0 or dead or guard_break_left > 0.0 or hitstun_left > 0.0 or is_defending:
+		return false
+	dash_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
+	if dash_direction == Vector2.ZERO:
+		dash_direction = Vector2.DOWN
+	if dash_charges >= dash_max_charges:
+		dash_recharge_left = dash_recharge_time
+	dash_charges -= 1
+	dash_time_left = dash_duration
+	if combat != null and combat.has_method("cancel_action"):
+		combat.cancel_action()
+	last_facing = dash_direction
+	HitFeel.afterimage(animated_sprite, Color(1.0, 0.8, 0.9, 0.55))
+	dashed.emit()
+	return true
+
+
+func _move_during_dash(delta: float) -> void:
+	# The last frame only moves for the time that is left, so the dash covers exactly
+	# dash_distance whatever the frame rate (0.12 s is not a whole number of frames).
+	var step_time := minf(delta, dash_time_left)
+	dash_time_left = maxf(dash_time_left - delta, 0.0)
+	var speed := dash_distance / maxf(dash_duration, 0.001)
+	velocity = dash_direction * speed * (step_time / maxf(delta, 0.0001))
+	update_animation(dash_direction)
+	move_and_slide()
+	HitFeel.afterimage(animated_sprite, Color(1.0, 0.8, 0.9, 0.4))
+
+
+func _update_dash_recharge(delta: float) -> void:
+	if dash_charges >= dash_max_charges:
+		dash_recharge_left = 0.0
+		return
+	dash_recharge_left -= delta
+	if dash_recharge_left <= 0.0:
+		dash_charges += 1
+		dash_recharge_left = dash_recharge_time if dash_charges < dash_max_charges else 0.0
+
+
+func is_dashing() -> bool:
+	return dash_time_left > 0.0
+
+
+## A hit that lands inside the dodge's invulnerability frames is a "perfect dodge":
+## the dodge cooldown is refunded and a short counter window opens.
+func _trigger_perfect_dodge(source_position: Vector2) -> void:
+	if perfect_dodge_triggered:
+		return
+	perfect_dodge_triggered = true
+	dodge_cooldown_left = 0.0
+	counter_window_left = perfect_dodge_counter_window
+	perfect_dodged.emit(source_position)
+	HitFeel.perfect_dodge(global_position)
+
+
+func is_counter_window_open() -> bool:
+	return counter_window_left > 0.0
 
 
 func is_guard_broken() -> bool:
@@ -290,6 +381,7 @@ func _try_perfect_guard() -> bool:
 		return false
 	time_controller.pause_enemy_side(perfect_guard_pause_duration)
 	perfect_guard_flash_left = perfect_guard_pause_duration
+	HitFeel.perfect_guard(global_position)
 	return true
 
 
@@ -303,6 +395,9 @@ func _break_shield() -> void:
 
 
 func receive_damage(amount: float, source_position: Vector2, knockback_force: float = 120.0) -> bool:
+	if not dead and amount > 0 and dodge_iframes_left > 0.0 and guard_break_left <= 0.0:
+		_trigger_perfect_dodge(source_position)
+		return false
 	if dead or guard_break_left > 0.0 or invincibility_left > 0.0 or amount <= 0:
 		return false
 
@@ -317,6 +412,7 @@ func receive_damage(amount: float, source_position: Vector2, knockback_force: fl
 		combat.cancel_action()
 	health_changed.emit(current_health, max_health)
 	play_hit_feedback()
+	HitFeel.player_hurt(global_position)
 
 	if current_health <= 0:
 		die()
@@ -391,6 +487,8 @@ func revive_from_expedition(respawn_position: Vector2) -> void:
 	hitstun_left = 0.0
 	guard_break_left = 0.0
 	is_defending = false
+	dash_charges = dash_max_charges
+	dash_time_left = 0.0
 	if combat != null and combat.has_method("set_combat_enabled"):
 		combat.set_combat_enabled(true)
 	animated_sprite.modulate = Color.WHITE
@@ -443,6 +541,11 @@ func _apply_combat_tuning() -> void:
 	dodge_invulnerability_duration = tuning.dodge_invulnerability_duration
 	dodge_cooldown = tuning.dodge_cooldown
 	dodge_duration = tuning.dodge_invulnerability_duration
+	dash_distance = tuning.dash_distance
+	dash_duration = tuning.dash_duration
+	dash_max_charges = tuning.dash_max_charges
+	dash_recharge_time = tuning.dash_recharge_time
+	perfect_dodge_counter_window = tuning.perfect_dodge_counter_window
 	shield_max_durability = tuning.shield_max_durability
 	slime_attack_shield_cost = tuning.slime_lunge_shield_cost
 	defense_movement_multiplier = tuning.shield_movement_multiplier

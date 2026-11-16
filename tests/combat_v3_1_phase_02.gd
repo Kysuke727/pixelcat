@@ -35,6 +35,11 @@ func _run() -> void:
 	var health_before_dash_hit: int = player.current_health
 	_check(not player.receive_damage(1, player.global_position + Vector2.LEFT), "dodge grants damage invulnerability")
 	_check(player.current_health == health_before_dash_hit, "dodging does not reduce HP")
+	# A hit absorbed by the dodge's invulnerability frames is a PERFECT dodge: the
+	# cooldown is refunded and a counter window opens.
+	_check(is_equal_approx(player.dodge_cooldown_left, 0.0), "perfect dodge refunds the dodge cooldown")
+	_check(player.is_counter_window_open(), "perfect dodge opens the counter window")
+	player.dodge_cooldown_left = 15.0
 	_check(not player._try_start_dodge(Vector2.RIGHT), "dodge cannot be retriggered during cooldown")
 	for _frame in range(9):
 		player._physics_process(1.0 / 60.0)
@@ -47,6 +52,7 @@ func _run() -> void:
 		player._physics_process(1.0 / 60.0)
 	_check(player.global_position.x >= 10.0, "dodge collides with walls instead of passing through")
 
+	player._physics_process(1.0 / 60.0)  # let any float residue of the dodge frames expire
 	player.invincibility_left = 0.0
 	player.current_health = player.max_health
 	_check(player.receive_damage(1, player.global_position + Vector2.LEFT), "ordinary hit is accepted outside invulnerability")

@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/worlds/night_world.tscn" id="1_night"]
 [ext_resource type="Script" path="res://scripts/combat_v3_test.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/combat/combat_camera.tscn" id="cam_camera"]
 
 [node name="CombatV3Test" type="Node2D" groups=["night_exploration"]]
 script = ExtResource("2_script")
@@ -20,3 +21,5 @@ offset_bottom = 104.0
 [node name="DebugLabel" type="Label" parent="DebugLayer/Panel"]
 layout_mode = 2
 text = "COMBAT V3 TEST"
+
+[node name="CombatCamera" parent="." instance=ExtResource("cam_camera")]
