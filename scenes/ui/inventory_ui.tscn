@@ -1,46 +1,13 @@
 [gd_scene format=3 uid="uid://dd5viuhr0oxlx"]
 
 [ext_resource type="Script" uid="uid://bk6epd33ulqdq" path="res://scripts/inventory_ui.gd" id="1_ui"]
+[ext_resource type="Theme" path="res://resources/ui/pixelcat_theme.tres" id="2_theme"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(1, 0.9607843, 0.9372549, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.9372549, 0.72156864, 0.7882353, 1)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(0.972549, 0.8627451, 0.8980392, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.8666667, 0.6509804, 0.7254902, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kscix"]
-bg_color = Color(1, 0.9607843, 0.96862745, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-
-[node name="InventoryUI" type="CanvasLayer" unique_id=437246366]
+[node name="InventoryUI" type="CanvasLayer"]
 layer = 50
 script = ExtResource("1_ui")
 
-[node name="Root" type="Control" parent="." unique_id=622893323]
+[node name="Root" type="Control" parent="."]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -48,8 +15,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 
-[node name="Dim" type="ColorRect" parent="Root" unique_id=737370336]
+[node name="Dim" type="ColorRect" parent="Root"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -57,9 +25,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.45)
+color = Color(0.12, 0.07, 0.12, 0.55)
 
-[node name="Center" type="CenterContainer" parent="Root" unique_id=532451952]
+[node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -68,100 +36,110 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Root/Center" unique_id=1600065940]
-custom_minimum_size = Vector2(340, 380)
+[node name="Panel" type="PanelContainer" parent="Root/Center"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="Margin" type="MarginContainer" parent="Root/Center/Panel" unique_id=1037423666]
+[node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
+theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 6
 
-[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel/Margin" unique_id=1566695265]
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Root/Center/Panel/Margin/VBox" unique_id=1284994313]
+[node name="Title" type="Label" parent="Root/Center/Panel/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.57254905, 0.46666667, 0.5137255, 1)
-theme_override_font_sizes/font_size = 24
-text = "我的背包 ♡"
+theme_type_variation = &"TitleLabel"
+text = "♡ 我的背包 ♡"
 horizontal_alignment = 1
-vertical_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/VBox" unique_id=607948909]
-custom_minimum_size = Vector2(456, 354)
+[node name="Body" type="HBoxContainer" parent="Root/Center/Panel/Margin/VBox"]
 layout_mode = 2
-size_flags_horizontal = 4
+theme_override_constants/separation = 10
+
+[node name="GridPanel" type="PanelContainer" parent="Root/Center/Panel/Margin/VBox/Body"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"InsetPanel"
+
+[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/VBox/Body/GridPanel"]
+layout_mode = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 columns = 6
 
-[node name="Separator" type="HSeparator" parent="Root/Center/Panel/Margin/VBox" unique_id=1797828398]
+[node name="DetailPanel" type="PanelContainer" parent="Root/Center/Panel/Margin/VBox/Body"]
+custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
+theme_type_variation = &"InsetPanel"
 
-[node name="Detail" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox" unique_id=281809174]
+[node name="Detail" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel"]
 layout_mode = 2
-size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="DetailName" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=240659611]
+[node name="Header" type="HBoxContainer" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_constants/separation = 8
 
-[node name="DetailType" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1094726826]
+[node name="DetailIcon" type="TextureRect" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header"]
+texture_filter = 1
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.45, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+expand_mode = 1
+stretch_mode = 5
 
-[node name="DetailQuantity" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1396188122]
+[node name="Titles" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.4, 0.45, 1)
-theme_override_font_sizes/font_size = 12
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
 
-[node name="DetailDescription" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=898287144]
-custom_minimum_size = Vector2(0, 76)
+[node name="DetailName" type="Label" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.36, 0.4, 1)
-theme_override_font_sizes/font_size = 13
+theme_type_variation = &"HeadingLabel"
+
+[node name="DetailType" type="Label" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles"]
+layout_mode = 2
+theme_type_variation = &"SoftLabel"
+
+[node name="DetailQuantity" type="Label" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles"]
+layout_mode = 2
+theme_type_variation = &"SoftLabel"
+
+[node name="Separator" type="HSeparator" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
+layout_mode = 2
+
+[node name="DetailDescription" type="Label" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_vertical = 3
 text = "背包是空的。以后获得的材料与道具会出现在这里。"
 autowrap_mode = 2
 
-[node name="BindQuickbarButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=199452017]
+[node name="EmptyHint" type="Label" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.35, 0.4, 1)
-theme_override_colors/font_disabled_color = Color(0.65, 0.55, 0.6, 1)
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button")
-disabled = true
-text = "设置快捷栏"
-
-[node name="EmptyHint" type="Label" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1917918098]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.5, 0.55, 1)
-theme_override_font_sizes/font_size = 11
+theme_type_variation = &"SoftLabel"
 text = "I 键打开 / 关闭背包"
 autowrap_mode = 2
 
-[node name="UseItemButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=1718111138]
+[node name="BindQuickbarButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_kscix")
+disabled = true
+text = "设置快捷栏"
+
+[node name="UseItemButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
+layout_mode = 2
 disabled = true
 text = "使用物品"
 
-[node name="CraftButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Detail" unique_id=2055542300]
+[node name="CraftButton" type="Button" parent="Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail"]
 layout_mode = 2
 text = "♡ 制作物品 ♡"
 
-[node name="Hint" type="Label" parent="Root/Center/Panel/Margin/VBox" unique_id=96073327]
+[node name="Hint" type="Label" parent="Root/Center/Panel/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.5, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"SoftLabel"
 text = "I / Esc 关闭"
 horizontal_alignment = 1

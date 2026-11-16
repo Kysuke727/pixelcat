@@ -29,6 +29,9 @@ func set_item(item, amount: int) -> void:
 	icon.texture = item.icon
 	icon.visible = item.icon != null
 	name_label.text = item.display_name
+	# Items without art show their name so they are still identifiable.
+	name_label.visible = item.icon == null
+	tooltip_text = item.display_name
 	quantity_label.text = "×%d" % amount if amount > 1 else ""
 
 
@@ -38,12 +41,14 @@ func clear_slot() -> void:
 	icon.texture = null
 	icon.visible = false
 	name_label.text = ""
+	name_label.visible = false
+	tooltip_text = ""
 	quantity_label.text = ""
 	set_selected(false)
 
 
 func set_selected(selected: bool) -> void:
-	self_modulate = Color(1.0, 1.0, 0.7, 1.0) if selected else Color.WHITE
+	theme_type_variation = &"SlotPanelSelected" if selected else &"SlotPanel"
 
 
 func get_item_id() -> String:

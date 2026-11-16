@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const UI_THEME: Theme = preload("res://resources/ui/pixelcat_theme.tres")
+
 ## Shared UI for portable and workbench crafting. Only CraftingManager mutates inventory.
 var root_control: Control
 var recipe_list: VBoxContainer
@@ -7,6 +9,7 @@ var detail_title: Label
 var detail_description: Label
 var detail_materials: VBoxContainer
 var detail_result: Label
+var detail_icon: TextureRect
 var craft_button: Button
 var status_label: Label
 var _open: bool = false
@@ -72,10 +75,22 @@ func _refresh() -> void:
 	for child in recipe_list.get_children():
 		child.queue_free()
 	for recipe in CraftingManager.get_recipes():
+		var locked: bool = recipe.requires_workbench and not _at_workbench
+		var result_item = InventoryManager.get_item_data(recipe.result_item_id)
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(205, 44)
-		button.text = ("🔒 " if recipe.requires_workbench and not _at_workbench else "") + recipe.display_name
-		button.tooltip_text = "需要工作台" if recipe.requires_workbench and not _at_workbench else "选择配方"
+		button.custom_minimum_size = Vector2(205, 46)
+		button.text = recipe.display_name
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.theme_type_variation = &"RecipeButton"
+		button.toggle_mode = true
+		button.button_pressed = str(recipe.recipe_id) == _selected_recipe
+		button.tooltip_text = "需要工作台" if locked else "选择配方"
+		if result_item != null and result_item.icon != null:
+			button.icon = result_item.icon
+			button.expand_icon = true
+			button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		if locked:
+			button.text += "  🔒"
 		button.pressed.connect(_select_recipe.bind(recipe.recipe_id))
 		recipe_list.add_child(button)
 	for child in detail_materials.get_children():
@@ -89,15 +104,30 @@ func _refresh() -> void:
 		return
 	detail_title.text = recipe.display_name
 	detail_description.text = recipe.description
+	var output_item = InventoryManager.get_item_data(recipe.result_item_id)
+	detail_icon.texture = output_item.icon if output_item else null
 	for id in recipe.ingredients.keys():
 		var owned: int = InventoryManager.get_item_count(id)
 		var required: int = int(recipe.ingredients[id])
 		var item = InventoryManager.get_item_data(id)
-		var label := Label.new()
-		label.text = "%s：%d / %d" % [item.display_name if item else id, owned, required]
-		label.add_theme_color_override("font_color", Color(0.24, 0.58, 0.4) if owned >= required else Color(0.82, 0.32, 0.36))
-		detail_materials.add_child(label)
-	var output_item = InventoryManager.get_item_data(recipe.result_item_id)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.texture = item.icon if item else null
+		row.add_child(icon)
+		var name_label := Label.new()
+		name_label.text = item.display_name if item else str(id)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		var count_label := Label.new()
+		count_label.text = "%d / %d" % [owned, required]
+		count_label.theme_type_variation = &"GoodLabel" if owned >= required else &"BadLabel"
+		row.add_child(count_label)
+		detail_materials.add_child(row)
 	detail_result.text = "获得：%s ×%d" % [output_item.display_name if output_item else recipe.result_item_id, recipe.result_quantity]
 	var check: Dictionary = CraftingManager.check_craft(recipe.recipe_id, _at_workbench)
 	craft_button.disabled = not bool(check.get("success", false))
@@ -129,11 +159,11 @@ func _craft_selected() -> void:
 
 func _build_ui() -> void:
 	root_control = Control.new()
-	root_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root_control.theme = UI_THEME
 	add_child(root_control)
 	root_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var dim := ColorRect.new()
-	dim.color = Color(0.12, 0.08, 0.13, 0.62)
+	dim.color = Color(0.12, 0.07, 0.12, 0.6)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	root_control.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -141,63 +171,92 @@ func _build_ui() -> void:
 	root_control.add_child(center)
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(645, 440)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#fff4ee")
-	style.border_color = Color("#efb7c9")
-	style.set_border_width_all(4)
-	style.set_corner_radius_all(16)
-	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
 	panel.add_child(margin)
 	var vertical := VBoxContainer.new()
-	vertical.add_theme_constant_override("separation", 12)
+	vertical.add_theme_constant_override("separation", 8)
 	margin.add_child(vertical)
 	var title := Label.new()
 	title.text = "♡ 小猫手工屋 ♡"
+	title.theme_type_variation = &"TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 27)
-	title.add_theme_color_override("font_color", Color("#a65d77"))
 	vertical.add_child(title)
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 22)
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 10)
 	vertical.add_child(columns)
+
+	# Left: recipe list
+	var left_panel := PanelContainer.new()
+	left_panel.theme_type_variation = &"InsetPanel"
+	left_panel.custom_minimum_size = Vector2(230, 300)
+	columns.add_child(left_panel)
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(205, 0)
-	columns.add_child(left)
+	left.add_theme_constant_override("separation", 6)
+	left_panel.add_child(left)
 	var recipes_heading := Label.new()
 	recipes_heading.text = "配方列表"
+	recipes_heading.theme_type_variation = &"HeadingLabel"
 	left.add_child(recipes_heading)
 	recipe_list = VBoxContainer.new()
+	recipe_list.add_theme_constant_override("separation", 6)
 	left.add_child(recipe_list)
+
+	# Right: selected recipe
+	var right_panel := PanelContainer.new()
+	right_panel.theme_type_variation = &"InsetPanel"
+	right_panel.custom_minimum_size = Vector2(380, 300)
+	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(right_panel)
 	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 12)
-	columns.add_child(right)
+	right.add_theme_constant_override("separation", 8)
+	right_panel.add_child(right)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
+	right.add_child(header)
+	detail_icon = TextureRect.new()
+	detail_icon.custom_minimum_size = Vector2(48, 48)
+	detail_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	detail_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	header.add_child(detail_icon)
 	detail_title = Label.new()
-	detail_title.add_theme_font_size_override("font_size", 22)
-	right.add_child(detail_title)
+	detail_title.theme_type_variation = &"HeadingLabel"
+	detail_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(detail_title)
 	detail_description = Label.new()
 	detail_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_description.custom_minimum_size = Vector2(0, 44)
 	right.add_child(detail_description)
+	right.add_child(HSeparator.new())
+	var materials_heading := Label.new()
+	materials_heading.text = "所需材料"
+	materials_heading.theme_type_variation = &"SoftLabel"
+	right.add_child(materials_heading)
 	detail_materials = VBoxContainer.new()
+	detail_materials.add_theme_constant_override("separation", 4)
 	right.add_child(detail_materials)
 	detail_result = Label.new()
 	right.add_child(detail_result)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(spacer)
 	craft_button = Button.new()
-	craft_button.custom_minimum_size = Vector2(0, 42)
+	craft_button.custom_minimum_size = Vector2(0, 40)
 	craft_button.pressed.connect(_craft_selected)
 	right.add_child(craft_button)
 	status_label = Label.new()
+	status_label.theme_type_variation = &"SoftLabel"
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(status_label)
+
 	var close_button := Button.new()
 	close_button.text = "返回背包 / 关闭"
+	close_button.custom_minimum_size = Vector2(0, 36)
 	close_button.pressed.connect(func(): close_crafting(true))
 	vertical.add_child(close_button)

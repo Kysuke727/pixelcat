@@ -4,15 +4,16 @@ const SLOT_SCENE: PackedScene = preload("res://scenes/ui/inventory_slot.tscn")
 const COLUMN_COUNT := 6
 
 @onready var root_control: Control = $Root
-@onready var slot_grid: GridContainer = $Root/Center/Panel/Margin/VBox/Grid
-@onready var detail_name: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailName
-@onready var detail_type: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailType
-@onready var detail_quantity: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailQuantity
-@onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Detail/DetailDescription
-@onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Detail/EmptyHint
-@onready var bind_button: Button = $Root/Center/Panel/Margin/VBox/Detail/BindQuickbarButton
-@onready var craft_button: Button = $Root/Center/Panel/Margin/VBox/Detail/CraftButton
-@onready var use_button: Button = $Root/Center/Panel/Margin/VBox/Detail/UseItemButton
+@onready var slot_grid: GridContainer = $Root/Center/Panel/Margin/VBox/Body/GridPanel/Grid
+@onready var detail_icon: TextureRect = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/DetailIcon
+@onready var detail_name: Label = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles/DetailName
+@onready var detail_type: Label = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles/DetailType
+@onready var detail_quantity: Label = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/Header/Titles/DetailQuantity
+@onready var detail_description: Label = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/DetailDescription
+@onready var empty_hint: Label = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/EmptyHint
+@onready var bind_button: Button = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/BindQuickbarButton
+@onready var craft_button: Button = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/CraftButton
+@onready var use_button: Button = $Root/Center/Panel/Margin/VBox/Body/DetailPanel/Detail/UseItemButton
 
 var is_open: bool = false
 var inventory_slots: Array[Node] = []
@@ -145,6 +146,8 @@ func _update_detail(index: int) -> void:
 		_show_empty_detail()
 		return
 	selected_item_id = item.item_id
+	detail_icon.texture = item.icon
+	detail_icon.visible = item.icon != null
 	detail_name.text = item.display_name
 	detail_type.text = item.category_name()
 	detail_quantity.text = "数量：%d / %d" % [int(data.get("quantity", 0)), int(item.max_stack)]
@@ -159,6 +162,8 @@ func _update_detail(index: int) -> void:
 
 func _show_empty_detail() -> void:
 	var inventory_empty := InventoryManager.get_empty_slot_count() == InventoryManager.SLOT_COUNT
+	detail_icon.texture = null
+	detail_icon.visible = false
 	detail_name.text = "我的背包 ♡"
 	detail_type.text = ""
 	detail_quantity.text = ""
