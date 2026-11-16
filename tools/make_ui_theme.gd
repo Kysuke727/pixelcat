@@ -108,6 +108,20 @@ func _initialize() -> void:
 	theme.set_type_variation("BadLabel", "Label")
 	theme.set_color("font_color", "BadLabel", BAD)
 
+	# HUD ------------------------------------------------------------------
+	# Translucent so the strip never hides the scene behind it.
+	theme.add_type("HudPanel")
+	theme.set_type_variation("HudPanel", "PanelContainer")
+	theme.set_stylebox("panel", "HudPanel", _box(Color(1.0, 0.957, 0.933, 0.86), OUTLINE, 2, 0, 3, 0, 5, 2))
+
+	theme.set_stylebox("background", "ProgressBar", _box(Color("#ead7df"), OUTLINE, 2, 0, 1, 0, 0, 0))
+	theme.set_stylebox("fill", "ProgressBar", _box(BTN, OUTLINE, 2, 0, 1, 0, 0, 0))
+	theme.set_color("font_color", "ProgressBar", INK)
+	for pair in [["HungerBar", Color("#f2a65a")], ["MoodBar", Color("#f07aa0")], ["EnergyBar", Color("#6fc3e8")], ["LowBar", BAD]]:
+		theme.add_type(pair[0])
+		theme.set_type_variation(pair[0], "ProgressBar")
+		theme.set_stylebox("fill", pair[0], _box(pair[1], OUTLINE, 2, 0, 1, 0, 0, 0))
+
 	# Misc -----------------------------------------------------------------
 	var line := StyleBoxLine.new()
 	line.color = INSET_EDGE

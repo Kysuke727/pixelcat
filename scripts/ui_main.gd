@@ -1,8 +1,10 @@
 extends Control
 
-@onready var hunger_bar = $HungerBar
-@onready var mood_bar = $MoodBar
-@onready var energy_bar = $EnergyBar
+const LOW_THRESHOLD := 25.0
+
+@onready var hunger_bar: ProgressBar = $Strip/Row/Hunger/HungerBar
+@onready var mood_bar: ProgressBar = $Strip/Row/Mood/MoodBar
+@onready var energy_bar: ProgressBar = $Strip/Row/Energy/EnergyBar
 
 @onready var stats = get_parent().get_node("Cat/Stats")
 
@@ -24,6 +26,14 @@ func _process(delta):
 	stats.energy = clamp(stats.energy, 0.0, 100.0)
 
 	# 更新进度条
-	hunger_bar.value = stats.hunger
-	mood_bar.value = stats.mood
-	energy_bar.value = stats.energy
+	_set_bar(hunger_bar, stats.hunger, &"HungerBar")
+	_set_bar(mood_bar, stats.mood, &"MoodBar")
+	_set_bar(energy_bar, stats.energy, &"EnergyBar")
+
+
+## A bar turns red when its stat is low so it is noticeable without text.
+func _set_bar(bar: ProgressBar, value: float, normal_variation: StringName) -> void:
+	bar.value = value
+	var variation := &"LowBar" if value < LOW_THRESHOLD else normal_variation
+	if bar.theme_type_variation != variation:
+		bar.theme_type_variation = variation

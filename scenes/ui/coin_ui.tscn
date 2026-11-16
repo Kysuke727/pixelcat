@@ -3,24 +3,29 @@
 [ext_resource type="Script" uid="uid://kpdu3hm6byjt" path="res://scripts/coin_ui.gd" id="1_e7x4s"]
 [ext_resource type="AudioStream" uid="uid://drat6nnct4p20" path="res://assets/audio/sfx/PickupSound.mp3" id="2_55f6b"]
 [ext_resource type="Texture2D" path="res://assets/objects/items/golden_fish.png" id="3_fish"]
+[ext_resource type="Theme" path="res://resources/ui/pixelcat_theme.tres" id="4_theme"]
 
 [node name="CoinUI" type="Control" unique_id=1943915820]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
+theme = ExtResource("4_theme")
 script = ExtResource("1_e7x4s")
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=73899253]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 0.0
+offset_bottom = 0.0
+mouse_filter = 2
+theme_type_variation = &"HudPanel"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer" unique_id=526442633]
 layout_mode = 2
 
 [node name="CoinIcon" type="TextureRect" parent="PanelContainer/HBoxContainer" unique_id=1906515507]
-custom_minimum_size = Vector2(28, 28)
+texture_filter = 1
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 texture = ExtResource("3_fish")
 expand_mode = 3
@@ -28,6 +33,8 @@ stretch_mode = 5
 
 [node name="CoinLabel" type="Label" parent="PanelContainer/HBoxContainer" unique_id=1631641883]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 13
 text = "小鱼干：0"
 
 [node name="PickupSound" type="AudioStreamPlayer2D" parent="." unique_id=297457492]

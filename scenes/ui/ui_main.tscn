@@ -1,60 +1,96 @@
 [gd_scene format=3 uid="uid://b4tumclyonk3g"]
 
 [ext_resource type="Script" uid="uid://bxo7cb56ea8nf" path="res://scripts/ui_main.gd" id="1_1pib8"]
+[ext_resource type="Theme" path="res://resources/ui/pixelcat_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_hunger.png" id="3_hunger"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_mood.png" id="4_mood"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_energy.png" id="5_energy"]
 
-[node name="UI" type="Control" unique_id=1590554557]
+[node name="UI" type="Control"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+mouse_filter = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_1pib8")
 
-[node name="HungerLabel" type="Label" parent="." unique_id=476111044]
+[node name="Strip" type="PanelContainer" parent="."]
 layout_mode = 0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = 60.0
-offset_bottom = 51.0
-text = "Hunger
-"
+mouse_filter = 2
+theme_type_variation = &"HudPanel"
 
-[node name="HungerBar" type="ProgressBar" parent="." unique_id=132521301]
-layout_mode = 0
-offset_left = 60.0
-offset_top = 1.0
-offset_right = 146.0
-offset_bottom = 28.0
+[node name="Row" type="HBoxContainer" parent="Strip"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
 
-[node name="MoodLbel" type="Label" parent="." unique_id=1079891718]
-layout_mode = 0
-offset_left = 6.0
-offset_top = 30.0
-offset_right = 51.0
-offset_bottom = 53.0
-text = "Mood"
+[node name="Hunger" type="HBoxContainer" parent="Strip/Row"]
+layout_mode = 2
+mouse_filter = 2
+tooltip_text = "饥饿"
+theme_override_constants/separation = 4
 
-[node name="MoodBar" type="ProgressBar" parent="." unique_id=697432098]
-layout_mode = 0
-offset_left = 61.0
-offset_top = 29.0
-offset_right = 146.99997
-offset_bottom = 56.0
-value = 60.0
+[node name="Icon" type="TextureRect" parent="Strip/Row/Hunger"]
+texture_filter = 1
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("3_hunger")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="EnergyLabel" type="Label" parent="." unique_id=1113187127]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 59.0
-offset_right = 57.0
-offset_bottom = 82.0
-text = "Energy"
+[node name="HungerBar" type="ProgressBar" parent="Strip/Row/Hunger"]
+custom_minimum_size = Vector2(72, 12)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"HungerBar"
+value = 100.0
+show_percentage = false
 
-[node name="EnergyBar" type="ProgressBar" parent="." unique_id=2044419070]
-layout_mode = 0
-offset_left = 61.0
-offset_top = 57.0
-offset_right = 147.0
-offset_bottom = 84.0
-value = 90.0
+[node name="Mood" type="HBoxContainer" parent="Strip/Row"]
+layout_mode = 2
+mouse_filter = 2
+tooltip_text = "心情"
+theme_override_constants/separation = 4
+
+[node name="Icon" type="TextureRect" parent="Strip/Row/Mood"]
+texture_filter = 1
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("4_mood")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MoodBar" type="ProgressBar" parent="Strip/Row/Mood"]
+custom_minimum_size = Vector2(72, 12)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"MoodBar"
+value = 100.0
+show_percentage = false
+
+[node name="Energy" type="HBoxContainer" parent="Strip/Row"]
+layout_mode = 2
+mouse_filter = 2
+tooltip_text = "精力"
+theme_override_constants/separation = 4
+
+[node name="Icon" type="TextureRect" parent="Strip/Row/Energy"]
+texture_filter = 1
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("5_energy")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="EnergyBar" type="ProgressBar" parent="Strip/Row/Energy"]
+custom_minimum_size = Vector2(72, 12)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"EnergyBar"
+value = 100.0
+show_percentage = false
