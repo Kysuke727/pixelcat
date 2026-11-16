@@ -1,6 +1,7 @@
 extends Node
 
 signal progression_changed
+signal move_unlocked(move_id: String)
 signal level_changed(level: int, experience: int, experience_to_next: int)
 
 const SAVE_VERSION := 1
@@ -19,6 +20,8 @@ var permanent_hp_bonus: int = 0
 var attributes: Dictionary = {"vitality": 0, "attack": 0, "defense": 0, "agility": 0, "technique": 0}
 var skill_points: Dictionary = {"slow": 0, "connection": 0, "bind": 0, "loop": 0}
 var permanent_items: Array[String] = []
+## Moves learned by exploring (see MoveCatalog). Stored in the save.
+var unlocked_moves: Array[String] = []
 var pending_allocation: Dictionary = {}
 var game_started: bool = false
 var debug_session: bool = false
@@ -192,6 +195,21 @@ func get_respec_cost() -> int:
 	return 100 + level * 10
 
 
+func has_move(move_id: String) -> bool:
+	return unlocked_moves.has(move_id)
+
+
+## Learn a move. Returns true only when it was newly learned.
+func unlock_move(move_id: String) -> bool:
+	if not MoveCatalog.has_move_id(move_id) or unlocked_moves.has(move_id):
+		return false
+	unlocked_moves.append(move_id)
+	move_unlocked.emit(move_id)
+	progression_changed.emit()
+	save_now()
+	return true
+
+
 func respec_attributes() -> bool:
 	var cost := get_respec_cost()
 	if not CurrencyManager.spend_fish(cost):
@@ -304,6 +322,7 @@ func _profile_data() -> Dictionary:
 		"skill_points": skill_points.duplicate(true),
 		"permanent_hp_bonus": permanent_hp_bonus,
 		"permanent_items": permanent_items.duplicate(),
+		"unlocked_moves": unlocked_moves.duplicate(),
 		"currency": CurrencyManager.get_save_data(),
 		"inventory": _inventory_save_data(),
 		"quickbar": _quickbar_save_data(),
@@ -461,6 +480,12 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 			return false
 		for item in profile["permanent_items"]:
 			if not item is String:
+				return false
+	if profile.has("unlocked_moves"):
+		if not profile["unlocked_moves"] is Array:
+			return false
+		for move_id in profile["unlocked_moves"]:
+			if not move_id is String:
 				return false
 	if profile.has("currency"):
 		if not profile["currency"] is Dictionary or not _has_number(profile["currency"], "fish_count"):
@@ -630,6 +655,14 @@ func _load_profile_data(data: Dictionary) -> void:
 	permanent_items.clear()
 	for item in data.get("permanent_items", []):
 		permanent_items.append(str(item))
+	# Older saves have no "unlocked_moves"; unknown ids (from a newer build) are dropped.
+	unlocked_moves.clear()
+	var loaded_moves: Variant = data.get("unlocked_moves", [])
+	if loaded_moves is Array:
+		for move_id in loaded_moves:
+			var id := str(move_id)
+			if MoveCatalog.has_move_id(id) and not unlocked_moves.has(id):
+				unlocked_moves.append(id)
 	_load_inventory_data(data.get("inventory", []))
 	_load_quickbar_data(data.get("quickbar", []))
 	_load_day_state_data(data.get("day_state", {}))

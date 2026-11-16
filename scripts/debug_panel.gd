@@ -51,7 +51,26 @@ func _build_ui() -> void:
 	_add_button(column, "测试死亡/安全点复活", _test_player_death)
 	_add_button(column, "模拟成功结算", func(): _simulate_settlement(true))
 	_add_button(column, "模拟失败结算", func(): _simulate_settlement(false))
+	_add_button(column, "解锁全部招式", _unlock_all_moves)
+	_add_button(column, "清空已学招式", _clear_moves)
 	_add_button(column, "关闭并还原调试数据", _close_debug)
+
+
+func _learned_moves_text() -> String:
+	var names: Array[String] = []
+	for move_id in ProgressionManager.unlocked_moves:
+		names.append(MoveCatalog.display_name(move_id))
+	return "、".join(names) if not names.is_empty() else "无"
+
+
+func _unlock_all_moves() -> void:
+	for move_id in MoveCatalog.ids():
+		ProgressionManager.unlock_move(move_id)
+
+
+func _clear_moves() -> void:
+	ProgressionManager.unlocked_moves.clear()
+	ProgressionManager.progression_changed.emit()
 
 
 func _add_button(parent: Node, title: String, callback: Callable) -> void:
@@ -79,7 +98,7 @@ func _refresh() -> void:
 	var cooldown_text := ""
 	if is_instance_valid(player_combat):
 		cooldown_text = "\n冷却：J %.1fs · K %.1fs · 闪避 %.1fs" % [float(player_combat.get("melee_cooldown_left")), float(player_combat.get("ranged_cooldown_left")), float(player.get("dodge_cooldown_left"))]
-	details.text = "调试隔离：不会保存改动；击杀、拾取与场景切换已禁用。\n技巧：减速%d · 连接%d · 束缚%d · 绕圈%d\n" % [ProgressionManager.skill_points["slow"], ProgressionManager.skill_points["connection"], ProgressionManager.skill_points["bind"], ProgressionManager.skill_points["loop"]] + "敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
+	details.text = "调试隔离：不会保存改动；击杀、拾取与场景切换已禁用。\n技巧：减速%d · 连接%d · 束缚%d · 绕圈%d\n" % [ProgressionManager.skill_points["slow"], ProgressionManager.skill_points["connection"], ProgressionManager.skill_points["bind"], ProgressionManager.skill_points["loop"]] + "已学招式：" + _learned_moves_text() + "\n敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
 
 
 func _change_player(property: String, amount: float) -> void:

@@ -60,10 +60,12 @@ func _update_combat_readout() -> void:
 		combat_feedback.text = "炸毛防御中 · Z 松开恢复"
 		combat_feedback.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	elif is_instance_valid(combat) and combat.get("combo_hit_feedback_left") > 0.0:
-		combat_feedback.text = "二连命中！史莱姆可能眩晕"
+		combat_feedback.text = str(combat.get("combo_feedback_text"))
 		combat_feedback.add_theme_color_override("font_color", Color(1.0, 0.87, 0.45))
 	else:
 		combat_feedback.text = "J 爪击 · K 黏黏球 · Z 防御 · 空格 冲刺 · Shift 闪避"
+		if ProgressionManager.has_move("triple_combo"):
+			combat_feedback.text += " · J×3 三段"
 		combat_feedback.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
 	_update_dash_readout()
 	if is_instance_valid(combat):
@@ -82,8 +84,10 @@ func _update_dash_readout() -> void:
 	var dodge_left: float = float(player.get("dodge_cooldown_left"))
 	var dodge_state := "就绪" if dodge_left <= 0.0 else "冷却 %.0fs" % ceilf(dodge_left)
 	dash_label.text = "冲刺 %s · 闪避 %s" % [dots, dodge_state]
-	if bool(player.call("is_counter_window_open")):
-		dash_label.text += " · 反击机会！"
+	if ProgressionManager.has_move("counter_claw") and bool(player.call("is_counter_window_open")):
+		dash_label.text += " · 反击机会！按 J"
+	elif ProgressionManager.has_move("pounce") and bool(player.call("can_pounce")):
+		dash_label.text += " · 扑击！按 J"
 
 
 func _on_player_health_changed(current_health: float, max_health: float) -> void:

@@ -24,6 +24,7 @@ signal perfect_dodged(source_position: Vector2)
 @export var dash_max_charges: int = 2
 @export var dash_recharge_time: float = 1.2
 @export var perfect_dodge_counter_window: float = 1.0
+@export var pounce_window_after_dash: float = 0.3
 
 @export_category("Defense")
 @export var shield_max_durability: float = 100.0
@@ -50,6 +51,10 @@ var dash_time_left: float = 0.0
 var dash_direction: Vector2 = Vector2.ZERO
 var dash_charges: int = 2
 var dash_recharge_left: float = 0.0
+var pounce_window_left: float = 0.0
+var pounce_time_left: float = 0.0
+var pounce_direction: Vector2 = Vector2.ZERO
+var pounce_speed: float = 0.0
 var hitstun_left: float = 0.0
 var knockback_velocity: Vector2 = Vector2.ZERO
 var dead: bool = false
@@ -94,6 +99,7 @@ func _physics_process(delta: float) -> void:
 	dodge_cooldown_left = maxf(dodge_cooldown_left - delta, 0.0)
 	dodge_iframes_left = maxf(dodge_iframes_left - delta, 0.0)
 	counter_window_left = maxf(counter_window_left - delta, 0.0)
+	pounce_window_left = maxf(pounce_window_left - delta, 0.0)
 	hitstun_left = maxf(hitstun_left - delta, 0.0)
 	_update_dash_recharge(delta)
 
@@ -136,6 +142,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if dodge_time_left > 0.0:
 		_move_during_dodge(delta)
+		return
+	if pounce_time_left > 0.0:
+		_move_during_pounce(delta)
 		return
 	if dash_time_left > 0.0:
 		_move_during_dash(delta)
@@ -241,6 +250,7 @@ func _try_start_dash(input_direction: Vector2) -> bool:
 		dash_recharge_left = dash_recharge_time
 	dash_charges -= 1
 	dash_time_left = dash_duration
+	pounce_window_left = dash_duration + pounce_window_after_dash
 	if combat != null and combat.has_method("cancel_action"):
 		combat.cancel_action()
 	last_facing = dash_direction
@@ -259,6 +269,44 @@ func _move_during_dash(delta: float) -> void:
 	update_animation(dash_direction)
 	move_and_slide()
 	HitFeel.afterimage(animated_sprite, Color(1.0, 0.8, 0.9, 0.4))
+
+
+## Pounce (move learned by exploring): a forward leap that follows a dash. The combat
+## script decides when it starts; the controller only moves the body, with the same
+## frame-rate independent distance as the dash. No invulnerability.
+func can_pounce() -> bool:
+	return pounce_window_left > 0.0 and not dead and guard_break_left <= 0.0 and hitstun_left <= 0.0 and not is_defending
+
+
+func start_pounce(direction: Vector2, distance: float, move_duration: float) -> void:
+	pounce_direction = direction.normalized() if direction != Vector2.ZERO else last_facing
+	pounce_speed = distance / maxf(move_duration, 0.001)
+	pounce_time_left = move_duration
+	pounce_window_left = 0.0
+	dash_time_left = 0.0
+	last_facing = pounce_direction
+
+
+func stop_pounce() -> void:
+	pounce_time_left = 0.0
+
+
+func is_pouncing() -> bool:
+	return pounce_time_left > 0.0
+
+
+func _move_during_pounce(delta: float) -> void:
+	var step_time := minf(delta, pounce_time_left)
+	pounce_time_left = maxf(pounce_time_left - delta, 0.0)
+	velocity = pounce_direction * pounce_speed * (step_time / maxf(delta, 0.0001))
+	update_animation(pounce_direction)
+	move_and_slide()
+	HitFeel.afterimage(animated_sprite, Color(1.0, 0.75, 0.6, 0.4))
+
+
+## Spend the counter window (the counter claw uses it up).
+func consume_counter_window() -> void:
+	counter_window_left = 0.0
 
 
 func _update_dash_recharge(delta: float) -> void:
@@ -410,6 +458,8 @@ func receive_damage(amount: float, source_position: Vector2, knockback_force: fl
 	knockback_velocity = knockback_direction.normalized() * minf(knockback_force, received_knockback_force)
 	if combat != null and combat.has_method("cancel_action"):
 		combat.cancel_action()
+	dash_time_left = 0.0
+	pounce_time_left = 0.0
 	health_changed.emit(current_health, max_health)
 	play_hit_feedback()
 	HitFeel.player_hurt(global_position)
@@ -489,6 +539,8 @@ func revive_from_expedition(respawn_position: Vector2) -> void:
 	is_defending = false
 	dash_charges = dash_max_charges
 	dash_time_left = 0.0
+	pounce_time_left = 0.0
+	pounce_window_left = 0.0
 	if combat != null and combat.has_method("set_combat_enabled"):
 		combat.set_combat_enabled(true)
 	animated_sprite.modulate = Color.WHITE
@@ -546,6 +598,7 @@ func _apply_combat_tuning() -> void:
 	dash_max_charges = tuning.dash_max_charges
 	dash_recharge_time = tuning.dash_recharge_time
 	perfect_dodge_counter_window = tuning.perfect_dodge_counter_window
+	pounce_window_after_dash = tuning.pounce_window_after_dash
 	shield_max_durability = tuning.shield_max_durability
 	slime_attack_shield_cost = tuning.slime_lunge_shield_cost
 	defense_movement_multiplier = tuning.shield_movement_multiplier

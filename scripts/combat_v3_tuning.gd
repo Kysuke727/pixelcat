@@ -36,6 +36,24 @@ class_name CombatV3Tuning
 @export var dash_max_charges: int = 2
 @export var dash_recharge_time: float = 1.2
 
+@export_category("连招招式")
+@export var third_claw_damage: float = 3.0
+@export var third_claw_knockback_multiplier: float = 1.5
+@export var third_claw_hitbox_scale: float = 1.5
+@export var pounce_damage: float = 3.0
+@export var pounce_distance: float = 80.0
+@export var pounce_move_duration: float = 0.18
+@export var pounce_duration: float = 0.32
+@export var pounce_recovery: float = 0.75
+@export var pounce_window_after_dash: float = 0.3
+@export var pounce_hitbox_scale: float = 1.4
+@export var counter_claw_damage: float = 2.0
+@export var counter_claw_hitbox_scale: float = 1.25
+@export_category("连招奖励")
+## A finishing move rewards either fish or mood (50/50). Once per swing.
+@export var combo_reward_fish: int = 1
+@export var combo_reward_mood: float = 3.0
+
 @export_category("完美闪避")
 ## Seconds after a perfect dodge during which a counter attack is possible (used by combos).
 @export var perfect_dodge_counter_window: float = 1.0

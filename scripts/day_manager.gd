@@ -171,6 +171,12 @@ func get_night_max_health_bonus() -> int:
 	return int(get_night_modifiers()["max_health_bonus"])
 
 
+## Mood gained away from the house (e.g. combo rewards at night) is added to the
+## stored value, which the house picks up again when the cat comes home.
+func add_mood(amount: float) -> void:
+	saved_mood = clampf(saved_mood + amount, 0.0, 100.0)
+
+
 func get_save_data() -> Dictionary:
 	return {
 		"hunger": saved_hunger,
