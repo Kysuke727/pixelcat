@@ -15,13 +15,15 @@ func _initialize_run() -> void:
 	var enemies := get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
 		var enemy_id := String(enemy.name)
-		enemy_ids.append(enemy_id)
+		var counts: bool = bool(enemy.get("counts_toward_objective")) if enemy.get("counts_toward_objective") != null else true
+		if counts:
+			enemy_ids.append(enemy_id)
 		if ExpeditionManager.defeated_enemy_ids.has(enemy_id):
 			enemy.set_physics_process(false)
 			enemy.set_process(false)
 			enemy.set_deferred("visible", false)
 			enemy.queue_free()
-		elif enemy.has_signal("died"):
+		elif counts and enemy.has_signal("died"):
 			enemy.died.connect(_on_enemy_died.bind(enemy_id), CONNECT_ONE_SHOT)
 	_restore_saved_drops()
 	_restore_material_drops()

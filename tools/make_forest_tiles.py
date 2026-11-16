@@ -280,7 +280,7 @@ def main():
         "grid": [[IDX[n] for n in row] for row in grid],
         "start": START, "path": PATH, "exit": EXIT, "secret": SECRET,
         "safe": [{"label": n, "pos": p} for n, p in SAFE],
-        "enemies": ENEMIES, "lamps": LAMPS, "pawprints": PAWPRINTS,
+        "enemies": ENEMIES, "optional_enemies": OPTIONAL_ENEMIES, "lamps": LAMPS, "pawprints": PAWPRINTS,
         "secret_radius": SECRET_RADIUS,
     }
     (ROOT / "tools" / "data").mkdir(parents=True, exist_ok=True)

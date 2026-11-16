@@ -33,6 +33,9 @@ ENEMIES = [(560, 1020), (650, 1160),            # 1, 2  entrance glade
            (340, 500),                           # 3     guard on the secret trail
            (1110, 560), (1380, 520), (1260, 780), (1180, 700),   # 4-7 central clearing
            (1900, 480), (2030, 380)]             # 8, 9  exit grove
+# Enemies that do NOT count toward opening the exit (1-based index into ENEMIES): the
+# secret-trail guard, so the secret really is optional.
+OPTIONAL_ENEMIES = [3]
 EXIT = (2200, 420)
 POND = (1450, 740, 140, 80)
 LAMPS = [(1960, 560), (1760, 330), (880, 960)]

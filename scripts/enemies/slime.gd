@@ -39,6 +39,8 @@ const HIT_FLASH_DURATION := 0.14
 @export var attack_damage: int = 1
 @export var attack_cooldown: float = 1.5
 @export var experience_reward: int = 10
+## false = an optional enemy: it does not count toward opening the exit (see ExpeditionManager).
+@export var counts_toward_objective: bool = true
 var hit_flash_time_left: float = 0.0
 
 @export_category("Lunge")

@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/dev/playtest_launcher.gd" id="1_launcher"]
+
+[node name="Playtest" type="Node"]
+script = ExtResource("1_launcher")
+map_id = "park"
+unlock_all_moves = false

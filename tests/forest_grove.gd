@@ -42,7 +42,10 @@ func _run() -> void:
 	for enemy in enemies:
 		names[enemy.name] = true
 	_check(names.size() == 9, "enemy names are unique (they are the objective ids)")
-	_check(exp.objectives_total == 9, "the run's objectives are the 9 slimes (%d)" % exp.objectives_total)
+	_check(exp.objectives_total == 8, "the run's objectives are the 8 slimes outside the secret (%d)" % exp.objectives_total)
+	_check(names.has("SecretGuard") and not exp.objective_ids.has("SecretGuard"), "the secret-trail guard is not an objective")
+	_check(scene.get_node("SecretGuard").counts_toward_objective == false, "the guard is flagged optional")
+	_check(scene.get_node("EnemyCompass") != null, "the scene has the enemy compass")
 	_check(scene.get_node("HUD") is CanvasLayer and scene.get_node("HUD/BattleUI") != null and scene.get_node("HUD/CoinUI") != null and scene.get_node("HUD/QuickbarUI") != null, "HUD controls live on a screen-space layer")
 	var cat: CharacterBody2D = scene.get_node("Cat")
 	_check(cat.global_position == Vector2(170, 1120), "the cat starts at the forest start")
@@ -153,13 +156,22 @@ func _run() -> void:
 	day.scene_change_override = func(_path: String) -> int: return OK
 	var exit_gate = scene.get_node("NightExit")
 	_check(not exit_gate.extract(), "the exit stays closed while slimes remain")
+	# Defeating only the optional guard does not help: the outside slimes still count.
+	var guard: Node = scene.get_node("SecretGuard")
+	guard.receive_damage(999.0, guard.global_position + Vector2.LEFT, 0.0)
+	await process_frame
+	await process_frame
+	_check(exp.objectives_completed == 0, "killing the guard does not count toward the objective (%d)" % exp.objectives_completed)
+	_check(exp.defeated_enemy_ids.has("SecretGuard"), "...but it is remembered as defeated (no respawn on resume)")
+	_check(not exit_gate.extract(), "the exit is still closed after only the guard")
+	# Now the eight outside slimes.
 	for enemy in enemies:
-		if is_instance_valid(enemy):
+		if is_instance_valid(enemy) and enemy.name != "SecretGuard":
 			enemy.receive_damage(999.0, enemy.global_position + Vector2.LEFT, 0.0)
 	await process_frame
 	await process_frame
-	_check(exp.objectives_completed == 9, "defeating every slime completes the objectives (%d)" % exp.objectives_completed)
-	_check(exit_gate.extract(), "the exit opens once all nine are defeated")
+	_check(exp.objectives_completed == 8, "defeating the eight outside slimes completes the objectives (%d)" % exp.objectives_completed)
+	_check(exit_gate.extract(), "the exit opens once the eight are defeated")
 	_check(pm.is_map_cleared("forest_grove"), "reaching the exit clears the forest")
 	day.scene_change_override = Callable()
 

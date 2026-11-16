@@ -47,6 +47,7 @@ func _initialize() -> void:
 	cat.position = _vec(level["start"])
 	_add_enemies()
 	_add_music()
+	_add_compass()
 	_add_safe_points()
 	var exit_gate := _take("NightExit", map_root)
 	exit_gate.position = _vec(level["exit"])
@@ -226,9 +227,16 @@ func _add_props() -> void:
 func _add_enemies() -> void:
 	var slime_scene: PackedScene = load(SLIME_SCENE)
 	var index := 1
+	# JSON numbers arrive as floats; compare as ints (Array.has(3) does not match 3.0).
+	var optional: Array[int] = []
+	for value in level.get("optional_enemies", []):
+		optional.append(int(value))
 	for enemy_position in level["enemies"]:
 		var slime := slime_scene.instantiate()
-		slime.name = "Slime%d" % index
+		var is_optional := optional.has(index)
+		# Optional enemies keep a recognisable name (the name is their saved id).
+		slime.name = "SecretGuard" if is_optional else "Slime%d" % index
+		slime.set("counts_toward_objective", not is_optional)
 		slime.position = _vec(enemy_position)
 		_adopt(slime)
 		index += 1
@@ -243,6 +251,15 @@ func _add_music() -> void:
 	music.stream = original.stream
 	music.autoplay = true
 	_adopt(music)
+
+
+## The arrows that point at the remaining enemies (and, once it is open, the exit).
+func _add_compass() -> void:
+	var compass := CanvasLayer.new()
+	compass.name = "EnemyCompass"
+	compass.layer = 8
+	compass.set_script(load("res://scripts/enemy_compass.gd"))
+	_adopt(compass)
 
 
 func _add_safe_points() -> void:

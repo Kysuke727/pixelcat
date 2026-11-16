@@ -9,6 +9,9 @@ signal expedition_finished(success: bool, retained_fish: int, lost_fish: int)
 @export var exploration_clear_experience: int = 50
 
 var run_active: bool = false
+## Ids of the enemies that count toward the objective (set by set_objectives, not saved).
+## Empty = unknown, in which case every defeated enemy counts (the original behaviour).
+var objective_ids: Array[String] = []
 ## Which night map this run is on (see MapCatalog); saved so Continue resumes the right map.
 var current_map_id: String = MapCatalog.FIRST_MAP
 var lives_left: int = 0
@@ -39,6 +42,7 @@ func begin_run(map_id: String = MapCatalog.FIRST_MAP) -> void:
 	objectives_total = 0
 	objectives_completed = 0
 	defeated_enemy_ids.clear()
+	objective_ids.clear()
 	fish_drops.clear()
 	material_drops.clear()
 	exploration_reward_claimed = false
@@ -72,6 +76,7 @@ func activate_safe_point(position: Vector2) -> void:
 func set_objectives(enemy_ids: Array[String]) -> void:
 	if not run_active:
 		return
+	objective_ids.assign(enemy_ids)
 	objectives_total = enemy_ids.size()
 	objectives_completed = 0
 	for enemy_id in enemy_ids:
@@ -81,11 +86,18 @@ func set_objectives(enemy_ids: Array[String]) -> void:
 	ProgressionManager.save_now()
 
 
+## Optional enemies (e.g. the secret-trail guard) are remembered as defeated and give
+## their drops and experience, but do not count toward opening the exit.
+func _counts_for_objective(enemy_id: String) -> bool:
+	return objective_ids.is_empty() or objective_ids.has(enemy_id)
+
+
 func complete_enemy_objective(enemy_id: String, experience_reward: int = 0) -> void:
 	if not run_active or ProgressionManager.debug_session or enemy_id.is_empty() or defeated_enemy_ids.has(enemy_id):
 		return
 	defeated_enemy_ids.append(enemy_id)
-	objectives_completed = mini(objectives_completed + 1, objectives_total)
+	if _counts_for_objective(enemy_id):
+		objectives_completed = mini(objectives_completed + 1, objectives_total)
 	ProgressionManager.add_experience(maxi(experience_reward, 0))
 	if objectives_complete() and not exploration_reward_claimed:
 		exploration_reward_claimed = true
@@ -109,7 +121,8 @@ func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: 
 			continue
 		material_drops[drop_id] = record.duplicate(true)
 	defeated_enemy_ids.append(enemy_id)
-	objectives_completed = mini(objectives_completed + 1, objectives_total)
+	if _counts_for_objective(enemy_id):
+		objectives_completed = mini(objectives_completed + 1, objectives_total)
 	ProgressionManager.add_experience(maxi(experience_reward, 0))
 	if objectives_complete() and not exploration_reward_claimed:
 		exploration_reward_claimed = true
