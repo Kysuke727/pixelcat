@@ -6,45 +6,17 @@
 The numbers here are the single source of truth for the level design; the map scene
 is built from the same coordinates. World size 2304 x 1296 (2 x 2 screens).
 """
-import math, random
+import math, random, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PIL import Image, ImageDraw, ImageFont
 
-W, H = 2304, 1296
+from forest_grove_data import *   # noqa: F401,F403  (level data, single source of truth)
+
 S = 0.72                          # drawing scale
 FONT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "SmileySans-Oblique.otf"
 
-# ---- level data (world coordinates) -----------------------------------------
-START = (170, 1120)
-PATH = [START, (480, 1135), (760, 1040), (880, 820), (800, 640), (1010, 520), (1250, 470),
-        (1560, 560), (1760, 480), (1960, 430), (2200, 420)]
-ZONES = {   # name: (cx, cy, rx, ry)
-    "入口林间空地": (430, 1085, 330, 190),
-    "中央空地": (1270, 620, 450, 270),
-    "出口林地": (1960, 430, 280, 200),
-}
-SECRET_TRAIL = [(520, 900), (380, 720), (330, 520), (360, 330)]
-SECRET = (360, 260)
-SAFE = [("安全点 1", (260, 1040)), ("安全点 2", (990, 790))]
-ENEMIES = [(560, 1020), (650, 1160), (1110, 560), (1380, 520), (1260, 780), (400, 480)]
-EXIT = (2200, 420)
-POND = (1450, 740, 140, 80)
-LAMPS = [(1960, 560), (1760, 330), (880, 960)]
-
 def sc(p): return (p[0] * S, p[1] * S)
-
-def dist_to_segment(p, a, b):
-    ax, ay = a; bx, by = b; px, py = p
-    dx, dy = bx - ax, by - ay
-    t = 0.0 if dx == dy == 0 else max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
-    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
-
-def near_path(p, pts, r):
-    return any(dist_to_segment(p, pts[i], pts[i + 1]) < r for i in range(len(pts) - 1))
-
-def in_ellipse(p, e, margin=0):
-    cx, cy, rx, ry = e
-    return ((p[0] - cx) / (rx + margin)) ** 2 + ((p[1] - cy) / (ry + margin)) ** 2 <= 1
 
 img = Image.new("RGB", (int(W * S), int(H * S)), "#1d3b2f")
 d = ImageDraw.Draw(img)
@@ -78,7 +50,7 @@ d.ellipse([sc((cx - rx, cy - ry)), sc((cx + rx, cy + ry))], fill="#3f7fa8", outl
 random.seed(7)
 trees = []
 def ok(p):
-    if near_path(p, PATH, 150) or near_path(p, SECRET_TRAIL, 85): return False
+    if near_polyline(p, PATH, 150) or near_polyline(p, SECRET_TRAIL, 85): return False
     if any(in_ellipse(p, e, 25) for e in ZONES.values()) or in_ellipse(p, POND, 40): return False
     if math.hypot(p[0] - SECRET[0], p[1] - SECRET[1]) < 120: return False
     if any(math.hypot(p[0] - l[0], p[1] - l[1]) < 40 for l in LAMPS): return False
