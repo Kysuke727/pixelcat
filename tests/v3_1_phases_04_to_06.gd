@@ -214,7 +214,8 @@ func _run() -> void:
 	_check(currency.fish_count == currency_before_failure + 3, "failure floors a 50 percent loss for odd loot and banks the retained half")
 	_check(expedition.last_outcome == "failed", "failed exploration records its outcome")
 
-	day_manager.switch_to_night()
+	# The park was just cleared, so going out would now ask which map; pick the park.
+	day_manager.switch_to_night("park")
 	await scene_changed
 	await physics_frame
 	var current_player := get_first_node_in_group("player")

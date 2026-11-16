@@ -42,19 +42,29 @@ func enter_from_menu(scene_path: String, save_after: bool) -> void:
 		ProgressionManager.save_now()
 
 
-func switch_to_night() -> void:
+## Go out for the night. With a single available map this just goes; once a second map
+## is unlocked the player is asked where to go (MapSelect calls back with the choice).
+func switch_to_night(map_id: String = "") -> void:
 	if current_state == TimeState.NIGHT or ProgressionManager.debug_session:
 		return
+	if ExpeditionManager.run_active:
+		map_id = ExpeditionManager.current_map_id  # a run in progress always resumes its own map
+	elif map_id.is_empty():
+		var options: Array = ProgressionManager.available_maps()
+		if options.size() > 1:
+			MapSelect.open()
+			return
+		map_id = str(options[0]) if not options.is_empty() else MapCatalog.FIRST_MAP
 	var expedition_before := ExpeditionManager.get_save_data().duplicate(true)
 	capture_cat_stats()
 	set_night_snapshot(_snapshot_from_saved_stats())
 	if not ExpeditionManager.run_active:
-		ExpeditionManager.begin_run()
+		ExpeditionManager.begin_run(map_id)
 
 	current_state = TimeState.NIGHT
 	print("现在进入夜晚了！")
 
-	var error: Error = _request_scene_change(NIGHT_SCENE)
+	var error: Error = _request_scene_change(MapCatalog.scene_path(ExpeditionManager.current_map_id))
 	if error != OK:
 		print("夜晚场景切换失败：", error)
 		current_state = TimeState.DAY
@@ -248,7 +258,7 @@ func _resume_saved_expedition() -> void:
 		# New saves carry the night snapshot. Older saves without one stay
 		# neutral instead of silently turning default 100 stats into bonuses.
 		current_state = TimeState.NIGHT
-		var error: Error = _request_scene_change(NIGHT_SCENE)
+		var error: Error = _request_scene_change(MapCatalog.scene_path(ExpeditionManager.current_map_id))
 		if error != OK:
 			current_state = TimeState.DAY
 			push_error("保存的夜晚探索无法恢复；保留存档并回到白天")

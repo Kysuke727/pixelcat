@@ -2,6 +2,7 @@ extends Node
 
 signal progression_changed
 signal move_unlocked(move_id: String)
+signal map_cleared(map_id: String)
 signal level_changed(level: int, experience: int, experience_to_next: int)
 
 const SAVE_VERSION := 1
@@ -22,6 +23,8 @@ var skill_points: Dictionary = {"slow": 0, "connection": 0, "bind": 0, "loop": 0
 var permanent_items: Array[String] = []
 ## Moves learned by exploring (see MoveCatalog). Stored in the save.
 var unlocked_moves: Array[String] = []
+## Night maps cleared at least once (see MapCatalog). Clearing one unlocks the next.
+var cleared_maps: Array[String] = []
 var pending_allocation: Dictionary = {}
 var game_started: bool = false
 var debug_session: bool = false
@@ -210,6 +213,29 @@ func unlock_move(move_id: String) -> bool:
 	return true
 
 
+func is_map_cleared(map_id: String) -> bool:
+	return cleared_maps.has(map_id)
+
+
+## Maps the player can choose right now, in selection-screen order.
+func available_maps() -> Array:
+	var result: Array = []
+	for map_id in MapCatalog.ids():
+		if MapCatalog.is_available(map_id, cleared_maps):
+			result.append(map_id)
+	return result
+
+
+## Returns true only the first time a map is cleared.
+func mark_map_cleared(map_id: String) -> bool:
+	if not MapCatalog.has_map(map_id) or cleared_maps.has(map_id):
+		return false
+	cleared_maps.append(map_id)
+	map_cleared.emit(map_id)
+	progression_changed.emit()
+	return true
+
+
 func respec_attributes() -> bool:
 	var cost := get_respec_cost()
 	if not CurrencyManager.spend_fish(cost):
@@ -323,6 +349,7 @@ func _profile_data() -> Dictionary:
 		"permanent_hp_bonus": permanent_hp_bonus,
 		"permanent_items": permanent_items.duplicate(),
 		"unlocked_moves": unlocked_moves.duplicate(),
+		"cleared_maps": cleared_maps.duplicate(),
 		"currency": CurrencyManager.get_save_data(),
 		"inventory": _inventory_save_data(),
 		"quickbar": _quickbar_save_data(),
@@ -481,6 +508,12 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 		for item in profile["permanent_items"]:
 			if not item is String:
 				return false
+	if profile.has("cleared_maps"):
+		if not profile["cleared_maps"] is Array:
+			return false
+		for map_id in profile["cleared_maps"]:
+			if not map_id is String:
+				return false
 	if profile.has("unlocked_moves"):
 		if not profile["unlocked_moves"] is Array:
 			return false
@@ -555,6 +588,8 @@ func _is_valid_expedition_data(data: Dictionary) -> bool:
 	for key in ["run_active", "exploration_reward_claimed"]:
 		if data.has(key) and not data[key] is bool:
 			return false
+	if data.has("map_id") and not data["map_id"] is String:
+		return false
 	if data.has("defeated_enemy_ids"):
 		if not data["defeated_enemy_ids"] is Array:
 			return false
@@ -655,6 +690,13 @@ func _load_profile_data(data: Dictionary) -> void:
 	permanent_items.clear()
 	for item in data.get("permanent_items", []):
 		permanent_items.append(str(item))
+	cleared_maps.clear()
+	var loaded_maps: Variant = data.get("cleared_maps", [])
+	if loaded_maps is Array:
+		for map_id in loaded_maps:
+			var cleared_id := str(map_id)
+			if MapCatalog.has_map(cleared_id) and not cleared_maps.has(cleared_id):
+				cleared_maps.append(cleared_id)
 	# Older saves have no "unlocked_moves"; unknown ids (from a newer build) are dropped.
 	unlocked_moves.clear()
 	var loaded_moves: Variant = data.get("unlocked_moves", [])

@@ -29,7 +29,7 @@ func _continue_game() -> void:
 		return
 	busy = true
 	ProgressionManager.continue_game()
-	var target := NIGHT_SCENE if ExpeditionManager.run_active else DAY_SCENE
+	var target := MapCatalog.scene_path(ExpeditionManager.current_map_id) if ExpeditionManager.run_active else DAY_SCENE
 	DayManager.current_state = DayManager.TimeState.NIGHT if ExpeditionManager.run_active else DayManager.TimeState.DAY
 	DayManager.enter_from_menu(target, false)
 

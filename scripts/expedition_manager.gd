@@ -9,6 +9,8 @@ signal expedition_finished(success: bool, retained_fish: int, lost_fish: int)
 @export var exploration_clear_experience: int = 50
 
 var run_active: bool = false
+## Which night map this run is on (see MapCatalog); saved so Continue resumes the right map.
+var current_map_id: String = MapCatalog.FIRST_MAP
 var lives_left: int = 0
 var ordinary_fish: int = 0
 var objectives_total: int = 0
@@ -27,10 +29,11 @@ var _debug_snapshot: Dictionary = {}
 var _debug_player_snapshot: Dictionary = {}
 
 
-func begin_run() -> void:
+func begin_run(map_id: String = MapCatalog.FIRST_MAP) -> void:
 	if ProgressionManager.debug_session:
 		return
 	run_active = true
+	current_map_id = map_id if MapCatalog.has_map(map_id) else MapCatalog.FIRST_MAP
 	lives_left = starting_lives
 	ordinary_fish = 0
 	objectives_total = 0
@@ -39,7 +42,8 @@ func begin_run() -> void:
 	fish_drops.clear()
 	material_drops.clear()
 	exploration_reward_claimed = false
-	active_safe_position = Vector2(500.0, 350.0)
+	# Every map has its own start; the default respawn spot must be walkable there.
+	active_safe_position = MapCatalog.start_position(current_map_id)
 	saved_player_position = active_safe_position
 	saved_health = -1.0
 	saved_shield = -1.0
@@ -195,6 +199,8 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 	ordinary_fish = 0
 	run_active = false
 	last_outcome = "success" if success else "failed"
+	if success:
+		ProgressionManager.mark_map_cleared(current_map_id)
 	_is_resuming = false
 	if retained > 0:
 		CurrencyManager.add_permanent_fish(retained)
@@ -240,6 +246,7 @@ func restore_player_if_resuming(player: Node) -> void:
 func get_save_data() -> Dictionary:
 	return {
 		"run_active": run_active,
+		"map_id": current_map_id,
 		"lives_left": lives_left,
 		"ordinary_fish": ordinary_fish,
 		"objectives_total": objectives_total,
@@ -258,6 +265,8 @@ func get_save_data() -> Dictionary:
 
 func load_save_data(data: Dictionary) -> void:
 	run_active = bool(data.get("run_active", false))
+	var loaded_map_id := str(data.get("map_id", MapCatalog.FIRST_MAP))
+	current_map_id = loaded_map_id if MapCatalog.has_map(loaded_map_id) else MapCatalog.FIRST_MAP
 	lives_left = clampi(int(data.get("lives_left", starting_lives)), 0, starting_lives)
 	ordinary_fish = maxi(int(data.get("ordinary_fish", 0)), 0)
 	objectives_total = maxi(int(data.get("objectives_total", 0)), 0)
