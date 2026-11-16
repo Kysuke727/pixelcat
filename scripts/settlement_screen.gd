@@ -1,13 +1,15 @@
 extends Node
 
-## The screen shown when the cat dies: what was lost, then "回家".
-## It pauses the game while it is open. Listens to ExpeditionManager.death_settlement.
+## The screen shown when a run ends: what was earned (reached the exit) or lost (the cat
+## died), then "回家". It pauses the game while it is open and listens to
+## ExpeditionManager.run_settlement.
 ##
 ## All player-facing text is Simplified Chinese.
 
 const UI_THEME: Theme = preload("res://resources/ui/pixelcat_theme.tres")
 
-## Seconds (real time) to let the player see the cat go down before the screen appears.
+## Seconds (real time) to let the player see the cat go down before the failure screen
+## appears. (The success screen appears at once.)
 var show_delay: float = 0.8
 
 var _layer: CanvasLayer
@@ -22,15 +24,15 @@ var _open: bool = false
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
-	ExpeditionManager.death_settlement.connect(show_failure)
+	ExpeditionManager.run_settlement.connect(show_report)
 
 
 func is_open() -> bool:
 	return _open
 
 
-func show_failure(report: Dictionary) -> void:
-	if show_delay > 0.0:
+func show_report(report: Dictionary) -> void:
+	if not bool(report.get("success", false)) and show_delay > 0.0:
 		await get_tree().create_timer(show_delay, true, false, true).timeout
 	_populate(report)
 	_open = true
@@ -49,18 +51,24 @@ func confirm() -> void:
 
 
 func _populate(report: Dictionary) -> void:
-	_title.text = "♡ 探险失败 ♡"
-	_subtitle.text = "你在「%s」倒下了" % MapCatalog.display_name(str(report.get("map_id", MapCatalog.FIRST_MAP)))
 	for child in _lines.get_children():
 		child.queue_free()
-	_add_line(_lines, "击败敌人：%d / %d" % [int(report.get("objectives_completed", 0)), int(report.get("objectives_total", 0))])
-	var retained := int(report.get("retained", 0))
-	var lost_fish := int(report.get("lost", 0))
-	_add_line(_lines, "小鱼干：保住 %d 条，丢失 %d 条" % [retained, lost_fish])
-	_add_line(_lines, "经验和已学会的招式都保留了")
-
 	for child in _items.get_children():
 		child.queue_free()
+	var map_name := MapCatalog.display_name(str(report.get("map_id", MapCatalog.FIRST_MAP)))
+	if bool(report.get("success", false)):
+		_populate_success(report, map_name)
+	else:
+		_populate_failure(report, map_name)
+
+
+func _populate_failure(report: Dictionary, map_name: String) -> void:
+	_title.text = "♡ 探险失败 ♡"
+	_subtitle.text = "你在「%s」倒下了" % map_name
+	_add_line(_lines, "击败敌人：%d / %d" % [int(report.get("objectives_completed", 0)), int(report.get("objectives_total", 0))])
+	_add_line(_lines, "小鱼干：保住 %d 条，丢失 %d 条" % [int(report.get("retained", 0)), int(report.get("lost", 0))])
+	_add_line(_lines, "经验和已学会的招式都保留了")
+
 	var items: Dictionary = report.get("items", {})
 	var lost: Dictionary = items.get("lost", {})
 	var heading := Label.new()
@@ -80,6 +88,41 @@ func _populate(report: Dictionary) -> void:
 		_items.add_child(kept_heading)
 		for item_id in kept:
 			_items.add_child(_item_row(str(item_id), int(kept[item_id]), false))
+
+
+func _populate_success(report: Dictionary, map_name: String) -> void:
+	_title.text = "♡ 探险成功 ♡"
+	_subtitle.text = "你从「%s」平安回来了" % map_name
+	_add_line(_lines, "击败敌人：%d / %d" % [int(report.get("objectives_completed", 0)), int(report.get("objectives_total", 0))])
+	_add_line(_lines, "小鱼干：+%d" % int(report.get("retained", 0)))
+	_add_line(_lines, "经验：+%d" % int(report.get("experience", 0)))
+
+	var gained: Dictionary = report.get("items_gained", {})
+	var heading := Label.new()
+	heading.theme_type_variation = &"HeadingLabel"
+	heading.text = "本次带回的东西" if not gained.is_empty() else "这次没有带回材料"
+	_items.add_child(heading)
+	for item_id in gained:
+		_items.add_child(_item_row(str(item_id), int(gained[item_id]), false))
+
+	# Good news goes last: new moves, and the first clear of a map.
+	var news: Array[String] = []
+	for move_id in report.get("moves_learned", []):
+		news.append("学会了新招式：%s" % MoveCatalog.display_name(str(move_id)))
+	if bool(report.get("first_clear", false)):
+		news.append("首次通关「%s」！" % map_name)
+	for map_id in report.get("new_maps", []):
+		news.append("解锁了新地图：%s" % MapCatalog.display_name(str(map_id)))
+	if not news.is_empty():
+		var news_heading := Label.new()
+		news_heading.theme_type_variation = &"HeadingLabel"
+		news_heading.text = "新收获"
+		_items.add_child(news_heading)
+		for line in news:
+			var label := Label.new()
+			label.text = "★ " + line
+			label.theme_type_variation = &"GoodLabel"
+			_items.add_child(label)
 
 
 func _item_row(item_id: String, quantity: int, was_lost: bool) -> Control:

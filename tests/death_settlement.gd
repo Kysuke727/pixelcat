@@ -135,7 +135,7 @@ func _run() -> void:
 
 	# --- Run end + settlement screen -----------------------------------------------------------
 	var reports: Array = []
-	exp.death_settlement.connect(func(report: Dictionary): reports.append(report))
+	exp.run_settlement.connect(func(report: Dictionary): reports.append(report))
 	var home_requests: Array = []
 	day.scene_change_override = func(path: String) -> int:
 		home_requests.append(path)

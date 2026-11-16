@@ -17,5 +17,5 @@ func extract() -> bool:
 	if not ExpeditionManager.objectives_complete():
 		return false
 	extraction_requested.emit()
-	ExpeditionManager.finish_run(true)
+	ExpeditionManager.complete_run_with_settlement()
 	return true

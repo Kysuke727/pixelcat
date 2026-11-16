@@ -2,8 +2,9 @@ extends Node
 
 signal expedition_changed
 signal expedition_finished(success: bool, retained_fish: int, lost_fish: int)
-## Emitted when the cat dies: the run is over and the settlement screen should be shown.
-signal death_settlement(report: Dictionary)
+## Emitted when a run is over and the settlement screen should be shown (the cat died, or
+## it reached the exit). The report has "success", "reason" ("death" / "success") and the summary.
+signal run_settlement(report: Dictionary)
 
 ## Dying ends the run (see on_player_died), so there is only one "life".
 @export var starting_lives: int = 1
@@ -12,6 +13,10 @@ signal death_settlement(report: Dictionary)
 @export var exploration_clear_experience: int = 50
 
 var run_active: bool = false
+## What this run has earned so far (shown on the success settlement; saved with the run).
+var run_experience_gained: int = 0
+var run_items_gained: Dictionary = {}
+var run_moves_learned: Array[String] = []
 ## Summary of the run that just ended: {success, retained, lost, map_id, objectives_*}.
 var last_result: Dictionary = {}
 ## Ids of the enemies that count toward the objective (set by set_objectives, not saved).
@@ -27,7 +32,6 @@ var defeated_enemy_ids: Array[String] = []
 var fish_drops: Dictionary = {}
 var material_drops: Dictionary = {}
 var exploration_reward_claimed: bool = false
-var active_safe_position: Vector2 = Vector2(500.0, 350.0)
 var saved_player_position: Vector2 = Vector2(500.0, 350.0)
 var saved_health: float = -1.0
 var saved_shield: float = -1.0
@@ -35,6 +39,29 @@ var last_outcome: String = ""
 var _is_resuming: bool = false
 var _debug_snapshot: Dictionary = {}
 var _debug_player_snapshot: Dictionary = {}
+
+
+func _ready() -> void:
+	InventoryManager.item_added.connect(_on_item_added)
+	ProgressionManager.move_unlocked.connect(_on_move_unlocked)
+
+
+func _on_item_added(item_id: String, quantity: int) -> void:
+	if run_active and not ProgressionManager.debug_session and quantity > 0:
+		run_items_gained[item_id] = int(run_items_gained.get(item_id, 0)) + quantity
+
+
+func _on_move_unlocked(move_id: String) -> void:
+	if run_active and not ProgressionManager.debug_session and not run_moves_learned.has(move_id):
+		run_moves_learned.append(move_id)
+
+
+## All experience granted by a run goes through here so the settlement can report it.
+func _award_experience(amount: int) -> void:
+	if amount <= 0:
+		return
+	run_experience_gained += amount
+	ProgressionManager.add_experience(amount)
 
 
 func begin_run(map_id: String = MapCatalog.FIRST_MAP) -> void:
@@ -48,12 +75,14 @@ func begin_run(map_id: String = MapCatalog.FIRST_MAP) -> void:
 	objectives_completed = 0
 	defeated_enemy_ids.clear()
 	objective_ids.clear()
+	run_experience_gained = 0
+	run_items_gained.clear()
+	run_moves_learned.clear()
 	fish_drops.clear()
 	material_drops.clear()
 	exploration_reward_claimed = false
-	# Every map has its own start; the default respawn spot must be walkable there.
-	active_safe_position = MapCatalog.start_position(current_map_id)
-	saved_player_position = active_safe_position
+	# Every map has its own start (a resumed run before the first autosave starts there).
+	saved_player_position = MapCatalog.start_position(current_map_id)
 	saved_health = -1.0
 	saved_shield = -1.0
 	last_outcome = ""
@@ -68,14 +97,6 @@ func add_ordinary_fish(amount: int) -> void:
 	ordinary_fish += amount
 	expedition_changed.emit()
 	ProgressionManager.save_now()
-
-
-func activate_safe_point(position: Vector2) -> void:
-	if not run_active:
-		return
-	active_safe_position = position
-	ProgressionManager.save_now()
-	expedition_changed.emit()
 
 
 func set_objectives(enemy_ids: Array[String]) -> void:
@@ -103,10 +124,10 @@ func complete_enemy_objective(enemy_id: String, experience_reward: int = 0) -> v
 	defeated_enemy_ids.append(enemy_id)
 	if _counts_for_objective(enemy_id):
 		objectives_completed = mini(objectives_completed + 1, objectives_total)
-	ProgressionManager.add_experience(maxi(experience_reward, 0))
+	_award_experience(maxi(experience_reward, 0))
 	if objectives_complete() and not exploration_reward_claimed:
 		exploration_reward_claimed = true
-		ProgressionManager.add_experience(exploration_clear_experience)
+		_award_experience(exploration_clear_experience)
 	ProgressionManager.save_now()
 	expedition_changed.emit()
 
@@ -128,10 +149,10 @@ func complete_enemy_with_drops(enemy_id: String, experience_reward: int, drops: 
 	defeated_enemy_ids.append(enemy_id)
 	if _counts_for_objective(enemy_id):
 		objectives_completed = mini(objectives_completed + 1, objectives_total)
-	ProgressionManager.add_experience(maxi(experience_reward, 0))
+	_award_experience(maxi(experience_reward, 0))
 	if objectives_complete() and not exploration_reward_claimed:
 		exploration_reward_claimed = true
-		ProgressionManager.add_experience(exploration_clear_experience)
+		_award_experience(exploration_clear_experience)
 	ProgressionManager.save_now()
 	expedition_changed.emit()
 
@@ -190,22 +211,15 @@ func on_player_died(player: Node) -> void:
 	var report: Dictionary = last_result.duplicate(true)
 	report["reason"] = "death"
 	report["items"] = InventoryManager.apply_death_loss()
-	death_settlement.emit(report)
-
-
-func _respawn_player(player: Node) -> void:
-	if not run_active or not is_instance_valid(player):
-		return
-	if player.has_method("revive_from_expedition"):
-		player.revive_from_expedition(active_safe_position)
-	else:
-		player.global_position = active_safe_position
+	run_settlement.emit(report)
 
 
 func finish_run(success: bool, transition_to_day: bool = true) -> void:
 	if not run_active or ProgressionManager.debug_session:
 		return
 	var before := ordinary_fish
+	var maps_before: Array = ProgressionManager.available_maps()
+	var first_clear := false
 	var lost := 0
 	if not success:
 		lost = int(floor(float(ordinary_fish) * failure_loss_ratio)) if odd_loot_rounding == "floor" else int(ceil(float(ordinary_fish) * failure_loss_ratio))
@@ -215,7 +229,7 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 	run_active = false
 	last_outcome = "success" if success else "failed"
 	if success:
-		ProgressionManager.mark_map_cleared(current_map_id)
+		first_clear = ProgressionManager.mark_map_cleared(current_map_id)
 	_is_resuming = false
 	if retained > 0:
 		CurrencyManager.add_permanent_fish(retained)
@@ -226,6 +240,11 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 		"map_id": current_map_id,
 		"objectives_completed": objectives_completed,
 		"objectives_total": objectives_total,
+		"experience": run_experience_gained,
+		"items_gained": run_items_gained.duplicate(),
+		"moves_learned": run_moves_learned.duplicate(),
+		"first_clear": first_clear,
+		"new_maps": _newly_available(maps_before),
 	}
 	expedition_finished.emit(success, retained, lost)
 	expedition_changed.emit()
@@ -238,6 +257,25 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 		push_warning("Invalid expedition loot state was clamped")
 
 
+func _newly_available(maps_before: Array) -> Array:
+	var result: Array = []
+	for map_id in ProgressionManager.available_maps():
+		if not maps_before.has(map_id):
+			result.append(map_id)
+	return result
+
+
+## Reaching the exit: ends the run successfully and shows the settlement screen
+## (the player presses "回家" to go home).
+func complete_run_with_settlement() -> void:
+	if not run_active or ProgressionManager.debug_session:
+		return
+	finish_run(true, false)
+	var report: Dictionary = last_result.duplicate(true)
+	report["reason"] = "success"
+	run_settlement.emit(report)
+
+
 func capture_current_run() -> void:
 	if not run_active or ProgressionManager.debug_session:
 		return
@@ -247,7 +285,6 @@ func capture_current_run() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
 		if bool(player.get("dead")):
-			saved_player_position = active_safe_position
 			return
 		saved_player_position = player.global_position
 		if player.get("current_health") != null:
@@ -278,11 +315,13 @@ func get_save_data() -> Dictionary:
 		"fish_drops": fish_drops.duplicate(true),
 		"material_drops": material_drops.duplicate(true),
 		"exploration_reward_claimed": exploration_reward_claimed,
-		"safe_position": [active_safe_position.x, active_safe_position.y],
 		"player_position": [saved_player_position.x, saved_player_position.y],
 		"health": saved_health,
 		"shield": saved_shield,
 		"last_outcome": last_outcome,
+		"experience_gained": run_experience_gained,
+		"items_gained": run_items_gained.duplicate(),
+		"moves_learned": run_moves_learned.duplicate(),
 	}
 
 
@@ -300,11 +339,23 @@ func load_save_data(data: Dictionary) -> void:
 	fish_drops = data.get("fish_drops", {}).duplicate(true)
 	material_drops = data.get("material_drops", {}).duplicate(true)
 	exploration_reward_claimed = bool(data.get("exploration_reward_claimed", objectives_completed >= objectives_total and objectives_total > 0))
-	active_safe_position = _vector_from_data(data.get("safe_position", [500.0, 350.0]))
 	saved_player_position = _vector_from_data(data.get("player_position", [500.0, 350.0]))
 	saved_health = float(data.get("health", -1.0))
 	saved_shield = float(data.get("shield", -1.0))
 	last_outcome = str(data.get("last_outcome", ""))
+	# Older saves do not have the per-run summary: treat it as empty.
+	run_experience_gained = maxi(int(data.get("experience_gained", 0)), 0)
+	run_items_gained.clear()
+	var loaded_items: Variant = data.get("items_gained", {})
+	if loaded_items is Dictionary:
+		for item_id in loaded_items:
+			run_items_gained[str(item_id)] = maxi(int(loaded_items[item_id]), 0)
+	run_moves_learned.clear()
+	var loaded_moves: Variant = data.get("moves_learned", [])
+	if loaded_moves is Array:
+		for move_id in loaded_moves:
+			if not run_moves_learned.has(str(move_id)):
+				run_moves_learned.append(str(move_id))
 	_is_resuming = run_active
 	expedition_changed.emit()
 

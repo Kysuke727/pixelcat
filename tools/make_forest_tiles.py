@@ -247,8 +247,6 @@ def check_design(grid, walk):
     need("start", START)
     for i, p in enumerate(ENEMIES, 1):
         need(f"enemy {i}", p)
-    for name, p in SAFE:
-        need(name, p)
     need("exit", EXIT)
     need("secret", SECRET)
     for i, p in enumerate(LAMPS, 1):
@@ -279,7 +277,6 @@ def main():
         "world": [W, H], "tile": TILE, "tile_names": TILE_NAMES, "solid": sorted(SOLID),
         "grid": [[IDX[n] for n in row] for row in grid],
         "start": START, "path": PATH, "exit": EXIT, "secret": SECRET,
-        "safe": [{"label": n, "pos": p} for n, p in SAFE],
         "enemies": ENEMIES, "optional_enemies": OPTIONAL_ENEMIES, "lamps": LAMPS, "pawprints": PAWPRINTS,
         "secret_radius": SECRET_RADIUS,
     }

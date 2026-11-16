@@ -79,11 +79,8 @@ def marker(p, text, fill, fg="#ffffff", r=22):
     x, y = sc(p); d.ellipse([x - r, y - r, x + r, y + r], fill=fill, outline="#ffffff", width=3)
     tw = d.textlength(text, font=mid); d.text((x - tw / 2, y - 14), text, font=mid, fill=fg)
 for i, p in enumerate(ENEMIES, 1):
-    marker(p, str(i), "#d8434f")
-for name, p in SAFE:
-    x, y = sc(p); r = 26
-    d.polygon([(x, y - r), (x + r, y + r * 0.8), (x - r, y + r * 0.8)], fill="#5ec6ff", outline="#ffffff")
-    d.text((x + 32, y - 14), name, font=small, fill="#bfe9ff")
+    # the optional secret-trail guard is drawn grey: it does not count toward the exit
+    marker(p, str(i), "#8a8f94" if i in OPTIONAL_ENEMIES else "#d8434f")
 x, y = sc(START); d.rectangle([x - 22, y - 22, x + 22, y + 22], fill="#7ad37a", outline="#ffffff", width=3)
 d.text((x - 24, y + 28), "出发", font=mid, fill="#d8ffd8")
 x, y = sc(SECRET)
@@ -106,13 +103,13 @@ d.text(sc((1330, 840)), "小池塘（装饰，挡路）", font=small, fill="#cfe
 d.text(sc((560, 770)), "隐蔽小径入口\n（藏在灌木后面）", font=small, fill="#f2d98a")
 
 # legend (bottom-right, over the unused corner of the map)
-lx, ly = img.width - 330, img.height - 215
-d.rectangle([lx, ly, lx + 310, ly + 195], fill="#10261c", outline="#7fbf9a", width=2)
+lx, ly = img.width - 330, img.height - 195
+d.rectangle([lx, ly, lx + 310, ly + 175], fill="#10261c", outline="#7fbf9a", width=2)
 d.text((lx + 14, ly + 8), "图例", font=mid, fill="#d4f5dc")
-d.ellipse([lx + 16, ly + 46, lx + 40, ly + 70], fill="#d8434f", outline="#ffffff"); d.text((lx + 52, ly + 44), "敌人（史莱姆，按编号）", font=small, fill="#ffffff")
-d.polygon([(lx + 28, ly + 80), (lx + 44, ly + 108), (lx + 12, ly + 108)], fill="#5ec6ff"); d.text((lx + 52, ly + 82), "安全点（复活）", font=small, fill="#ffffff")
-d.ellipse([lx + 20, ly + 120, lx + 36, ly + 136], fill="#ffd84d", outline="#ffffff"); d.text((lx + 52, ly + 116), "路灯（装饰）", font=small, fill="#ffffff")
-d.rectangle([lx + 14, ly + 152, lx + 44, ly + 162], fill="#f2d98a"); d.text((lx + 52, ly + 148), "隐蔽小径", font=small, fill="#ffffff")
-d.text((lx + 170, ly + 150), "圆点密集处是树，\n走不进去", font=small, fill="#9fd4b0")
+d.ellipse([lx + 16, ly + 44, lx + 40, ly + 68], fill="#d8434f", outline="#ffffff"); d.text((lx + 52, ly + 42), "敌人（算通关目标）", font=small, fill="#ffffff")
+d.ellipse([lx + 16, ly + 74, lx + 40, ly + 98], fill="#8a8f94", outline="#ffffff"); d.text((lx + 52, ly + 72), "守卫（不算通关目标）", font=small, fill="#ffffff")
+d.ellipse([lx + 20, ly + 108, lx + 36, ly + 124], fill="#ffd84d", outline="#ffffff"); d.text((lx + 52, ly + 102), "路灯（装饰）", font=small, fill="#ffffff")
+d.rectangle([lx + 14, ly + 142, lx + 44, ly + 152], fill="#f2d98a"); d.text((lx + 52, ly + 134), "隐蔽小径", font=small, fill="#ffffff")
+d.text((lx + 170, ly + 136), "圆点密集处是树", font=small, fill="#9fd4b0")
 img.save(Path(__file__).resolve().parent.parent / "docs" / "maps" / "forest-grove-layout.png")
 print("wrote docs/maps/forest-grove-layout.png", img.size, "trees:", len(trees))

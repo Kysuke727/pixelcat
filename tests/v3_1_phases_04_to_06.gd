@@ -136,7 +136,6 @@ func _run() -> void:
 		"objectives_completed": 1,
 		"defeated_enemy_ids": ["SlimeA"],
 		"exploration_reward_claimed": false,
-		"safe_position": [300.0, 470.0],
 		"player_position": [780.0, 500.0],
 		"health": 3.5,
 		"shield": 42.0,
@@ -201,7 +200,11 @@ func _run() -> void:
 		expedition.load_save_data(post_pickup_snapshot)
 		_check(not expedition.fish_drops.has(drop_id), "claimed-drop state survives save reload")
 	var pre_exit_fish: int = expedition.ordinary_fish
+	var success_screen := root.get_node("SettlementScreen")
 	_check(exit_gate.extract(), "player can explicitly extract through the unlocked gate")
+	_check(success_screen.is_open() and paused, "reaching the exit opens the success settlement and pauses the game")
+	_check(day_manager.current_state == 1, "the player is still out until they press go home")
+	success_screen.confirm()
 	await scene_changed
 	_check(day_manager.current_state == 0, "successful extraction returns to the day scene")
 	_check(not expedition.run_active and expedition.last_outcome == "success", "successful extraction ends and records the run")
@@ -222,7 +225,6 @@ func _run() -> void:
 	# Dying now ends the run and shows the settlement screen; there is no respawn.
 	var settlement := root.get_node("SettlementScreen")
 	settlement.show_delay = 0.0
-	expedition.activate_safe_point(Vector2(280.0, 460.0))
 	expedition.add_ordinary_fish(5)
 	var currency_before_death: int = currency.fish_count
 	var night_scene_before_failure := current_scene

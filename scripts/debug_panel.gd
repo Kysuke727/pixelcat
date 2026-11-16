@@ -47,7 +47,7 @@ func _build_ui() -> void:
 	_add_button(column, "护盾 +10", func(): _change_player("shield_durability", 10.0))
 	_add_button(column, "护盾 -10", func(): _change_player("shield_durability", -10.0))
 	_add_button(column, "增加 100 经验", func(): ProgressionManager.add_experience(100))
-	_add_button(column, "测试死亡/安全点复活", _test_player_death)
+	_add_button(column, "测试死亡", _test_player_death)
 	_add_button(column, "模拟成功结算", func(): _simulate_settlement(true))
 	_add_button(column, "模拟失败结算", func(): _simulate_settlement(false))
 	_add_button(column, "解锁全部招式", _unlock_all_moves)

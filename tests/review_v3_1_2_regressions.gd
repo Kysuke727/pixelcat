@@ -26,7 +26,6 @@ func _run() -> void:
 	expedition.objectives_completed = 1
 	expedition.defeated_enemy_ids.clear()
 	expedition.defeated_enemy_ids.append("SlimeA")
-	expedition.active_safe_position = Vector2(300.0, 470.0)
 	var player := get_first_node_in_group("player")
 	var debug_panel := world.get_node("DebugPanel")
 	player.global_position = Vector2(540.0, 420.0)

@@ -50,7 +50,7 @@ func _run() -> void:
 	var cat: CharacterBody2D = scene.get_node("Cat")
 	_check(cat.global_position == Vector2(170, 1120), "the cat starts at the forest start")
 	_check(scene.get_node("NightExit").global_position == Vector2(2200, 420), "exit is at the east end")
-	_check(scene.get_node_or_null("SafePoint1") != null and scene.get_node_or_null("SafePoint2") != null, "two safe points")
+	_check(scene.get_node_or_null("SafePoint1") == null and scene.get_node_or_null("SafePoint2") == null, "there are no safe points (dying ends the run)")
 
 	# --- Walkability from the REAL tile data (solid = tile has a collision polygon) ------------
 	var solid := {}
@@ -73,7 +73,7 @@ func _run() -> void:
 	for enemy in enemies:
 		var cell := Vector2i(int(enemy.global_position.x) / 32, int(enemy.global_position.y) / 32)
 		_check(seen.has(cell), "%s stands on reachable ground" % enemy.name)
-	for node_name in ["SafePoint1", "SafePoint2", "NightExit", "SecretSpot"]:
+	for node_name in ["NightExit", "SecretSpot"]:
 		var node: Node2D = scene.get_node(node_name)
 		var cell := Vector2i(int(node.global_position.x) / 32, int(node.global_position.y) / 32)
 		_check(seen.has(cell), "%s is reachable" % node_name)

@@ -55,7 +55,7 @@ func _run() -> void:
 	_check(night_scene.get_node_or_null("Cat") != null, "night map keeps the player cat")
 	_check(night_scene.get_node_or_null("SlimeA") != null and night_scene.get_node_or_null("SlimeB") != null and night_scene.get_node_or_null("SlimeC") != null, "night map keeps all three slimes")
 	_check(night_scene.get_node_or_null("NightExit") != null, "night map keeps the extraction gate")
-	_check(night_scene.get_node_or_null("SafePointPark") != null and night_scene.get_node_or_null("SafePointStreet") != null, "night map keeps both safe points")
+	_check(night_scene.get_node_or_null("SafePointPark") == null and night_scene.get_node_or_null("SafePointStreet") == null, "the night map has no safe points any more")
 	_check(night_scene.get_node_or_null("NightRunController") != null, "night map keeps the run controller")
 	_check(night_scene.get_node_or_null("BattleUI") != null and night_scene.get_node_or_null("CoinUI") != null, "night map keeps combat and currency HUDs")
 	_check(night_scene.get_node_or_null("InventoryUI") != null, "night map contains the inventory UI")

@@ -590,6 +590,20 @@ func _is_valid_expedition_data(data: Dictionary) -> bool:
 			return false
 	if data.has("map_id") and not data["map_id"] is String:
 		return false
+	if data.has("experience_gained") and not _is_number(data["experience_gained"]):
+		return false
+	if data.has("items_gained"):
+		if not data["items_gained"] is Dictionary:
+			return false
+		for amount in data["items_gained"].values():
+			if not _is_number(amount):
+				return false
+	if data.has("moves_learned"):
+		if not data["moves_learned"] is Array:
+			return false
+		for move_id in data["moves_learned"]:
+			if not move_id is String:
+				return false
 	if data.has("defeated_enemy_ids"):
 		if not data["defeated_enemy_ids"] is Array:
 			return false
@@ -623,7 +637,7 @@ func _is_valid_expedition_data(data: Dictionary) -> bool:
 				return false
 	if data.has("last_outcome") and not data["last_outcome"] is String:
 		return false
-	for key in ["safe_position", "player_position"]:
+	for key in ["player_position"]:
 		if data.has(key):
 			var position: Variant = data[key]
 			if not position is Array or position.size() < 2 or not _is_number(position[0]) or not _is_number(position[1]):

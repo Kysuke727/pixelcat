@@ -48,7 +48,6 @@ func _initialize() -> void:
 	_add_enemies()
 	_add_music()
 	_add_compass()
-	_add_safe_points()
 	var exit_gate := _take("NightExit", map_root)
 	exit_gate.position = _vec(level["exit"])
 	for node_name in ["ExpeditionHUD", "NightRunController", "ProgressionPanel", "DebugPanel", "InventoryUI", "CraftingUI"]:
@@ -260,19 +259,3 @@ func _add_compass() -> void:
 	compass.layer = 8
 	compass.set_script(load("res://scripts/enemy_compass.gd"))
 	_adopt(compass)
-
-
-func _add_safe_points() -> void:
-	var template: Node = park.get_node("SafePointPark")
-	var index := 1
-	for safe in level["safe"]:
-		var point: Node2D = template.duplicate()
-		point.name = "SafePoint%d" % index
-		point.position = _vec(safe["pos"])
-		point.scale = Vector2.ONE
-		point.set("checkpoint_label", str(safe["label"]))
-		_adopt(point)
-		var label := point.get_node_or_null("Label") as Label
-		if label != null:
-			label.text = str(safe["label"])
-		index += 1

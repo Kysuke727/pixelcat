@@ -27,7 +27,6 @@ SECRET_TRAIL = [(500, 970), (520, 900), (380, 720), (330, 520), (360, 330)]
 TRAIL_WIDTH = 80
 SECRET = (360, 260)
 SECRET_RADIUS = 96
-SAFE = [("安全点 1", (260, 1040)), ("安全点 2", (990, 790))]
 # 9 slimes: entrance 2, secret-trail guard 1, central clearing 4, exit grove 2
 ENEMIES = [(560, 1020), (650, 1160),            # 1, 2  entrance glade
            (340, 500),                           # 3     guard on the secret trail
