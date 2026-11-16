@@ -54,6 +54,17 @@ func _initialize() -> void:
 	theme.set_type_variation("SlotPanelSelected", "PanelContainer")
 	theme.set_stylebox("panel", "SlotPanelSelected", _box(Color("#fff3c9"), GOLD, 3, 2, 3, 0, 1, 1))
 
+	# Workbench crafting uses a warm wood tone so it is obviously a different mode.
+	theme.add_type("WorkbenchPanel")
+	theme.set_type_variation("WorkbenchPanel", "PanelContainer")
+	theme.set_stylebox("panel", "WorkbenchPanel", _box(Color("#fff1dc"), Color("#8a5a3b"), 3, 0, 4, 0, 6, 6))
+	theme.add_type("BadgePortable")
+	theme.set_type_variation("BadgePortable", "PanelContainer")
+	theme.set_stylebox("panel", "BadgePortable", _box(BTN, BTN_EDGE, 2, 0, 3, 0, 4, 0))
+	theme.add_type("BadgeWorkbench")
+	theme.set_type_variation("BadgeWorkbench", "PanelContainer")
+	theme.set_stylebox("panel", "BadgeWorkbench", _box(Color("#e8c08a"), Color("#8a5a3b"), 2, 0, 3, 0, 4, 0))
+
 	# Buttons --------------------------------------------------------------
 	theme.set_stylebox("normal", "Button", _box(BTN, BTN_EDGE, 2, 4, 3))
 	theme.set_stylebox("hover", "Button", _box(BTN_HOVER, BTN_EDGE, 2, 4, 3))

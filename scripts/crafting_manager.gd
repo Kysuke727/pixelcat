@@ -66,24 +66,63 @@ func get_missing_materials(recipe_id: String) -> Dictionary:
 	return missing
 
 
-func check_craft(recipe_id: String, at_workbench: bool = false) -> Dictionary:
+## Ingredients and output scaled for `times` crafts. Crafting N at once is still
+## ONE atomic inventory transaction: it either fully succeeds or changes nothing.
+func _scaled(recipe, times: int) -> Dictionary:
+	var ingredients := {}
+	for item_id in recipe.ingredients.keys():
+		ingredients[item_id] = int(recipe.ingredients[item_id]) * times
+	return {"ingredients": ingredients, "quantity": int(recipe.result_quantity) * times}
+
+
+func check_craft(recipe_id: String, at_workbench: bool = false, times: int = 1) -> Dictionary:
 	var recipe = get_recipe(recipe_id)
 	if recipe == null:
 		return {"success": false, "reason": "unknown_recipe"}
+	if times < 1:
+		return {"success": false, "reason": "invalid_quantity"}
 	if recipe.requires_workbench and not at_workbench:
 		return {"success": false, "reason": "workbench_required"}
-	return InventoryManager.preview_crafting(recipe.ingredients, recipe.result_item_id, recipe.result_quantity)
+	var scaled := _scaled(recipe, times)
+	return InventoryManager.preview_crafting(scaled["ingredients"], recipe.result_item_id, scaled["quantity"])
 
 
-func craft(recipe_id: String, at_workbench: bool = false) -> Dictionary:
+## How many times the recipe can be crafted right now, limited by BOTH the
+## materials owned and the room left in the inventory. 0 when none (or when the
+## workbench is required but not available).
+func get_max_craftable(recipe_id: String, at_workbench: bool = false) -> int:
+	var recipe = get_recipe(recipe_id)
+	if recipe == null:
+		return 0
+	if recipe.requires_workbench and not at_workbench:
+		return 0
+	var by_materials := 999
+	for item_id in recipe.ingredients.keys():
+		var required: int = int(recipe.ingredients[item_id])
+		by_materials = mini(by_materials, floori(float(InventoryManager.get_item_count(item_id)) / float(required)))
+	if by_materials <= 0:
+		return 0
+	# Output may not fit even when the materials are there; step down until it does.
+	var times := by_materials
+	while times > 0:
+		if bool(check_craft(recipe_id, at_workbench, times).get("success", false)):
+			return times
+		times -= 1
+	return 0
+
+
+func craft(recipe_id: String, at_workbench: bool = false, times: int = 1) -> Dictionary:
 	var recipe = get_recipe(recipe_id)
 	if recipe == null:
 		return {"success": false, "reason": "unknown_recipe"}
+	if times < 1:
+		return {"success": false, "reason": "invalid_quantity"}
 	if recipe.requires_workbench and not at_workbench:
 		return {"success": false, "reason": "workbench_required"}
+	var scaled := _scaled(recipe, times)
 	var result: Dictionary = InventoryManager.craft_items(
-		recipe.ingredients, recipe.result_item_id, recipe.result_quantity
+		scaled["ingredients"], recipe.result_item_id, scaled["quantity"]
 	)
 	if bool(result.get("success", false)):
-		crafted.emit(recipe_id, recipe.result_item_id, recipe.result_quantity)
+		crafted.emit(recipe_id, recipe.result_item_id, int(scaled["quantity"]))
 	return result
