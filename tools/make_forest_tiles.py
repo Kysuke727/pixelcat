@@ -399,7 +399,7 @@ def main():
         "grid": [[IDX[n] for n in row] for row in grid],
         "start": START, "path": PATH, "exit": EXIT,
         "branches": BRANCHES, "trails": TRAILS, "chambers": CHAMBERS,
-        "enemies": [{"pos": e["pos"], "name": e["name"], "optional": bool(e.get("optional"))} for e in ENEMIES],
+        "enemies": [{"pos": e["pos"], "name": e["name"], "optional": bool(e.get("optional")), "type": e.get("type", "slime")} for e in ENEMIES],
         "lamps": LAMPS, "pawprints": PAWPRINTS, "secrets": SECRETS, "loot": LOOT, "landmarks": LANDMARKS,
         "firefly_areas": FIREFLY_AREAS,
     }

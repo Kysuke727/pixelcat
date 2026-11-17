@@ -51,6 +51,7 @@
 - **绕背暴击**：攻击面朝别处的敌人的背后，有 50% 概率暴击，伤害 ×2。
 - **接触史莱姆**：碰到活着的史莱姆有一定概率（不是每次）让你滑倒（失控约 0.6 秒）或被黏住（变慢、不能冲刺和闪避约 1.2 秒），触发后 2 秒内不会再中招。
 - 挥爪有爪痕特效，每一下的挥法不同；命中有冲击星芒、火花、伤害数字、顿帧、震屏和镜头顶一下；暴击、完美闪避有屏幕闪光；史莱姆死亡会炸开果冻块并留下一滩；冲刺和闪避有尘土。每一类效果都有开关。
+- **敌人**：史莱姆、**冲撞怪**（地上出现红色长条，随后直线冲过来）、**夜蝠**（会飞，树挡不住，标出红圈后俯冲）。被冲撞怪或夜蝠打中会扣生命并**眩晕**，要么走出红色范围，要么闪避/防御。详见 [docs/enemies.md](docs/enemies.md)。
 - 史莱姆会绕过树和路灯来追你；隔着树墙时不会发起扑击。实在绕不过来会放弃追击，回到原处。
 
 ### 成长
@@ -122,6 +123,7 @@ GODOT=/path/to/godot bash tests/run_all.sh slime    # 只跑名字里含 slime �
 | [docs/combat-foundation.md](docs/combat-foundation.md) | 冲刺、完美闪避、打击反馈、镜头 |
 | [docs/combo-moves.md](docs/combo-moves.md) | 招式与连招、连招奖励 |
 | [docs/death-and-contact.md](docs/death-and-contact.md) | 死亡结算、成功结算、接触史莱姆、绕背暴击、成长面板 |
+| [docs/enemies.md](docs/enemies.md) | 敌人：史莱姆、冲撞怪、夜蝠，怎么应对，怎么加新敌人 |
 | [docs/maps/forest-grove.md](docs/maps/forest-grove.md) | 小树林地图 |
 | [docs/crafting-audio.md](docs/crafting-audio.md) | 合成界面的音效槽（给负责音乐的同学） |
 | [docs/combat-audio.md](docs/combat-audio.md) | 战斗音效：把文件放进 `assets/audio/sfx/combat/` 就会自动播放 |

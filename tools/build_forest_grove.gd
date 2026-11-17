@@ -292,9 +292,13 @@ func _circle_shape(radius: float) -> CollisionShape2D:
 
 
 func _add_enemies() -> void:
-	var slime_scene: PackedScene = load(SLIME_SCENE)
+	var scenes := {
+		"slime": load(SLIME_SCENE),
+		"charger": load("res://scenes/enemies/charger.tscn"),
+		"flyer": load("res://scenes/enemies/flyer.tscn"),
+	}
 	for enemy in level["enemies"]:
-		var slime := slime_scene.instantiate()
+		var slime := (scenes[str(enemy.get("type", "slime"))] as PackedScene).instantiate()
 		# The name is the enemy's saved id; optional guards do not count toward the exit.
 		slime.name = str(enemy["name"])
 		slime.set("counts_toward_objective", not bool(enemy["optional"]))

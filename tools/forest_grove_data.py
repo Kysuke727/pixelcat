@@ -50,19 +50,19 @@ TRAILS = [
 CHAMBERS = [{"center": (430, 380), "radius": 100}]
 PONDS = [(1500, 2000, 140, 80), (2750, 1370, 160, 85)]   # (cx, cy, rx, ry), solid water
 
-# Enemies. "optional" ones do not count toward opening the exit (guards of side spots).
+# Enemies. "type" is slime (default), charger or flyer. "optional" ones do not count toward opening the exit (guards of side spots).
 ENEMIES = [
     {"pos": (640, 2110), "name": "Slime1"}, {"pos": (790, 2290), "name": "Slime2"},
     {"pos": (1030, 2090), "name": "Slime3"},
     {"pos": (1250, 1850), "name": "Slime4"}, {"pos": (1500, 1830), "name": "Slime5"},
-    {"pos": (1860, 1440), "name": "Slime6"}, {"pos": (2000, 1490), "name": "Slime7"},
+    {"pos": (1860, 1440), "name": "Charger1", "type": "charger"}, {"pos": (2000, 1490), "name": "Slime7"},
     {"pos": (860, 1030), "name": "Slime8"}, {"pos": (1010, 970), "name": "Slime9"},
-    {"pos": (2300, 1100), "name": "Slime10"}, {"pos": (2560, 1010), "name": "Slime11"},
-    {"pos": (2450, 1290), "name": "Slime12"}, {"pos": (2820, 1070), "name": "Slime13"},
+    {"pos": (2300, 1100), "name": "Slime10"}, {"pos": (2560, 1010), "name": "Flyer1", "type": "flyer"},
+    {"pos": (2450, 1290), "name": "Slime12"}, {"pos": (2820, 1070), "name": "Charger2", "type": "charger"},
     {"pos": (2650, 1150), "name": "Slime14"},
-    {"pos": (3380, 1560), "name": "Slime15"}, {"pos": (3600, 1700), "name": "Slime16"},
-    {"pos": (3560, 1480), "name": "Slime17"},
-    {"pos": (3980, 780), "name": "Slime18"}, {"pos": (4200, 630), "name": "Slime19"},
+    {"pos": (3380, 1560), "name": "Slime15"}, {"pos": (3600, 1700), "name": "Charger3", "type": "charger"},
+    {"pos": (3560, 1480), "name": "Flyer2", "type": "flyer"},
+    {"pos": (3980, 780), "name": "Flyer3", "type": "flyer"}, {"pos": (4200, 630), "name": "Charger4", "type": "charger"},
     {"pos": (420, 1400), "name": "SecretGuard", "optional": True},
     {"pos": (2330, 540), "name": "NookGuard", "optional": True},
     {"pos": (3790, 2240), "name": "StashGuard", "optional": True},

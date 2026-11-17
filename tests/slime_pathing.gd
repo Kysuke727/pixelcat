@@ -29,9 +29,11 @@ func _run() -> void:
 	cat.set_process(false)
 	cat.max_health = 9999
 	cat.current_health = 9999.0
-	var enemies := get_nodes_in_group("enemies")
-	for e in enemies:
+	var enemies: Array = []
+	for e in get_nodes_in_group("enemies"):
 		e.set_physics_process(false)
+		if e.get("chase_give_up_left") != null:   # slimes only (they share this chase logic)
+			enemies.append(e)
 	var grid: AStarGrid2D = load("res://scripts/nav_grid.gd").for_scene(scene)
 	_check(grid != null, "the forest has a path grid")
 	var space := scene.get_world_2d().direct_space_state
@@ -91,7 +93,7 @@ func _run() -> void:
 			if best >= 70.0 and not attacked and chase_frames > 150 and late_move < 24.0:
 				grinding += 1
 				printerr("  %s grinds against the trees near %s" % [e.name, str(e.global_position)])
-	_check(reachable_cases >= 15, "enough 'cat behind trees' cases with a short way round (%d, plus %d long ones)" % [reachable_cases, far_cases])
+	_check(reachable_cases >= 10, "enough 'cat behind trees' cases with a short way round (%d, plus %d long ones)" % [reachable_cases, far_cases])
 	_check(reached >= int(ceil(reachable_cases * 0.9)), "slimes walk around the trees and attack the cat (%d of %d)" % [reached, reachable_cases])
 	_check(grinding == 0, "no slime keeps pushing into a tree wall (%d did)" % grinding)
 

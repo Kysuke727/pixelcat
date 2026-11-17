@@ -80,6 +80,9 @@ var position_discontinuity_version: int = 0
 var shield_durability: float = 100.0
 var shield_regen_delay_left: float = 0.0
 var guard_break_left: float = 0.0
+## Stunned by a heavy enemy hit (charger / flyer): cannot move, attack, dash or dodge, but can be hit.
+var stun_left: float = 0.0
+var _stun_stars: Label
 var is_defending: bool = false
 var perfect_guard_flash_left: float = 0.0
 var defend_must_release: bool = false
@@ -120,6 +123,7 @@ func _physics_process(delta: float) -> void:
 	counter_window_left = maxf(counter_window_left - delta, 0.0)
 	pounce_window_left = maxf(pounce_window_left - delta, 0.0)
 	hitstun_left = maxf(hitstun_left - delta, 0.0)
+	_update_stun(delta)
 	slip_time_left = maxf(slip_time_left - delta, 0.0)
 	contact_immunity_left = maxf(contact_immunity_left - delta, 0.0)
 	contact_roll_left = maxf(contact_roll_left - delta, 0.0)
@@ -140,6 +144,13 @@ func _physics_process(delta: float) -> void:
 	_update_defense(delta)
 	if guard_break_left > 0.0:
 		velocity = Vector2.ZERO
+		update_animation(Vector2.ZERO)
+		move_and_slide()
+		return
+
+	if stun_left > 0.0 and hitstun_left <= 0.0:
+		velocity = knockback_velocity
+		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, received_knockback_decay * delta)
 		update_animation(Vector2.ZERO)
 		move_and_slide()
 		return
@@ -247,9 +258,51 @@ func is_in_hitstun() -> bool:
 	return hitstun_left > 0.0
 
 
+func is_stunned() -> bool:
+	return stun_left > 0.0
+
+
+## Stun the cat (a charger / flyer hit): no moving, attacking, dashing or dodging for a moment.
+## Shorter than the enemy-side invincibility would allow a chain, so it cannot be stun-locked.
+func apply_stun(duration: float) -> void:
+	if dead or duration <= 0.0:
+		return
+	stun_left = maxf(stun_left, duration)
+	is_defending = false
+	dash_time_left = 0.0
+	pounce_time_left = 0.0
+	dodge_time_left = 0.0
+	if combat != null and combat.has_method("cancel_action"):
+		combat.cancel_action()
+	if _stun_stars == null:
+		_stun_stars = Label.new()
+		_stun_stars.text = "✦ ✦ ✦"
+		_stun_stars.add_theme_font_size_override("font_size", 12)
+		_stun_stars.add_theme_color_override("font_color", Color("#ffd84d"))
+		_stun_stars.add_theme_color_override("font_outline_color", Color("#5c3a4b"))
+		_stun_stars.add_theme_constant_override("outline_size", 4)
+		_stun_stars.light_mask = 0
+		_stun_stars.z_index = 100
+		_stun_stars.position = Vector2(-22.0, -44.0)
+		add_child(_stun_stars)
+	_stun_stars.visible = true
+	HitFeel.damage_number(global_position + Vector2(0.0, -34.0), "眩晕！", HitFeel.GOLD, 17)
+
+
+func _update_stun(delta: float) -> void:
+	if stun_left <= 0.0:
+		return
+	stun_left = maxf(stun_left - delta, 0.0)
+	if _stun_stars != null:
+		_stun_stars.visible = stun_left > 0.0 and not dead
+		if _stun_stars.visible:
+			_stun_stars.position.x = -22.0 + sin(Time.get_ticks_msec() / 90.0) * 3.0
+
+
 func can_perform_combat_action() -> bool:
 	return (
 		not dead
+		and stun_left <= 0.0
 		and slip_time_left <= 0.0
 		and hitstun_left <= 0.0
 		and guard_break_left <= 0.0
@@ -258,7 +311,7 @@ func can_perform_combat_action() -> bool:
 
 
 func _try_start_dodge(input_direction: Vector2) -> bool:
-	if dodge_cooldown_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0 or dead or is_defending or stick_time_left > 0.0:
+	if stun_left > 0.0 or dodge_cooldown_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0 or dead or is_defending or stick_time_left > 0.0:
 		return false
 	dodge_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
 	if dodge_direction == Vector2.ZERO:
@@ -282,7 +335,7 @@ func _move_during_dodge(delta: float) -> void:
 ## Cat-step dash: a short burst of movement with NO invulnerability. It can cancel a
 ## melee swing, so dash-cancelling is a skill expression, not a safety button.
 func _try_start_dash(input_direction: Vector2) -> bool:
-	if dash_charges <= 0 or dead or guard_break_left > 0.0 or hitstun_left > 0.0 or is_defending or stick_time_left > 0.0:
+	if stun_left > 0.0 or dash_charges <= 0 or dead or guard_break_left > 0.0 or hitstun_left > 0.0 or is_defending or stick_time_left > 0.0:
 		return false
 	dash_direction = input_direction.normalized() if input_direction != Vector2.ZERO else last_facing.normalized()
 	if dash_direction == Vector2.ZERO:
@@ -489,7 +542,7 @@ func _update_shield_regeneration_delay(delta: float) -> bool:
 
 
 func _handle_defend_press(defend_held: bool) -> void:
-	if defend_must_release or shield_durability <= 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0:
+	if stun_left > 0.0 or defend_must_release or shield_durability <= 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0:
 		return
 	if _try_perfect_guard():
 		perfect_guard_hold_consumed = defend_held

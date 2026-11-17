@@ -89,7 +89,7 @@ def marker(p, text, fill, fg="#ffffff", r=22):
     tw = d.textlength(text, font=mid); d.text((x - tw / 2, y - 14), text, font=mid, fill=fg)
 for i, e in enumerate(ENEMIES, 1):
     # optional guards are drawn grey: they do not count toward the exit
-    marker(e["pos"], str(i), "#8a8f94" if e.get("optional") else "#d8434f", r=14)
+    marker(e["pos"], str(i), "#8a8f94" if e.get("optional") else {"charger": "#e8832a", "flyer": "#7a5ac8"}.get(e.get("type", "slime"), "#d8434f"), r=14)
 x, y = sc(START); d.rectangle([x - 22, y - 22, x + 22, y + 22], fill="#7ad37a", outline="#ffffff", width=3)
 d.text((x - 24, y + 28), "出发", font=mid, fill="#d8ffd8")
 for lo in LOOT:
@@ -116,8 +116,8 @@ d.text(sc((1380, 2090)), "小池塘（挡路）", font=small, fill="#cfeaff")
 d.text(sc((690, 2000)), "隐蔽小径入口（藏在灌木后面）", font=small, fill="#f2d98a")
 
 # legend
-lx, ly = 640, img.height - 230
-d.rectangle([lx, ly, lx + 285, ly + 215], fill="#10261c", outline="#7fbf9a", width=2)
+lx, ly = 640, img.height - 262
+d.rectangle([lx, ly, lx + 285, ly + 247], fill="#10261c", outline="#7fbf9a", width=2)
 d.text((lx + 12, ly + 6), "图例", font=mid, fill="#d4f5dc")
 d.ellipse([lx + 14, ly + 38, lx + 34, ly + 58], fill="#d8434f", outline="#ffffff"); d.text((lx + 46, ly + 38), "敌人（算通关目标）", font=small, fill="#ffffff")
 d.ellipse([lx + 14, ly + 66, lx + 34, ly + 86], fill="#8a8f94", outline="#ffffff"); d.text((lx + 46, ly + 66), "守卫（不算通关目标）", font=small, fill="#ffffff")
@@ -125,5 +125,7 @@ d.rectangle([lx + 14, ly + 96, lx + 34, ly + 116], fill="#c9a46a", outline="#fff
 d.rectangle([lx + 18, ly + 124, lx + 30, ly + 136], fill="#8a5a3b", outline="#ffffff"); d.text((lx + 46, ly + 122), "路牌", font=small, fill="#ffffff")
 d.ellipse([lx + 18, ly + 150, lx + 30, ly + 162], fill="#ffd84d", outline="#ffffff"); d.text((lx + 46, ly + 148), "路灯（装饰）", font=small, fill="#ffffff")
 d.rectangle([lx + 14, ly + 178, lx + 34, ly + 186], fill="#f2d98a"); d.text((lx + 46, ly + 174), "隐蔽小径", font=small, fill="#ffffff")
+d.ellipse([lx + 14, ly + 204, lx + 34, ly + 224], fill="#e8832a", outline="#ffffff"); d.text((lx + 46, ly + 202), "冲撞怪", font=small, fill="#ffffff")
+d.ellipse([lx + 150, ly + 204, lx + 170, ly + 224], fill="#7a5ac8", outline="#ffffff"); d.text((lx + 182, ly + 202), "夜蝠", font=small, fill="#ffffff")
 img.save(Path(__file__).resolve().parent.parent / "docs" / "maps" / "forest-grove-layout.png")
 print("wrote docs/maps/forest-grove-layout.png", img.size, "trees:", len(trees))
