@@ -588,7 +588,14 @@ func _begin_action_visual(prefix: String) -> void:
 	var animation_name := StringName("%s_%s" % [prefix, facing_name])
 	if sprite.sprite_frames != null and sprite.sprite_frames.has_animation(animation_name):
 		using_formal_animation = true
-		sprite.play(animation_name)
+		var custom_speed := 1.0
+		if prefix == "attack" and _is_melee_state(action_state):
+			var action_duration := _melee_timings().z
+			var frame_count := sprite.sprite_frames.get_frame_count(animation_name)
+			var animation_speed := sprite.sprite_frames.get_animation_speed(animation_name)
+			if action_duration > 0.0 and animation_speed > 0.0:
+				custom_speed = float(frame_count) / (action_duration * animation_speed)
+		sprite.play(animation_name, custom_speed)
 
 
 func _update_fallback_visual(progress: float) -> void:
