@@ -128,7 +128,8 @@ func _initialize() -> void:
 	theme.set_stylebox("background", "ProgressBar", _box(Color("#ead7df"), OUTLINE, 2, 0, 1, 0, 0, 0))
 	theme.set_stylebox("fill", "ProgressBar", _box(BTN, OUTLINE, 2, 0, 1, 0, 0, 0))
 	theme.set_color("font_color", "ProgressBar", INK)
-	for pair in [["HungerBar", Color("#f2a65a")], ["MoodBar", Color("#f07aa0")], ["EnergyBar", Color("#6fc3e8")], ["LowBar", BAD]]:
+	for pair in [["HungerBar", Color("#f2a65a")], ["MoodBar", Color("#f07aa0")], ["EnergyBar", Color("#6fc3e8")], ["LowBar", BAD],
+			["HpBar", Color("#e8576a")], ["ShieldBar", Color("#6fa8e8")], ["EnemyBar", Color("#d8434f")]]:
 		theme.add_type(pair[0])
 		theme.set_type_variation(pair[0], "ProgressBar")
 		theme.set_stylebox("fill", pair[0], _box(pair[1], OUTLINE, 2, 0, 1, 0, 0, 0))
@@ -149,7 +150,10 @@ func _initialize() -> void:
 	theme.set_color("font_color", "TooltipLabel", Color("#fff4ee"))
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://resources/ui"))
+	var old_uid := ResourceLoader.get_resource_uid(OUT_PATH)
 	var err := ResourceSaver.save(theme, OUT_PATH)
+	if err == OK and old_uid != ResourceUID.INVALID_ID:
+		ResourceSaver.set_uid(OUT_PATH, old_uid)  # keep references by uid working
 	if err != OK:
 		push_error("Could not save theme: %d" % err)
 		quit(1)

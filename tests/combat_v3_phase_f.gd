@@ -23,9 +23,9 @@ func _run() -> void:
 		"test scene contains multiple slime targets"
 	)
 	_check(test_scene.get_node_or_null("NightWorld/Walls") != null, "test scene includes real wall collision geometry")
-	_check(ui != null and ui.get_node_or_null("PanelContainer/VBoxContainer/ShieldBar") != null, "battle HUD includes shield durability")
-	_check(ui.get_node_or_null("PanelContainer/VBoxContainer/YarnLabel") != null, "battle HUD includes yarn cooldown/connection feedback")
-	_check(ui.get_node_or_null("PanelContainer/VBoxContainer/CombatFeedback") != null, "battle HUD includes defense and perfect-guard feedback")
+	_check(ui != null and ui.get_node_or_null("Strip/Rows/ShieldRow/ShieldBar") != null, "battle HUD includes shield durability")
+	_check(ui.get_node_or_null("Strip/Rows/YarnLabel") != null, "battle HUD includes yarn cooldown/connection feedback")
+	_check(ui.get_node_or_null("FeedbackPanel/CombatFeedback") != null, "battle HUD includes defense and perfect-guard feedback")
 	var slime_scene: Node = load("res://scenes/enemies/slime.tscn").instantiate()
 	_check(
 		slime_scene.get_node_or_null("StatusFeedback") != null,
@@ -36,11 +36,11 @@ func _run() -> void:
 	_check(combat._can_start_action(), "combat actions are permitted in the dedicated test scene")
 	player.perfect_guard_flash_left = 0.2
 	ui._update_combat_readout()
-	_check(ui.get_node("PanelContainer/VBoxContainer/CombatFeedback").text == "完美防御！", "HUD displays perfect guard feedback")
+	_check(ui.get_node("FeedbackPanel/CombatFeedback").text == "完美防御！", "HUD displays perfect guard feedback")
 	player.perfect_guard_flash_left = 0.0
 	player.guard_break_left = 1.0
 	ui._update_combat_readout()
-	_check(ui.get_node("PanelContainer/VBoxContainer/CombatFeedback").text.begins_with("防御破碎"), "HUD displays guard-break recovery")
+	_check(ui.get_node("FeedbackPanel/CombatFeedback").text.begins_with("防御破碎"), "HUD displays guard-break recovery")
 	player.guard_break_left = 0.0
 	var status_label: Label = test_scene.get_node("DebugLayer/Panel/DebugLabel")
 	_check(status_label.text.contains("COMBAT V3 TEST"), "debug overlay renders its input and status guide")

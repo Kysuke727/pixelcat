@@ -231,7 +231,7 @@ func _run() -> void:
 	_check(combat.combo_window_open, "melee hit still opens the combo window")
 	_remove_slime(melee_target)
 
-	# 11) Old save format and old skill points survive; V4 ignores bind bonuses.
+	# 11) Old save format loads; points spent on the removed skill branches are refunded.
 	progression._load_profile_data({
 		"level": 9,
 		"experience": 42,
@@ -243,20 +243,19 @@ func _run() -> void:
 		"currency": {"fish_count": 12},
 	})
 	_check(progression.level == 9 and progression.experience == 42, "old profile level and experience are preserved")
-	_check(progression.available_points == 5, "old unspent points are preserved")
-	_check(int(progression.skill_points["bind"]) == 20, "old bind skill points are not cleared")
-	_check(int(progression.skill_points["loop"]) == 30, "old loop skill points are not cleared")
+	_check(progression.available_points == 5 + 15 + 50 + 20 + 30, "old unspent points are kept and the 115 points spent on the removed skills are refunded (%d)" % progression.available_points)
+	_check(progression.attributes.size() == 4 and not progression.attributes.has("technique"), "the retired technique attribute is gone")
 	_check(progression.permanent_hp_bonus == 1, "old permanent HP bonus is preserved")
 	_check(progression.attributes["attack"] == 3, "old attributes are preserved")
 	_check(is_equal_approx(progression.get_attack_multiplier(), 1.15), "old attack attribute still applies")
 	_check(progression.get_save_data()["version"] == 1, "save format version is unchanged")
 	var save_profile: Dictionary = progression.get_save_data()["profile"]
-	_check(int(save_profile["skill_points"]["bind"]) == 20, "saved profile keeps legacy skill points")
-	_check(is_equal_approx(float(progression.get_skill_modifiers()["bind_duration_bonus"]), 1.0), "legacy bind bonus remains readable for save compatibility")
+	_check(not save_profile.has("skill_points"), "saving no longer writes the removed skill_points")
+	_check(not progression.has_method("get_skill_modifiers"), "the old skill modifiers are gone")
 	var bonus_target := _spawn_slime(Vector2(560.0, 350.0))
 	combat.yarn_projectile_in_flight = true
-	_check(combat.on_sticky_yarn_hit(bonus_target), "sticky bind applies with legacy skill points present")
-	_check(is_equal_approx(bonus_target.bind_time_left, BIND_DURATION), "V4 ignores the legacy +1 s bind duration bonus")
+	_check(combat.on_sticky_yarn_hit(bonus_target), "sticky bind still applies after loading an old save")
+	_check(is_equal_approx(bonus_target.bind_time_left, BIND_DURATION), "the sticky bind duration is the fixed value")
 	_remove_slime(bonus_target)
 
 	# 12) Normal combat never instantiates YarnConnection.

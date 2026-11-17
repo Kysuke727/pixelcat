@@ -66,6 +66,7 @@ func _run() -> void:
 	old_profile.erase("day_state")
 	old_profile["level"] = 6
 	old_profile["skill_points"] = {"slow": 2, "connection": 7, "bind": 4, "loop": 9}
+	var points_before_load: int = int(old_profile.get("available_points", 0))
 	_write_text(
 		ProjectSettings.globalize_path(test_path),
 		JSON.stringify({"version": progression.SAVE_VERSION, "profile": old_profile, "expedition": {}})
@@ -73,7 +74,7 @@ func _run() -> void:
 	progression._load_profile()
 	_check(inventory.get_item_count("yarn_ball") == 0 and inventory.get_item_count("wood") == 0, "old profile loads an empty inventory")
 	_check(quickbar.get_bound_item_id(0).is_empty(), "old profile without quickbar loads empty bindings")
-	_check(progression.level == 6 and progression.skill_points["loop"] == 9, "old profile keeps progression and skill points")
+	_check(progression.level == 6 and progression.available_points == points_before_load + 22, "old profile keeps progression; points spent on the removed skills (2+7+4+9) are refunded")
 	_check(is_equal_approx(day_manager.saved_hunger, 100.0), "old profile keeps the neutral day-state default")
 
 	# Currency and ordinary inventory are separate ledgers.

@@ -66,11 +66,12 @@ func _run() -> void:
 	old_profile["level"] = 7
 	old_profile["experience"] = 21
 	old_profile["skill_points"] = {"slow": 3, "connection": 4, "bind": 5, "loop": 6}
+	var points_before_load: int = int(old_profile.get("available_points", 0))
 	var old_payload := {"version": progression.SAVE_VERSION, "profile": old_profile, "expedition": {}}
 	_write_text(ProjectSettings.globalize_path(temp_path), JSON.stringify(old_payload))
 	_day_reset(day_manager)
 	progression._load_profile()
-	_check(progression.level == 7 and progression.skill_points["bind"] == 5, "old profile keeps progression and skill points")
+	_check(progression.level == 7 and progression.available_points == points_before_load + 18, "old profile keeps progression; points spent on the removed skills (3+4+5+6) are refunded")
 	_check(is_equal_approx(day_manager.saved_hunger, 100.0), "old profile without day_state falls back to the neutral default")
 	_check(day_manager.night_state_snapshot.is_empty(), "old profile without snapshot has no night bonuses")
 	_check(day_manager.get_night_max_health_bonus() == 0, "old profile does not gain a phantom night bonus")

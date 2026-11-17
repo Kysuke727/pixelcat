@@ -7,7 +7,10 @@ signal level_changed(level: int, experience: int, experience_to_next: int)
 
 const SAVE_VERSION := 1
 const STAT_KEYS := ["vitality", "attack", "defense", "agility"]
-const SKILL_KEYS := ["slow", "connection", "bind", "loop"]
+## The four skill branches of the old yarn gameplay no longer exist. Old saves may still have
+## points spent on them; they are refunded as free attribute points when loaded (the caps
+## are only used to keep the refund sane).
+const LEGACY_SKILL_CAPS := {"slow": 15, "connection": 50, "bind": 20, "loop": 30}
 
 @export var experience_base: float = 100.0
 @export var experience_growth: float = 1.10
@@ -18,8 +21,7 @@ var level: int = 1
 var experience: int = 0
 var available_points: int = 0
 var permanent_hp_bonus: int = 0
-var attributes: Dictionary = {"vitality": 0, "attack": 0, "defense": 0, "agility": 0, "technique": 0}
-var skill_points: Dictionary = {"slow": 0, "connection": 0, "bind": 0, "loop": 0}
+var attributes: Dictionary = {"vitality": 0, "attack": 0, "defense": 0, "agility": 0}
 var permanent_items: Array[String] = []
 ## Moves learned by exploring (see MoveCatalog). Stored in the save.
 var unlocked_moves: Array[String] = []
@@ -74,36 +76,32 @@ func add_experience(amount: int) -> int:
 
 func begin_allocation() -> void:
 	if pending_allocation.is_empty():
-		pending_allocation = {"attributes": attributes.duplicate(true), "skills": skill_points.duplicate(true)}
+		pending_allocation = {"attributes": attributes.duplicate(true)}
 	progression_changed.emit()
 
 
-func allocate_point(key: String, is_skill: bool = false) -> bool:
+func allocate_point(key: String) -> bool:
 	if pending_allocation.is_empty():
 		begin_allocation()
 	if available_points <= _pending_point_count():
 		return false
-	var choices: Dictionary = pending_allocation.get("skills" if is_skill else "attributes", {})
+	var choices: Dictionary = pending_allocation.get("attributes", {})
 	if not choices.has(key):
 		return false
-	if is_skill and _skill_at_cap(key, int(choices[key])):
-		return false
 	choices[key] = int(choices[key]) + 1
-	pending_allocation["skills" if is_skill else "attributes"] = choices
+	pending_allocation["attributes"] = choices
 	progression_changed.emit()
 	return true
 
 
-func remove_pending_point(key: String, is_skill: bool = false) -> bool:
+func remove_pending_point(key: String) -> bool:
 	if pending_allocation.is_empty():
 		return false
-	var category := "skills" if is_skill else "attributes"
-	var choices: Dictionary = pending_allocation.get(category, {})
-	var committed: Dictionary = skill_points if is_skill else attributes
-	if not choices.has(key) or int(choices[key]) <= int(committed.get(key, 0)):
+	var choices: Dictionary = pending_allocation.get("attributes", {})
+	if not choices.has(key) or int(choices[key]) <= int(attributes.get(key, 0)):
 		return false
 	choices[key] = int(choices[key]) - 1
-	pending_allocation[category] = choices
+	pending_allocation["attributes"] = choices
 	progression_changed.emit()
 	return true
 
@@ -120,8 +118,6 @@ func commit_allocation() -> bool:
 	if spent > available_points:
 		return false
 	attributes = pending_allocation["attributes"].duplicate(true)
-	skill_points = pending_allocation["skills"].duplicate(true)
-	attributes["technique"] = _skill_point_total(skill_points)
 	available_points -= spent
 	pending_allocation.clear()
 	progression_changed.emit()
@@ -135,34 +131,7 @@ func _pending_point_count() -> int:
 	var count := 0
 	for key in STAT_KEYS:
 		count += int(pending_allocation["attributes"].get(key, 0)) - int(attributes.get(key, 0))
-	for key in SKILL_KEYS:
-		count += int(pending_allocation["skills"].get(key, 0)) - int(skill_points.get(key, 0))
 	return count
-
-
-func _skill_point_total(points: Dictionary) -> int:
-	var total := 0
-	for key in SKILL_KEYS:
-		total += int(points.get(key, 0))
-	return total
-
-
-func _skill_at_cap(key: String, count: int) -> bool:
-	match key:
-		"slow": return count >= 15
-		"connection": return count >= 50
-		"bind": return count >= 20
-		"loop": return count >= 30
-	return true
-
-
-func get_skill_modifiers() -> Dictionary:
-	return {
-		"slow_reduction_bonus": minf(float(skill_points.get("slow", 0)) * 0.02, 0.30),
-		"connection_duration_bonus": minf(float(skill_points.get("connection", 0)) * 0.1, 5.0),
-		"bind_duration_bonus": minf(float(skill_points.get("bind", 0)) * 0.05, 1.0),
-		"loop_angle_reduction": minf(float(skill_points.get("loop", 0)), 30.0),
-	}
 
 
 func get_effective_max_health(base_value: int) -> int:
@@ -240,14 +209,10 @@ func respec_attributes() -> bool:
 	var cost := get_respec_cost()
 	if not CurrencyManager.spend_fish(cost):
 		return false
-	available_points += _skill_point_total(skill_points)
 	for key in STAT_KEYS:
 		available_points += int(attributes.get(key, 0))
 	for key in STAT_KEYS:
 		attributes[key] = 0
-	for key in SKILL_KEYS:
-		skill_points[key] = 0
-	attributes["technique"] = 0
 	pending_allocation.clear()
 	progression_changed.emit()
 	_save_profile()
@@ -345,7 +310,6 @@ func _profile_data() -> Dictionary:
 		"experience": experience,
 		"available_points": available_points,
 		"attributes": attributes.duplicate(true),
-		"skill_points": skill_points.duplicate(true),
 		"permanent_hp_bonus": permanent_hp_bonus,
 		"permanent_items": permanent_items.duplicate(),
 		"unlocked_moves": unlocked_moves.duplicate(),
@@ -485,7 +449,7 @@ func _is_usable_legacy_profile(profile: Dictionary) -> bool:
 
 
 func _is_usable_current_profile(profile: Dictionary) -> bool:
-	for required_key in ["level", "experience", "attributes", "skill_points", "currency"]:
+	for required_key in ["level", "experience", "attributes", "currency"]:
 		if not profile.has(required_key):
 			return false
 	return _has_number(profile, "level") and _has_number(profile, "experience") and _is_valid_profile_fields(profile, true)
@@ -529,7 +493,7 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 		return false
 	if profile.has("day_state") and not _is_valid_day_state_data(profile["day_state"]):
 		return false
-	if current_format and (not profile["attributes"] is Dictionary or not profile["skill_points"] is Dictionary):
+	if current_format and not profile["attributes"] is Dictionary:
 		return false
 	return true
 
@@ -695,12 +659,13 @@ func _load_profile_data(data: Dictionary) -> void:
 	available_points = maxi(int(data.get("available_points", 0)), 0)
 	permanent_hp_bonus = maxi(int(data.get("permanent_hp_bonus", 0)), 0)
 	var loaded_attributes: Dictionary = data.get("attributes", {})
-	var loaded_skills: Dictionary = data.get("skill_points", {})
 	for key in STAT_KEYS:
 		attributes[key] = maxi(int(loaded_attributes.get(key, 0)), 0)
-	for key in SKILL_KEYS:
-		skill_points[key] = clampi(int(loaded_skills.get(key, 0)), 0, _skill_cap(key))
-	attributes["technique"] = _skill_point_total(skill_points)
+	# Points an old save spent on the removed skill branches come back as free points.
+	var legacy_skills: Variant = data.get("skill_points", {})
+	if legacy_skills is Dictionary:
+		for key in LEGACY_SKILL_CAPS:
+			available_points += clampi(int(legacy_skills.get(key, 0)), 0, int(LEGACY_SKILL_CAPS[key]))
 	permanent_items.clear()
 	for item in data.get("permanent_items", []):
 		permanent_items.append(str(item))
@@ -750,15 +715,6 @@ func _load_day_state_data(value: Variant) -> void:
 		DayManager.load_save_data(day_state)
 	else:
 		_pending_day_state = day_state.duplicate(true)
-
-
-func _skill_cap(key: String) -> int:
-	match key:
-		"slow": return 15
-		"connection": return 50
-		"bind": return 20
-		"loop": return 30
-	return 0
 
 
 func _save_profile() -> bool:

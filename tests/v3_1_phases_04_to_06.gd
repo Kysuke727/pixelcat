@@ -28,20 +28,19 @@ func _run() -> void:
 	_check(progression.attributes["vitality"] == 0, "draft allocation does not alter committed stats")
 	_check(progression.remove_pending_point("vitality"), "draft points can be individually removed")
 	_check(progression.allocate_point("attack"), "attack attribute point can be drafted")
-	_check(progression.allocate_point("slow", true), "slow technique branch point can be drafted")
 	_check(progression.commit_allocation(), "draft can be committed")
-	_check(progression.available_points == 5, "commit spends only the selected points")
+	_check(progression.available_points == 6, "commit spends only the selected points")
 	_check(progression.allocate_point("vitality"), "allocation can continue immediately after a commit")
 	progression.cancel_allocation()
 	_check(progression.allocate_point("defense"), "allocation can be restarted immediately after undo")
 	progression.cancel_allocation()
-	_check(progression.attributes["attack"] == 1 and progression.attributes["technique"] == 1, "five-attribute data tracks branch investment as technique")
+	_check(progression.attributes["attack"] == 1 and not progression.attributes.has("technique"), "attribute data has the four attributes and no technique branch")
 	_check(is_equal_approx(progression.get_attack_multiplier(), 1.05), "attack point applies a linear five percent modifier")
 	_check(is_equal_approx(progression.get_movement_multiplier(), 1.0), "no agility points leave ordinary speed unchanged")
 	progression.begin_allocation()
 	progression.allocate_point("defense")
 	progression.cancel_allocation()
-	_check(progression.available_points == 5 and progression.attributes["defense"] == 0, "cancel restores the unsubmitted allocation for free")
+	_check(progression.available_points == 6 and progression.attributes["defense"] == 0, "cancel restores the unsubmitted allocation for free")
 	progression.begin_allocation()
 	progression.allocate_point("vitality")
 	progression.allocate_point("defense")
@@ -50,10 +49,6 @@ func _run() -> void:
 	_check(progression.get_effective_max_health(5) == 6, "vitality adds one maximum HP per committed point")
 	_check(is_equal_approx(100.0 * progression.get_shield_multiplier(), 103.0), "defense adds three percent maximum shield per point")
 	_check(is_equal_approx(progression.get_movement_multiplier(), 1.02), "agility adds two percent ordinary movement speed")
-	_check(is_equal_approx(progression.get_skill_modifiers()["slow_reduction_bonus"], 0.02), "one slow skill point gives two percentage points")
-	progression.skill_points["slow"] = 15
-	_check(progression._skill_at_cap("slow", 15), "skill cap blocks investment past eighty percent slow")
-	progression.skill_points["slow"] = 1
 
 	var save_data: Dictionary = progression.get_save_data()
 	progression._load_profile_data(save_data["profile"])
@@ -75,7 +70,7 @@ func _run() -> void:
 	if retained_profile != null:
 		retained_profile.close()
 	progression._load_profile()
-	_check(progression.attributes["vitality"] == 1 and progression.skill_points["slow"] == 1, "persistent save reload restores attributes and technique branches")
+	_check(progression.attributes["vitality"] == 1, "persistent save reload restores attributes")
 	var expected_recovery_level: int = progression.level
 	progression.experience += 1
 	progression.save_now()

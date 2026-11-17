@@ -3,7 +3,7 @@
 
     python3 tools/make_status_icons.py
 
-Output: assets/ui/icon_hunger.png, icon_mood.png, icon_energy.png (transparent).
+Output: assets/ui/icon_hunger.png, icon_mood.png, icon_energy.png, icon_hp.png, icon_shield.png (transparent).
 They are shown at 2x with nearest-neighbour filtering. To use hand-drawn art
 just overwrite those PNGs (keep them square; any size works).
 """
@@ -20,9 +20,37 @@ PALETTE = {
     "C": "#ffe0b8",   # bowl highlight
     "Y": "#ffd84d",   # bolt
     "W": "#fff3a8",   # bolt highlight
+    "R": "#e8576a",   # hp heart
+    "r": "#ffc4cc",   # hp heart highlight
+    "S": "#6fa8e8",   # shield
+    "s": "#d6ecff",   # shield highlight
 }
 
 ICONS = {
+    "hp": [
+        "..........",
+        ".OOO..OOO.",
+        "ORRROOORRO",
+        "ORrrRRRRRO",
+        "ORrRRRRRRO",
+        ".ORRRRRRO.",
+        "..ORRRRO..",
+        "...ORRO...",
+        "....OO....",
+        "..........",
+    ],
+    "shield": [
+        "..........",
+        ".OOOOOOOO.",
+        ".OSSSSSSO.",
+        ".OSsSSSSO.",
+        ".OSsSSSSO.",
+        ".OSSSSSSO.",
+        "..OSSSSO..",
+        "...OSSO...",
+        "....OO....",
+        "..........",
+    ],
     "hunger": [
         "..........",
         "...K.K....",

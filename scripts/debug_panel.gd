@@ -13,6 +13,10 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The debug panel (HP, XP, unlock every move...) is for developers: it exists in the
+	# editor and in debug exports, never in a release build.
+	if not OS.is_debug_build():
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F3:
 		if active:
 			_close_debug()
@@ -97,7 +101,7 @@ func _refresh() -> void:
 	var cooldown_text := ""
 	if is_instance_valid(player_combat):
 		cooldown_text = "\n冷却：J %.1fs · K %.1fs · 闪避 %.1fs" % [float(player_combat.get("melee_cooldown_left")), float(player_combat.get("ranged_cooldown_left")), float(player.get("dodge_cooldown_left"))]
-	details.text = "调试隔离：不会保存改动；击杀、拾取与场景切换已禁用。\n技巧：减速%d · 连接%d · 束缚%d · 绕圈%d\n" % [ProgressionManager.skill_points["slow"], ProgressionManager.skill_points["connection"], ProgressionManager.skill_points["bind"], ProgressionManager.skill_points["loop"]] + "已学招式：" + _learned_moves_text() + "\n敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
+	details.text = "调试隔离：不会保存改动；击杀、拾取与场景切换已禁用。\n" + "已学招式：" + _learned_moves_text() + "\n敌人状态\n" + ("\n".join(enemy_lines) if not enemy_lines.is_empty() else "无存活敌人") + cooldown_text
 
 
 func _change_player(property: String, amount: float) -> void:

@@ -22,6 +22,7 @@ func _ready() -> void:
 	confirmation.ok_button_text = "开始新游戏"
 	confirmation.confirmed.connect(_start_new_game)
 	add_child(confirmation)
+	_disable_unfinished_buttons()
 
 
 func _continue_game() -> void:
@@ -49,3 +50,21 @@ func _start_new_game() -> void:
 	busy = true
 	ProgressionManager.new_game()
 	DayManager.enter_from_menu(DAY_SCENE, true)
+
+
+## The gallery and settings buttons are placeholders for now: show them greyed out with a
+## tooltip instead of letting players click buttons that do nothing. To enable one later,
+## connect its `pressed` signal and remove its path from this list.
+const UNFINISHED_BUTTONS := [
+	"MenuPanel/MenuButtons/GalleryButton2",
+	"MenuPanel/MenuButtons/SettingsButtonButton4",
+]
+
+
+func _disable_unfinished_buttons() -> void:
+	for path in UNFINISHED_BUTTONS:
+		var button := get_node_or_null(path) as Button
+		if button != null:
+			button.disabled = true
+			button.tooltip_text = "还没做，敬请期待"
+			button.modulate = Color(1.0, 1.0, 1.0, 0.5)

@@ -74,7 +74,8 @@ func _run() -> void:
 	_check(night_wall_right.position == Vector2(1152, 324), "night right wall is positioned for the new map")
 	_check(night_scene.get_node("Groud/NightFloor").scale.is_equal_approx(Vector2(1.1730138, 0.9273835)), "night floor uses the new map scale")
 	_check(night_scene.get_node("Groud/Street").scale.is_equal_approx(Vector2(1.013099, 0.9251612)), "night street uses the new map scale")
-	_check(night_scene.get_node("ExpeditionHUD/Panel").offset_left == 812.0, "night expedition HUD uses the new map offset")
+	var expedition_panel: Control = night_scene.get_node("ExpeditionHUD/Panel")
+	_check(expedition_panel.anchor_left == 1.0 and expedition_panel.offset_right == -8.0, "night expedition HUD is pinned to the top-right corner")
 
 	night_scene.queue_free()
 	current_scene = null
