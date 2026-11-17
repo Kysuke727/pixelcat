@@ -17,6 +17,8 @@ var run_active: bool = false
 var run_experience_gained: int = 0
 var run_items_gained: Dictionary = {}
 var run_moves_learned: Array[String] = []
+## Hidden loot spots already emptied in this run (so Continue does not let them be taken twice).
+var run_loot_collected: Array[String] = []
 ## Summary of the run that just ended: {success, retained, lost, map_id, objectives_*}.
 var last_result: Dictionary = {}
 ## Ids of the enemies that count toward the objective (set by set_objectives, not saved).
@@ -78,6 +80,7 @@ func begin_run(map_id: String = MapCatalog.FIRST_MAP) -> void:
 	run_experience_gained = 0
 	run_items_gained.clear()
 	run_moves_learned.clear()
+	run_loot_collected.clear()
 	fish_drops.clear()
 	material_drops.clear()
 	exploration_reward_claimed = false
@@ -257,6 +260,16 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 		push_warning("Invalid expedition loot state was clamped")
 
 
+func is_loot_collected(loot_id: String) -> bool:
+	return run_loot_collected.has(loot_id)
+
+
+func mark_loot_collected(loot_id: String) -> void:
+	if run_active and not ProgressionManager.debug_session and not loot_id.is_empty() and not run_loot_collected.has(loot_id):
+		run_loot_collected.append(loot_id)
+		ProgressionManager.save_now()
+
+
 func _newly_available(maps_before: Array) -> Array:
 	var result: Array = []
 	for map_id in ProgressionManager.available_maps():
@@ -322,6 +335,7 @@ func get_save_data() -> Dictionary:
 		"experience_gained": run_experience_gained,
 		"items_gained": run_items_gained.duplicate(),
 		"moves_learned": run_moves_learned.duplicate(),
+		"loot_collected": run_loot_collected.duplicate(),
 	}
 
 
@@ -350,6 +364,12 @@ func load_save_data(data: Dictionary) -> void:
 	if loaded_items is Dictionary:
 		for item_id in loaded_items:
 			run_items_gained[str(item_id)] = maxi(int(loaded_items[item_id]), 0)
+	run_loot_collected.clear()
+	var loaded_loot: Variant = data.get("loot_collected", [])
+	if loaded_loot is Array:
+		for loot_id in loaded_loot:
+			if not run_loot_collected.has(str(loot_id)):
+				run_loot_collected.append(str(loot_id))
 	run_moves_learned.clear()
 	var loaded_moves: Variant = data.get("moves_learned", [])
 	if loaded_moves is Array:

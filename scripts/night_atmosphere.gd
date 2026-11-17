@@ -8,6 +8,7 @@ class_name NightAtmosphere
 ## Drop one NightAtmosphere node into a night scene (as the LAST child so the cat and the other
 ## nodes exist already). Everything is built at run time from what the scene contains:
 ##   * Sprite2D nodes named "StreetLamp*"  -> a warm light
+##   * Sprite2D nodes named "Campfire*"    -> a flickering orange light
 ##   * the node in group "player"          -> a soft light that follows it
 ##   * a node named "NightExit"            -> a cool glow
 ## Set `enabled = false` (or call set_enabled) for players who prefer a bright map.
@@ -88,6 +89,16 @@ func _build() -> void:
 		light.name = "LampLight_" + str(lamp.name)
 		holder.add_child(light)
 		light.position = (lamp as Node2D).position + Vector2(0.0, -34.0)
+
+	for fire in scene.find_children("Campfire*", "Sprite2D", true, false):
+		var fire_light := _make_light(Color("#ff9a4a"), 1.25, 3.6)
+		fire_light.name = "FireLight_" + str(fire.name)
+		fire.get_parent().add_child(fire_light)
+		fire_light.position = (fire as Node2D).position + Vector2(0.0, -8.0)
+		var flicker := fire_light.create_tween().set_loops()
+		flicker.tween_property(fire_light, "energy", 1.0, 0.35).set_trans(Tween.TRANS_SINE)
+		flicker.tween_property(fire_light, "energy", 1.4, 0.45).set_trans(Tween.TRANS_SINE)
+		flicker.tween_property(fire_light, "energy", 1.15, 0.3).set_trans(Tween.TRANS_SINE)
 
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null:

@@ -67,7 +67,7 @@ func _run() -> void:
 	exp.run_active = false
 	exp.begin_run("forest_grove")
 	_check(exp.current_map_id == "forest_grove", "a run can start on the forest")
-	_check(exp.saved_player_position == Vector2(170, 1120), "a forest run starts at the forest start (not inside a wall)")
+	_check(exp.saved_player_position == Vector2(230, 2250), "a forest run starts at the forest start (not inside a wall)")
 	exp.run_active = false
 	exp.begin_run("nonsense")
 	_check(exp.current_map_id == "park", "an unknown map id falls back to the park")
@@ -163,7 +163,7 @@ func _run() -> void:
 	select.choose("forest_grove")
 	await process_frame
 	_check(requested_scenes.back() == "res://scenes/worlds/forest_grove.tscn", "choosing the forest loads the forest scene")
-	_check(exp.current_map_id == "forest_grove" and exp.saved_player_position == Vector2(170, 1120), "a forest run starts at the forest start")
+	_check(exp.current_map_id == "forest_grove" and exp.saved_player_position == Vector2(230, 2250), "a forest run starts at the forest start")
 	_check(not select.is_open(), "the selection screen closes after choosing")
 
 	# A run in progress always resumes its own map, whatever is asked.

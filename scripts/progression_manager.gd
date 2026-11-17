@@ -562,6 +562,12 @@ func _is_valid_expedition_data(data: Dictionary) -> bool:
 		for amount in data["items_gained"].values():
 			if not _is_number(amount):
 				return false
+	if data.has("loot_collected"):
+		if not data["loot_collected"] is Array:
+			return false
+		for loot_id in data["loot_collected"]:
+			if not loot_id is String:
+				return false
 	if data.has("moves_learned"):
 		if not data["moves_learned"] is Array:
 			return false

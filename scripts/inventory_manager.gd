@@ -129,6 +129,37 @@ func add_item(item_id: String, quantity: int, persist: bool = true) -> Dictionar
 	return _result(remaining == 0, quantity, added, remaining, "" if remaining == 0 else "inventory_full")
 
 
+## Add several kinds of item at once, ALL or NOTHING: it is first tried on a copy of the
+## backpack (like crafting), so two items that would compete for the last free slot are
+## handled correctly. Returns {"success": bool, "reason": String, "added": {item_id: qty}}.
+func add_items_atomic(entries: Dictionary, persist: bool = true) -> Dictionary:
+	_ensure_ready()
+	if entries.is_empty():
+		return {"success": false, "reason": "nothing_to_add", "added": {}}
+	var staged: Array[Dictionary] = []
+	for slot in slots:
+		staged.append(slot.duplicate(true))
+	for raw_id in entries:
+		var item_id := str(raw_id)
+		var quantity := int(entries[raw_id])
+		var item = get_item_data(item_id)
+		if item == null:
+			return {"success": false, "reason": "invalid_item", "added": {}}
+		if quantity <= 0:
+			return {"success": false, "reason": "invalid_quantity", "added": {}}
+		if _add_to_slots(staged, item, quantity) != quantity:
+			return {"success": false, "reason": "inventory_full", "added": {}}
+	slots = staged
+	var added := {}
+	for raw_id in entries:
+		added[str(raw_id)] = int(entries[raw_id])
+		item_added.emit(str(raw_id), int(entries[raw_id]))
+	inventory_changed.emit()
+	if persist:
+		_persist_change()
+	return {"success": true, "reason": "", "added": added}
+
+
 func remove_item(item_id: String, quantity: int) -> Dictionary:
 	if quantity <= 0:
 		return _remove_result(false, quantity, 0, "invalid_quantity")

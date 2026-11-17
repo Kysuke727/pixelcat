@@ -47,41 +47,44 @@ func _run() -> void:
 		enemy.set_physics_process(false)
 	day.scene_change_override = func(_path: String) -> int: return OK
 
-	_check(compass.get_targets().is_empty(), "no arrows while many enemies remain (8 outside)")
+	_check(compass.get_targets().is_empty(), "no arrows while many enemies remain (19 outside)")
 	var mandatory: Array = []
 	for enemy in enemies:
-		if enemy.name != "SecretGuard":
+		if enemy.counts_toward_objective:
 			mandatory.append(enemy)
-	for i in range(4):
+	_check(mandatory.size() == 19, "19 slimes count toward the exit (%d)" % mandatory.size())
+	for i in range(13):
 		mandatory[i].receive_damage(999.0, mandatory[i].global_position, 0.0)
 	await process_frame
-	var after_four: Array = compass.get_targets()
-	_check(after_four.is_empty(), "with 4 outside slimes left there are still no arrows")
-	mandatory[4].receive_damage(999.0, mandatory[4].global_position, 0.0)
+	_check(compass.get_targets().is_empty(), "with 6 outside slimes left there are still no arrows")
+	mandatory[13].receive_damage(999.0, mandatory[13].global_position, 0.0)
 	await process_frame
-	var three: Array = compass.get_targets()
-	_check(three.size() == 3, "with 3 left, three arrows (got %d)" % three.size())
+	var five: Array = compass.get_targets()
+	_check(five.size() == 5, "with 5 left, five arrows (got %d)" % five.size())
 	var positions: Array = []
-	for target in three:
+	for target in five:
 		positions.append(target["position"])
-	var guard: Node2D = scene.get_node("SecretGuard")
-	_check(not positions.has(guard.global_position), "the optional secret guard is never pointed at")
-	for target in three:
+	for enemy in enemies:
+		if not enemy.counts_toward_objective:
+			_check(not positions.has(enemy.global_position), "optional guard %s is never pointed at" % enemy.name)
+	for target in five:
 		_check(target["color"] == compass.ENEMY_COLOR, "enemy arrows are red")
-	mandatory[5].receive_damage(999.0, mandatory[5].global_position, 0.0)
+	mandatory[14].receive_damage(999.0, mandatory[14].global_position, 0.0)
 	await process_frame
-	_check(compass.get_targets().size() == 2, "arrows follow the remaining count (2)")
-	mandatory[6].receive_damage(999.0, mandatory[6].global_position, 0.0)
+	_check(compass.get_targets().size() == 4, "arrows follow the remaining count (4)")
+	for i in range(15, 17):
+		mandatory[i].receive_damage(999.0, mandatory[i].global_position, 0.0)
 	await process_frame
-	_check(compass.get_targets().size() == 1, "...and 1")
-	mandatory[7].receive_damage(999.0, mandatory[7].global_position, 0.0)
+	_check(compass.get_targets().size() == 2, "...and 2")
+	for i in range(17, 19):
+		mandatory[i].receive_damage(999.0, mandatory[i].global_position, 0.0)
 	await process_frame
 	await process_frame
 	_check(exp.objectives_complete(), "all outside slimes defeated")
 	var exit_targets: Array = compass.get_targets()
 	_check(exit_targets.size() == 1 and exit_targets[0]["color"] == compass.EXIT_COLOR, "once the exit is open the only arrow points at it")
 	_check(exit_targets[0]["position"] == scene.get_node("NightExit").global_position, "...at the exit's position")
-	_check(is_instance_valid(guard) and guard.is_alive(), "the guard is still alive and still ignored")
+	_check(scene.get_node("SecretGuard").is_alive(), "the guards are still alive and still ignored")
 
 	# Drawing must not error.
 	compass._canvas.queue_redraw()

@@ -7,7 +7,7 @@ extends CanvasLayer
 ## and only those that are off screen.
 
 ## Arrows appear when this many (or fewer) objective enemies remain.
-const SHOW_WHEN_REMAINING := 3
+const SHOW_WHEN_REMAINING := 5
 const MARGIN := 30.0
 const ENEMY_COLOR := Color("#ff6a6a")
 const EXIT_COLOR := Color("#ffd84d")

@@ -207,48 +207,99 @@ func _add_props() -> void:
 		_adopt(print_sprite, decorations)
 		paw_index += 1
 
-	# The old tree hollow, and the secret spot inside it.
-	var secret := _vec(level["secret"])
-	var hollow := Sprite2D.new()
-	hollow.name = "TreeHollow"
-	hollow.texture = load("res://assets/props/tree_hollow.png")
-	hollow.position = secret + Vector2(0.0, -14.0)
-	hollow.scale = Vector2(1.5, 1.5)
-	hollow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_adopt(hollow, decorations)
-	# The script is attached at run time (not via its class name) so this tool does not
-	# need the autoload singletons the script uses at compile time.
-	var spot := Area2D.new()
-	spot.set_script(load("res://scripts/secret_spot.gd"))
-	spot.name = "SecretSpot"
-	spot.position = secret + Vector2(0.0, 22.0)
-	spot.collision_layer = 0
-	spot.collision_mask = 1
-	spot.set("move_id", "triple_combo")
-	_adopt(spot)
-	var spot_shape := CollisionShape2D.new()
+	# Cat secrets: an old tree hollow with a secret spot inside it.
+	for secret_data in level["secrets"]:
+		var secret := _vec(secret_data["pos"])
+		var hollow := Sprite2D.new()
+		hollow.name = "TreeHollow"
+		hollow.texture = load("res://assets/props/tree_hollow.png")
+		hollow.position = secret + Vector2(0.0, -14.0)
+		hollow.scale = Vector2(1.5, 1.5)
+		hollow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_adopt(hollow, decorations)
+		# The script is attached at run time (not via its class name) so this tool does not
+		# need the autoload singletons the script uses at compile time.
+		var spot := Area2D.new()
+		spot.set_script(load("res://scripts/secret_spot.gd"))
+		spot.name = "SecretSpot"
+		spot.position = secret + Vector2(0.0, 22.0)
+		spot.collision_layer = 0
+		spot.collision_mask = 1
+		spot.set("move_id", str(secret_data["move_id"]))
+		_adopt(spot)
+		_adopt(_circle_shape(34.0), spot)
+
+	# Hidden stashes: walk in to take what is inside (once per run).
+	for loot in level["loot"]:
+		var position := _vec(loot["pos"])
+		var sack := Sprite2D.new()
+		sack.name = "LootSack_%s" % loot["id"]
+		sack.texture = load("res://assets/props/loot_sack.png")
+		sack.position = position + Vector2(0.0, -6.0)
+		sack.scale = Vector2(1.5, 1.5)
+		sack.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_adopt(sack, decorations)
+		var spot := Area2D.new()
+		spot.set_script(load("res://scripts/loot_spot.gd"))
+		spot.name = "Loot_%s" % loot["id"]
+		spot.position = position
+		spot.collision_layer = 0
+		spot.collision_mask = 1
+		spot.set("loot_id", str(loot["id"]))
+		var items := {}
+		for item_id in loot["items"]:
+			items[str(item_id)] = int(loot["items"][item_id])
+		spot.set("items", items)
+		spot.set("fish", int(loot.get("fish", 0)))
+		_adopt(spot)
+		_adopt(_circle_shape(30.0), spot)
+
+	# Landmarks (decoration; the campfire is named so the night lighting gives it a fire glow).
+	var counts := {}
+	for landmark in level["landmarks"]:
+		var kind := str(landmark["type"])
+		counts[kind] = int(counts.get(kind, 0)) + 1
+		var sprite := Sprite2D.new()
+		sprite.name = ("Campfire%d" if kind == "campfire" else kind.capitalize().replace(" ", "") + "%d") % counts[kind]
+		sprite.texture = load("res://assets/props/%s.png" % kind)
+		sprite.position = _vec(landmark["pos"])
+		sprite.scale = Vector2(1.5, 1.5) if kind in ["mushroom", "stump", "campfire", "signpost"] else Vector2(1.25, 1.25)
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		if kind == "signpost":
+			sprite.set_script(load("res://scripts/signpost.gd"))
+			sprite.set("text", str(landmark.get("text", "")))
+		_adopt(sprite, decorations)
+		if kind in ["signpost", "campfire", "stump", "bench", "fallen_log"]:
+			var body := StaticBody2D.new()
+			body.name = sprite.name + "Collider"
+			body.position = sprite.position + Vector2(0.0, 8.0)
+			body.collision_layer = 1
+			body.collision_mask = 0
+			_adopt(body, decorations)
+			var shape := CollisionShape2D.new()
+			var rect := RectangleShape2D.new()
+			rect.size = Vector2(sprite.texture.get_width(), 12.0) * sprite.scale.x * 0.8 if kind in ["bench", "fallen_log"] else Vector2(14.0, 10.0)
+			shape.shape = rect
+			_adopt(shape, body)
+
+
+func _circle_shape(radius: float) -> CollisionShape2D:
+	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = 34.0
-	spot_shape.shape = circle
-	_adopt(spot_shape, spot)
+	circle.radius = radius
+	shape.shape = circle
+	return shape
 
 
 func _add_enemies() -> void:
 	var slime_scene: PackedScene = load(SLIME_SCENE)
-	var index := 1
-	# JSON numbers arrive as floats; compare as ints (Array.has(3) does not match 3.0).
-	var optional: Array[int] = []
-	for value in level.get("optional_enemies", []):
-		optional.append(int(value))
-	for enemy_position in level["enemies"]:
+	for enemy in level["enemies"]:
 		var slime := slime_scene.instantiate()
-		var is_optional := optional.has(index)
-		# Optional enemies keep a recognisable name (the name is their saved id).
-		slime.name = "SecretGuard" if is_optional else "Slime%d" % index
-		slime.set("counts_toward_objective", not is_optional)
-		slime.position = _vec(enemy_position)
+		# The name is the enemy's saved id; optional guards do not count toward the exit.
+		slime.name = str(enemy["name"])
+		slime.set("counts_toward_objective", not bool(enemy["optional"]))
+		slime.position = _vec(enemy["pos"])
 		_adopt(slime)
-		index += 1
 
 
 func _add_music() -> void:

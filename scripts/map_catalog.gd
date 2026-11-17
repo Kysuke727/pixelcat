@@ -22,7 +22,7 @@ const MAPS := {
 		"name": "小树林",
 		"scene": "res://scenes/worlds/forest_grove.tscn",
 		"requires": "park",
-		"start": Vector2(170, 1120),
+		"start": Vector2(230, 2250),
 		"blurb": "公园外的小树林，路很长。听说树林深处藏着猫猫的小秘密。",
 	},
 }

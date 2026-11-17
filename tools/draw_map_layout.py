@@ -4,7 +4,7 @@
     python3 tools/draw_map_layout.py
 
 The numbers here are the single source of truth for the level design; the map scene
-is built from the same coordinates. World size 2304 x 1296 (2 x 2 screens).
+is built from the same coordinates. World size 4608 x 2560 (about 4 x 4 screens).
 """
 import math, random, sys
 from pathlib import Path
@@ -13,16 +13,16 @@ from PIL import Image, ImageDraw, ImageFont
 
 from forest_grove_data import *   # noqa: F401,F403  (level data, single source of truth)
 
-S = 0.72                          # drawing scale
+S = 0.36                          # drawing scale
 FONT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "SmileySans-Oblique.otf"
 
 def sc(p): return (p[0] * S, p[1] * S)
 
 img = Image.new("RGB", (int(W * S), int(H * S)), "#1d3b2f")
 d = ImageDraw.Draw(img)
-big = ImageFont.truetype(str(FONT), 30)
-mid = ImageFont.truetype(str(FONT), 24)
-small = ImageFont.truetype(str(FONT), 20)
+big = ImageFont.truetype(str(FONT), 26)
+mid = ImageFont.truetype(str(FONT), 20)
+small = ImageFont.truetype(str(FONT), 17)
 
 # ground tint + zones
 for name, e in ZONES.items():
@@ -33,64 +33,77 @@ for i in range(len(PATH) - 1):
     d.line([sc(PATH[i]), sc(PATH[i + 1])], fill="#a98a5a", width=int(130 * S))
 for p in PATH:
     r = 65 * S; x, y = sc(p); d.ellipse([x - r, y - r, x + r, y + r], fill="#a98a5a")
-# secret trail (dashed, narrower)
-for i in range(len(SECRET_TRAIL) - 1):
-    a, b = sc(SECRET_TRAIL[i]), sc(SECRET_TRAIL[i + 1])
-    n = int(math.hypot(b[0] - a[0], b[1] - a[1]) / 14)
-    for k in range(0, n, 2):
-        t0, t1 = k / n, min((k + 1) / n, 1)
-        d.line([(a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0), (a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1)], fill="#f2d98a", width=int(46 * S))
-x, y = sc(SECRET); r = 90 * S
-d.ellipse([x - r, y - r, x + r, y + r], fill="#3c6b56")
-# pond
-cx, cy, rx, ry = POND
-d.ellipse([sc((cx - rx, cy - ry)), sc((cx + rx, cy + ry))], fill="#3f7fa8", outline="#9bd1ee", width=3)
+# side roads
+for br in BRANCHES:
+    for i in range(len(br["points"]) - 1):
+        d.line([sc(br["points"][i]), sc(br["points"][i + 1])], fill="#a98a5a", width=int(br["width"] * S))
+# hidden trails (dashed, narrower) and chambers
+for tr in TRAILS:
+    for i in range(len(tr["points"]) - 1):
+        a, b = sc(tr["points"][i]), sc(tr["points"][i + 1])
+        n = max(int(math.hypot(b[0] - a[0], b[1] - a[1]) / 7), 1)
+        for k in range(0, n, 2):
+            t0, t1 = k / n, min((k + 1) / n, 1)
+            d.line([(a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0), (a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1)], fill="#f2d98a", width=max(int(60 * S), 2))
+for ch in CHAMBERS:
+    x, y = sc(ch["center"]); r = ch["radius"] * S
+    d.ellipse([x - r, y - r, x + r, y + r], fill="#3c6b56")
+# ponds
+for pond in PONDS:
+    cx, cy, rx, ry = pond
+    d.ellipse([sc((cx - rx, cy - ry)), sc((cx + rx, cy + ry))], fill="#3f7fa8", outline="#9bd1ee", width=2)
 
 # trees (deterministic): dense border + clusters, never on paths/zones/pond
 random.seed(7)
 trees = []
 def ok(p):
-    if near_polyline(p, PATH, 150) or near_polyline(p, SECRET_TRAIL, 85): return False
-    if any(in_ellipse(p, e, 25) for e in ZONES.values()) or in_ellipse(p, POND, 40): return False
-    if math.hypot(p[0] - SECRET[0], p[1] - SECRET[1]) < 120: return False
+    if near_polyline(p, PATH, 150) or any(near_polyline(p, b["points"], 110) for b in BRANCHES): return False
+    if any(near_polyline(p, t["points"], 85) for t in TRAILS): return False
+    if any(in_ellipse(p, e, 25) for e in ZONES.values()) or any(in_ellipse(p, e, 40) for e in PONDS): return False
+    if any(math.hypot(p[0] - c["center"][0], p[1] - c["center"][1]) < c["radius"] + 20 for c in CHAMBERS): return False
     if any(math.hypot(p[0] - l[0], p[1] - l[1]) < 40 for l in LAMPS): return False
     return True
-for gx in range(0, W + 1, 70):
-    for gy in range(0, H + 1, 70):
+for gx in range(0, W + 1, 110):
+    for gy in range(0, H + 1, 110):
         p = (gx + random.randint(-22, 22), gy + random.randint(-22, 22))
         border = p[0] < 150 or p[1] < 130 or p[0] > W - 150 or p[1] > H - 130
         if (border or random.random() < 0.55) and ok(p):
             trees.append(p)
 for p in trees:
-    x, y = sc(p); r = random.randint(26, 40) * S
+    x, y = sc(p); r = random.randint(34, 52) * S
     d.ellipse([x - r, y - r, x + r, y + r], fill="#173d2a", outline="#0f2a1d")
     d.ellipse([x - r * 0.55, y - r * 0.6, x + r * 0.15, y], fill="#21553b")
 for p in LAMPS:
     x, y = sc(p); d.ellipse([x - 8, y - 8, x + 8, y + 8], fill="#ffd84d", outline="#ffffff")
 
 # screen grid (one screen = 1152 x 648)
-for gx in (1152,):
-    d.line([sc((gx, 0)), sc((gx, H))], fill="#ffffff", width=2)
-d.line([sc((0, 648)), sc((W, 648))], fill="#ffffff", width=2)
-d.text(sc((1170, 10)), "← 一屏 = 1152×648 →", font=small, fill="#ffffff")
+for gx in range(1152, W, 1152):
+    d.line([sc((gx, 0)), sc((gx, H))], fill="#ffffff55", width=1)
+for gy in range(648, H, 648):
+    d.line([sc((0, gy)), sc((W, gy))], fill="#ffffff55", width=1)
+d.text(sc((20, 10)), "格线：一屏 = 1152×648", font=small, fill="#ffffff")
 
 # markers
 def marker(p, text, fill, fg="#ffffff", r=22):
     x, y = sc(p); d.ellipse([x - r, y - r, x + r, y + r], fill=fill, outline="#ffffff", width=3)
     tw = d.textlength(text, font=mid); d.text((x - tw / 2, y - 14), text, font=mid, fill=fg)
-for i, p in enumerate(ENEMIES, 1):
-    # the optional secret-trail guard is drawn grey: it does not count toward the exit
-    marker(p, str(i), "#8a8f94" if i in OPTIONAL_ENEMIES else "#d8434f")
+for i, e in enumerate(ENEMIES, 1):
+    # optional guards are drawn grey: they do not count toward the exit
+    marker(e["pos"], str(i), "#8a8f94" if e.get("optional") else "#d8434f", r=14)
 x, y = sc(START); d.rectangle([x - 22, y - 22, x + 22, y + 22], fill="#7ad37a", outline="#ffffff", width=3)
 d.text((x - 24, y + 28), "出发", font=mid, fill="#d8ffd8")
-x, y = sc(SECRET)
+for lo in LOOT:
+    x, y = sc(lo["pos"]); d.rectangle([x - 9, y - 9, x + 9, y + 9], fill="#c9a46a", outline="#ffffff", width=2)
+for lm in LANDMARKS:
+    if lm["type"] == "signpost":
+        x, y = sc(lm["pos"]); d.rectangle([x - 6, y - 6, x + 6, y + 6], fill="#8a5a3b", outline="#ffffff")
+x, y = sc(SECRETS[0]["pos"])
 star = []
 for k in range(10):
-    ang = -math.pi / 2 + k * math.pi / 5; rr = 30 if k % 2 == 0 else 13
+    ang = -math.pi / 2 + k * math.pi / 5; rr = 22 if k % 2 == 0 else 9
     star.append((x + rr * math.cos(ang), y + rr * math.sin(ang)))
 d.polygon(star, fill="#ffd84d", outline="#ffffff")
-d.text((x + 38, y - 18), "猫猫的小秘密：老树洞", font=mid, fill="#ffe9a6")
-d.text((x + 38, y + 10), "学会【三段连击】", font=small, fill="#ffe9a6")
+d.text((x + 30, y - 18), "猫猫的小秘密：老树洞（学会【三段连击】）", font=small, fill="#ffe9a6")
 x, y = sc(EXIT)
 d.rectangle([x - 24, y - 34, x + 24, y + 34], fill="#e8c08a", outline="#ffffff", width=3)
 d.text((x - 36, y + 40), "出口", font=mid, fill="#fff0d0")
@@ -98,18 +111,19 @@ d.text((x - 70, y - 70), "（清空敌人后开启）", font=small, fill="#fff0d
 
 # zone labels
 for name, (cx, cy, rx, ry) in ZONES.items():
-    d.text(sc((cx - rx * 0.5, cy - ry * 0.95)), name, font=big, fill="#d4f5dc")
-d.text(sc((1330, 840)), "小池塘（装饰，挡路）", font=small, fill="#cfeaff")
-d.text(sc((560, 770)), "隐蔽小径入口\n（藏在灌木后面）", font=small, fill="#f2d98a")
+    d.text(sc((cx - rx * 0.4, cy - ry * 0.9)), name, font=big, fill="#d4f5dc")
+d.text(sc((1380, 2090)), "小池塘（挡路）", font=small, fill="#cfeaff")
+d.text(sc((690, 2000)), "隐蔽小径入口（藏在灌木后面）", font=small, fill="#f2d98a")
 
-# legend (bottom-right, over the unused corner of the map)
-lx, ly = img.width - 330, img.height - 195
-d.rectangle([lx, ly, lx + 310, ly + 175], fill="#10261c", outline="#7fbf9a", width=2)
-d.text((lx + 14, ly + 8), "图例", font=mid, fill="#d4f5dc")
-d.ellipse([lx + 16, ly + 44, lx + 40, ly + 68], fill="#d8434f", outline="#ffffff"); d.text((lx + 52, ly + 42), "敌人（算通关目标）", font=small, fill="#ffffff")
-d.ellipse([lx + 16, ly + 74, lx + 40, ly + 98], fill="#8a8f94", outline="#ffffff"); d.text((lx + 52, ly + 72), "守卫（不算通关目标）", font=small, fill="#ffffff")
-d.ellipse([lx + 20, ly + 108, lx + 36, ly + 124], fill="#ffd84d", outline="#ffffff"); d.text((lx + 52, ly + 102), "路灯（装饰）", font=small, fill="#ffffff")
-d.rectangle([lx + 14, ly + 142, lx + 44, ly + 152], fill="#f2d98a"); d.text((lx + 52, ly + 134), "隐蔽小径", font=small, fill="#ffffff")
-d.text((lx + 170, ly + 136), "圆点密集处是树", font=small, fill="#9fd4b0")
+# legend
+lx, ly = 640, img.height - 230
+d.rectangle([lx, ly, lx + 285, ly + 215], fill="#10261c", outline="#7fbf9a", width=2)
+d.text((lx + 12, ly + 6), "图例", font=mid, fill="#d4f5dc")
+d.ellipse([lx + 14, ly + 38, lx + 34, ly + 58], fill="#d8434f", outline="#ffffff"); d.text((lx + 46, ly + 38), "敌人（算通关目标）", font=small, fill="#ffffff")
+d.ellipse([lx + 14, ly + 66, lx + 34, ly + 86], fill="#8a8f94", outline="#ffffff"); d.text((lx + 46, ly + 66), "守卫（不算通关目标）", font=small, fill="#ffffff")
+d.rectangle([lx + 14, ly + 96, lx + 34, ly + 116], fill="#c9a46a", outline="#ffffff"); d.text((lx + 46, ly + 94), "藏宝点（走进去拿）", font=small, fill="#ffffff")
+d.rectangle([lx + 18, ly + 124, lx + 30, ly + 136], fill="#8a5a3b", outline="#ffffff"); d.text((lx + 46, ly + 122), "路牌", font=small, fill="#ffffff")
+d.ellipse([lx + 18, ly + 150, lx + 30, ly + 162], fill="#ffd84d", outline="#ffffff"); d.text((lx + 46, ly + 148), "路灯（装饰）", font=small, fill="#ffffff")
+d.rectangle([lx + 14, ly + 178, lx + 34, ly + 186], fill="#f2d98a"); d.text((lx + 46, ly + 174), "隐蔽小径", font=small, fill="#ffffff")
 img.save(Path(__file__).resolve().parent.parent / "docs" / "maps" / "forest-grove-layout.png")
 print("wrote docs/maps/forest-grove-layout.png", img.size, "trees:", len(trees))
