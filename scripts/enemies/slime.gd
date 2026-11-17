@@ -644,9 +644,23 @@ func _prepare_fish_drop_records() -> Array[Dictionary]:
 	var drop_count := randi_range(fish_drop_min, fish_drop_max)
 	for index in range(drop_count):
 		var angle := TAU * float(index) / float(maxi(drop_count, 1)) + randf_range(-0.25, 0.25)
-		var drop_position := global_position + Vector2.from_angle(angle) * randf_range(8.0, 16.0)
+		var drop_position := _reachable_drop_position(global_position + Vector2.from_angle(angle) * randf_range(8.0, 16.0))
 		records.append({"id": "%s:fish:%d" % [String(name), index], "position": [drop_position.x, drop_position.y], "amount": 1})
 	return records
+
+
+## A drop must never land inside a tree or bush (the cat could not pick it up): if a wall is
+## between the slime and the wanted spot, the drop goes just in front of the wall instead.
+func _reachable_drop_position(wanted: Vector2) -> Vector2:
+	if not is_inside_tree():
+		return wanted
+	var query := PhysicsRayQueryParameters2D.create(global_position, wanted, 1)
+	query.hit_from_inside = false
+	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return wanted
+	var back: Vector2 = (global_position - hit["position"]).normalized()
+	return hit["position"] + back * 12.0
 
 
 ## Roll once for the number of loot entities, independently once per entity for
@@ -660,7 +674,7 @@ func _prepare_material_drop_records() -> Array[Dictionary]:
 	var ids: Array[String] = MaterialLoot.roll_material_ids(rng)
 	for index in range(ids.size()):
 		var angle: float = TAU * float(index) / float(maxi(ids.size(), 1)) + rng.randf_range(-0.18, 0.18)
-		var position: Vector2 = global_position + Vector2.from_angle(angle) * rng.randf_range(22.0, 34.0)
+		var position: Vector2 = _reachable_drop_position(global_position + Vector2.from_angle(angle) * rng.randf_range(22.0, 34.0))
 		records.append({
 			"id": "%s:material:%d" % [String(name), index],
 			"item_id": ids[index],
