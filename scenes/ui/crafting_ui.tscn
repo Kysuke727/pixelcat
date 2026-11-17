@@ -1,7 +1,19 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://ckwft5qo1nq1x"]
 
-[ext_resource type="Script" path="res://scripts/crafting_ui.gd" id="1_crafting"]
+[ext_resource type="Script" uid="uid://btvncxa7bk7m" path="res://scripts/crafting_ui.gd" id="1_crafting"]
+[ext_resource type="AudioStream" uid="uid://dbdh6e2rpjc84" path="res://assets/audio/sfx/crafting/open.mp3" id="2_pd0bf"]
+[ext_resource type="AudioStream" uid="uid://df78nc2tipsvj" path="res://assets/audio/sfx/crafting/Close.mp3" id="3_con7n"]
+[ext_resource type="AudioStream" uid="uid://dyh1eaw6tv7ky" path="res://assets/audio/sfx/crafting/Select Recipe.mp3" id="4_qqewm"]
+[ext_resource type="AudioStream" uid="uid://due723kgt6e8b" path="res://assets/audio/sfx/crafting/Change Quantity.mp3" id="5_q8g5c"]
+[ext_resource type="AudioStream" uid="uid://dabgga23gsg2a" path="res://assets/audio/sfx/crafting/finish.mp3" id="6_1ajcd"]
+[ext_resource type="AudioStream" uid="uid://de5bxcs5thfy0" path="res://assets/audio/sfx/crafting/Craft Fail.mp3" id="7_l723f"]
 
-[node name="CraftingUI" type="CanvasLayer"]
+[node name="CraftingUI" type="CanvasLayer" unique_id=851979064]
 layer = 60
 script = ExtResource("1_crafting")
+sound_open = ExtResource("2_pd0bf")
+sound_close = ExtResource("3_con7n")
+sound_select_recipe = ExtResource("4_qqewm")
+sound_quantity_change = ExtResource("5_q8g5c")
+sound_craft_success = ExtResource("6_1ajcd")
+sound_craft_fail = ExtResource("7_l723f")
