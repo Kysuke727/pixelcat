@@ -11,9 +11,9 @@
 
 **方法 A（最省事，不需要 git）**：下载项目压缩包，解压到任意文件夹：
 
-https://github.com/Kysuke727/pixelcat/archive/refs/heads/feature/forest-polish.zip
+https://github.com/Kysuke727/pixelcat/archive/refs/heads/main.zip
 
-（需要登录 GitHub。如果你已经有 pixelcat 文件夹并用 GitHub Desktop，也可以：Fetch origin → 左上角 Current Branch 选 `feature/forest-polish` → 就是最新的。）
+（需要登录 GitHub。如果你已经有 pixelcat 文件夹并用 GitHub Desktop，也可以：Fetch origin，然后确认左上角 Current Branch 是 `main`，Pull 一下就是最新的。）
 
 ## 第 3 步：用 Godot 打开
 
