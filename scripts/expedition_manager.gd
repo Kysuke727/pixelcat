@@ -16,6 +16,8 @@ var run_active: bool = false
 ## What this run has earned so far (shown on the success settlement; saved with the run).
 var run_experience_gained: int = 0
 var run_items_gained: Dictionary = {}
+const CLEAR_REWARD_ITEM := "herb_pack"
+const CLEAR_REWARD_COUNT := 2
 var run_moves_learned: Array[String] = []
 ## Hidden loot spots already emptied in this run (so Continue does not let them be taken twice).
 var run_loot_collected: Array[String] = []
@@ -224,6 +226,15 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 	var maps_before: Array = ProgressionManager.available_maps()
 	var first_clear := false
 	var lost := 0
+	var reward_in_storage := 0
+	if success:
+		# Clearing a map rewards herb packs (counted in "this run's items"); whatever does not
+		# fit in the backpack goes into the storage chest at home.
+		var reward: Dictionary = InventoryManager.add_item(CLEAR_REWARD_ITEM, CLEAR_REWARD_COUNT, false)
+		var missing: int = CLEAR_REWARD_COUNT - int(reward.get("added", 0))
+		if missing > 0:
+			reward_in_storage = InventoryManager.add_to_storage(CLEAR_REWARD_ITEM, missing, false)
+			run_items_gained[CLEAR_REWARD_ITEM] = int(run_items_gained.get(CLEAR_REWARD_ITEM, 0)) + reward_in_storage
 	if not success:
 		lost = int(floor(float(ordinary_fish) * failure_loss_ratio)) if odd_loot_rounding == "floor" else int(ceil(float(ordinary_fish) * failure_loss_ratio))
 	ordinary_fish = maxi(ordinary_fish - lost, 0)
@@ -248,6 +259,7 @@ func finish_run(success: bool, transition_to_day: bool = true) -> void:
 		"moves_learned": run_moves_learned.duplicate(),
 		"first_clear": first_clear,
 		"new_maps": _newly_available(maps_before),
+		"reward_in_storage": reward_in_storage,
 	}
 	expedition_finished.emit(success, retained, lost)
 	expedition_changed.emit()

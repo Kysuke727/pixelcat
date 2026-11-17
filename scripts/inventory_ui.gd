@@ -241,6 +241,10 @@ func _on_use_button_pressed() -> void:
 	match reason:
 		"used_cat_teaser":
 			detail_description.text = "小猫玩得很开心！心情 +20 ♡"
+		"used_herb_pack":
+			detail_description.text = "用了一个草药包，生命 +%d ♡" % int(round(float(result.get("healed", 0.0))))
+		"health_full":
+			detail_description.text = "生命是满的，草药包没有消耗。"
 		"mood_full":
 			detail_description.text = "小猫已经很开心了，逗猫棒没有消耗。"
 		"item_use_not_implemented":

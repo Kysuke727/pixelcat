@@ -22,6 +22,8 @@ const LEFT_TEXTURE := preload("res://assets/characters/slime/slime_left.png")
 const RIGHT_TEXTURE := preload("res://assets/characters/slime/slime_right.png")
 const FISH_PICKUP_SCENE := preload("res://scenes/pickups/dried_fish_pickup.tscn")
 const MATERIAL_PICKUP_SCENE := preload("res://scenes/pickups/material_drop_pickup.tscn")
+const NavGrid := preload("res://scripts/nav_grid.gd")
+const PATH_REPLAN_INTERVAL := 0.4
 const MaterialLoot := preload("res://scripts/material_loot.gd")
 static var _next_attack_id: int = 1
 const HIT_FLASH_DURATION := 0.14
@@ -97,6 +99,14 @@ var locked_target_position: Vector2
 var lunge_direction: Vector2 = Vector2.DOWN
 var attack_state_elapsed: float = 0.0
 var hurt_velocity: Vector2 = Vector2.ZERO
+# Walking around trees: when the cat is behind a wall, follow a grid path instead of
+# pushing into the wall.
+var chase_path: PackedVector2Array = PackedVector2Array()
+var chase_path_index: int = 0
+var path_replan_left: float = 0.0
+var chase_give_up_left: float = 0.0
+var _progress_anchor: Vector2 = Vector2.INF
+var _progress_timer: float = 0.0
 var attacked_targets: Dictionary = {}
 var target: Node2D
 var animation_time: float = 0.0
@@ -153,6 +163,7 @@ func _physics_process(delta: float) -> void:
 	if state != SlimeState.STUNNED:
 		stun_immunity_left = maxf(stun_immunity_left - delta, 0.0)
 	collision_stun_cooldown_left = maxf(collision_stun_cooldown_left - delta, 0.0)
+	chase_give_up_left = maxf(chase_give_up_left - delta, 0.0)
 	wall_impact_cooldown_left = maxf(wall_impact_cooldown_left - delta, 0.0)
 	slow_time_left = maxf(slow_time_left - delta, 0.0)
 	if slow_time_left <= 0.0:
@@ -210,14 +221,14 @@ func _target_distance() -> float:
 
 func _process_idle() -> void:
 	velocity = Vector2.ZERO
-	if _target_distance() <= chase_range:
+	if _target_distance() <= chase_range and chase_give_up_left <= 0.0:
 		_change_state(SlimeState.CHASE)
 	elif state_time_left <= 0.0:
 		_begin_wander()
 
 
 func _process_wander() -> void:
-	if _target_distance() <= chase_range:
+	if _target_distance() <= chase_range and chase_give_up_left <= 0.0:
 		_change_state(SlimeState.CHASE)
 		return
 	if global_position.distance_to(spawn_position) > wander_radius:
@@ -241,7 +252,7 @@ func _process_chase() -> void:
 		wander_direction = global_position.direction_to(spawn_position)
 		state_time_left = randf_range(wander_duration_min, wander_duration_max)
 		return
-	if distance <= attack_range and cooldown_left <= 0.0:
+	if distance <= attack_range and cooldown_left <= 0.0 and _clear_line_to(target.global_position):
 		locked_target_position = target.global_position
 		velocity = Vector2.ZERO
 		attacked_targets.clear()
@@ -253,9 +264,84 @@ func _process_chase() -> void:
 		state_time_left = windup_duration
 		return
 	if is_instance_valid(target):
-		velocity = global_position.direction_to(target.global_position) * move_speed * slow_multiplier
+		var aim := _chase_aim_point()
+		if aim == Vector2.INF:
+			# no way around the wall: stop chasing for a while and drift back home
+			chase_give_up_left = 2.0
+			_change_state(SlimeState.WANDER)
+			wander_direction = global_position.direction_to(spawn_position)
+			state_time_left = randf_range(wander_duration_min, wander_duration_max)
+			return
+		velocity = global_position.direction_to(aim) * move_speed * slow_multiplier
 		_update_facing(velocity)
 		_move_and_check_impacts()
+		_check_chase_progress()
+
+
+## Safety net for anything the path grid does not know about (another slime in a narrow
+## spot...): a slime that has not got anywhere for a while gives up instead of pushing forever.
+func _check_chase_progress() -> void:
+	if state != SlimeState.CHASE or slow_multiplier < 0.99:
+		_progress_anchor = Vector2.INF
+		return
+	if _progress_anchor == Vector2.INF or global_position.distance_to(_progress_anchor) > 16.0:
+		_progress_anchor = global_position
+		_progress_timer = 0.0
+		return
+	_progress_timer += get_physics_process_delta_time()
+	if _progress_timer >= 1.0:
+		_progress_anchor = Vector2.INF
+		chase_give_up_left = 1.5
+		chase_path = PackedVector2Array()
+		_change_state(SlimeState.WANDER)
+		wander_direction = global_position.direction_to(spawn_position)
+		state_time_left = randf_range(wander_duration_min, wander_duration_max)
+
+
+## Where to walk this frame: straight at the cat when nothing is in between, otherwise the next
+## point of a grid path around the trees. Vector2.INF = unreachable within a sensible detour.
+func _chase_aim_point() -> Vector2:
+	var goal := target.global_position
+	if _clear_line_to(goal):
+		chase_path = PackedVector2Array()
+		return goal
+	path_replan_left -= get_physics_process_delta_time()
+	if chase_path.is_empty() or path_replan_left <= 0.0:
+		path_replan_left = PATH_REPLAN_INTERVAL
+		var grid: AStarGrid2D = NavGrid.for_scene(get_tree().current_scene)
+		if grid == null:
+			return goal
+		var from := NavGrid.cell_of(grid, global_position)
+		var to := NavGrid.cell_of(grid, goal)
+		if not grid.is_in_boundsv(from) or not grid.is_in_boundsv(to) or grid.is_point_solid(to):
+			return goal
+		chase_path = grid.get_point_path(from, to, true)
+		chase_path_index = 1
+		var length := 0.0
+		for i in range(1, chase_path.size()):
+			length += chase_path[i].distance_to(chase_path[i - 1])
+		if chase_path.size() < 2 or length > disengage_range * 1.6:
+			chase_path = PackedVector2Array()
+			return Vector2.INF
+	while chase_path_index < chase_path.size() - 1 and global_position.distance_to(chase_path[chase_path_index]) < 10.0:
+		chase_path_index += 1
+	# skip ahead when a later waypoint is already in plain view (smoother corners)
+	if chase_path_index + 1 < chase_path.size() and _clear_line_to(chase_path[chase_path_index + 1]):
+		chase_path_index += 1
+	return chase_path[mini(chase_path_index, chase_path.size() - 1)]
+
+
+func _clear_line_to(point: Vector2) -> bool:
+	var space := get_world_2d().direct_space_state
+	# two parallel rays about a body-width apart so the slime does not clip tree corners
+	var side := global_position.direction_to(point).orthogonal() * 7.0
+	for offset in [side, -side]:
+		var query := PhysicsRayQueryParameters2D.create(global_position + offset, point + offset, 1)
+		if is_instance_valid(target) and target is CollisionObject2D:
+			query.exclude = [target.get_rid()]
+		if not space.intersect_ray(query).is_empty():
+			return false
+	return true
 
 
 func _process_windup() -> void:
@@ -656,6 +742,8 @@ func _reachable_drop_position(wanted: Vector2) -> Vector2:
 		return wanted
 	var query := PhysicsRayQueryParameters2D.create(global_position, wanted, 1)
 	query.hit_from_inside = false
+	if is_instance_valid(target) and target is CollisionObject2D:
+		query.exclude = [target.get_rid()]
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
 		return wanted

@@ -6,6 +6,11 @@ signal quickbar_slot_activated(slot_index: int, item_id: String)
 
 const SLOT_COUNT := 4
 
+const HERB_PACK := "herb_pack"
+const HERB_PACK_HEAL := 2.0
+## Items that bind themselves to a free quickbar slot the first time you get them.
+const AUTO_BIND := [HERB_PACK]
+
 ## Only item IDs are stored. Quantity always comes from InventoryManager.
 var bound_item_ids: Array[String] = ["", "", "", ""]
 var _loading: bool = false
@@ -13,6 +18,17 @@ var _loading: bool = false
 
 func _ready() -> void:
 	_ensure_slot_count()
+	if not InventoryManager.item_added.is_connected(_on_item_added):
+		InventoryManager.item_added.connect(_on_item_added)
+
+
+func _on_item_added(item_id: String, _quantity: int) -> void:
+	if _loading or not AUTO_BIND.has(item_id) or bound_item_ids.has(item_id):
+		return
+	for index in range(SLOT_COUNT):
+		if bound_item_ids[index].is_empty():
+			bind_item(index, item_id)
+			return
 
 
 func _ensure_slot_count() -> void:
@@ -142,6 +158,20 @@ func use_item(item_id: String) -> Dictionary:
 			stats.set("mood", before_mood)
 			return {"handled": false, "reason": "consume_failed", "item_id": item_id}
 		return {"handled": true, "reason": "used_cat_teaser", "item_id": item_id, "mood_after": float(stats.get("mood"))}
+	if item_id == HERB_PACK:
+		var cat: Node = get_tree().get_first_node_in_group("player")
+		if cat == null or bool(cat.get("dead")) or not cat.has_method("heal"):
+			return {"handled": false, "reason": "no_player", "item_id": item_id}
+		if float(cat.get("current_health")) >= float(cat.get("max_health")):
+			return {"handled": false, "reason": "health_full", "item_id": item_id}
+		var removed_herb: Dictionary = InventoryManager.remove_item(item_id, 1)
+		if not bool(removed_herb.get("success", false)):
+			return {"handled": false, "reason": "consume_failed", "item_id": item_id}
+		var healed: float = cat.heal(HERB_PACK_HEAL)
+		if cat is Node2D and is_instance_valid(HitFeel):
+			HitFeel.damage_number(cat.global_position + Vector2(0.0, -30.0), "+%d" % int(round(healed)), HitFeel.GREEN, 18)
+			HitFeel.spark(cat.global_position, HitFeel.GREEN, 10, 110.0)
+		return {"handled": true, "reason": "used_herb_pack", "item_id": item_id, "healed": healed}
 	return {"handled": false, "reason": "item_use_not_implemented", "item_id": item_id}
 
 

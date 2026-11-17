@@ -67,7 +67,7 @@ func _populate_failure(report: Dictionary, map_name: String) -> void:
 	_subtitle.text = "你在「%s」倒下了" % map_name
 	_add_line(_lines, "击败敌人：%d / %d" % [int(report.get("objectives_completed", 0)), int(report.get("objectives_total", 0))])
 	_add_line(_lines, "小鱼干：保住 %d 条，丢失 %d 条" % [int(report.get("retained", 0)), int(report.get("lost", 0))])
-	_add_line(_lines, "经验和已学会的招式都保留了")
+	_add_line(_lines, "经验、已学会的招式和储物箱里的东西都保留了")
 
 	var items: Dictionary = report.get("items", {})
 	var lost: Dictionary = items.get("lost", {})
@@ -109,6 +109,12 @@ func _populate_success(report: Dictionary, map_name: String) -> void:
 	var news: Array[String] = []
 	for move_id in report.get("moves_learned", []):
 		news.append("学会了新招式：%s" % MoveCatalog.display_name(str(move_id)))
+	if bool(report.get("success", false)):
+		var reward_line := "通关奖励：草药包 ×2（已经在背包里了）"
+		var in_storage := int(report.get("reward_in_storage", 0))
+		if in_storage > 0:
+			reward_line = "通关奖励：草药包 ×2（背包满了，%d 个放进了家里的储物箱）" % in_storage
+		news.append(reward_line)
 	if bool(report.get("first_clear", false)):
 		news.append("首次通关「%s」！" % map_name)
 	for map_id in report.get("new_maps", []):

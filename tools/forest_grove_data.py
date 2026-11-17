@@ -79,10 +79,10 @@ SECRETS = [{"id": "old_tree_hollow", "pos": (430, 402), "move_id": "triple_combo
 
 # Hidden stashes. items = item_id -> quantity (the backpack must have room for ALL of it).
 LOOT = [
-    {"id": "mushroom_nook", "pos": (2350, 500), "items": {"yarn": 3, "stone": 2}, "fish": 0},
+    {"id": "mushroom_nook", "pos": (2350, 500), "items": {"yarn": 3, "stone": 2, "herb_pack": 1}, "fish": 0},
     {"id": "stash", "pos": (3800, 2270), "items": {"wood": 4, "stone": 3}, "fish": 3},
-    {"id": "camp", "pos": (3440, 1650), "items": {"wood": 3, "yarn": 2}, "fish": 0},
-    {"id": "bench", "pos": (930, 1080), "items": {"yarn": 2}, "fish": 2},
+    {"id": "camp", "pos": (3440, 1650), "items": {"wood": 3, "yarn": 2, "herb_pack": 1}, "fish": 0},
+    {"id": "bench", "pos": (930, 1080), "items": {"yarn": 2, "herb_pack": 1}, "fish": 2},
 ]
 
 # Decoration / landmarks. type -> sprite assets/props/<type>.png. Signposts carry a short text.

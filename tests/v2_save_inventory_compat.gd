@@ -89,7 +89,9 @@ func _run() -> void:
 	var inventory_snapshot: Array = inventory.get_save_data()
 	expedition.finish_run(true, false)
 	_check(currency.fish_count == currency_before + 9, "night settlement credits retained fish once")
-	_check(inventory.get_save_data() == inventory_snapshot, "night settlement does not alter ordinary inventory")
+	_check(inventory.get_item_count("herb_pack") == 2, "a successful run adds the 2 herb pack clear reward")
+	inventory.remove_item("herb_pack", 2)
+	_check(inventory.get_save_data() == inventory_snapshot, "apart from that reward, night settlement does not alter ordinary inventory")
 	expedition.load_save_data({})
 	progression._test_mode = original_test_mode
 	progression.save_path = original_path

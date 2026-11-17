@@ -111,7 +111,7 @@ func _run() -> void:
 	var report: Dictionary = reports[0]
 	_check(report["success"] and report["reason"] == "success" and report["map_id"] == "park", "it is a success report for the park")
 	_check(report["retained"] == 7 and report["lost"] == 0 and currency.fish_count == fish_before + 7, "all the fish are banked on success")
-	_check(report["experience"] == 42 and report["items_gained"] == {"wood": 6, "yarn": 4} and report["moves_learned"] == ["triple_combo"], "the report carries what the run earned")
+	_check(report["experience"] == 42 and report["items_gained"] == {"wood": 6, "yarn": 4, "herb_pack": 2} and report["moves_learned"] == ["triple_combo"], "the report carries what the run earned")
 	_check(report["first_clear"] and report["new_maps"] == ["forest_grove"], "the first clear of the park unlocks the forest")
 	_check(not exp.run_active and exp.last_outcome == "success", "the run is over")
 	_check(inventory.get_item_count("wood") == 6, "the backpack is untouched on success")
@@ -142,7 +142,8 @@ func _run() -> void:
 	exp.complete_run_with_settlement()
 	await process_frame
 	_check(not reports[0]["first_clear"] and reports[0]["new_maps"].is_empty(), "clearing the park again is not a first clear and unlocks nothing")
-	_check(_texts(screen._items).contains("这次没有带回材料") and not _texts(screen._items).contains("新收获"), "an empty run says so and has no good-news block")
+	_check(reports[0]["items_gained"] == {"herb_pack": 2}, "even an otherwise empty clear brings back the 2 herb packs")
+	_check(_texts(screen._items).contains("通关奖励：草药包 ×2") and not _texts(screen._items).contains("首次通关"), "the reward is listed, without a first-clear line")
 	screen.confirm()
 	await process_frame
 

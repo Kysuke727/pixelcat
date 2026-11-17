@@ -15,6 +15,7 @@ const ITEM_PATHS := [
 	"res://resources/items/test_potion.tres",
 	"res://resources/items/yarn.tres",
 	"res://resources/items/cat_teaser.tres",
+	"res://resources/items/herb_pack.tres",
 ]
 
 var item_database: Dictionary = {}
@@ -124,6 +125,20 @@ func transfer(item_id: String, quantity: int, to_storage: bool, persist: bool = 
 	if persist:
 		_persist_change()
 	return {"moved": moved, "reason": "" if moved == wanted else "full"}
+
+
+## Put items straight into the chest (rewards that did not fit in the backpack). Returns how many fit.
+func add_to_storage(item_id: String, quantity: int, persist: bool = true) -> int:
+	_ensure_ready()
+	var item = get_item_data(item_id)
+	if item == null or quantity <= 0:
+		return 0
+	var added := _add_to_slots(storage_slots, item, quantity)
+	if added > 0:
+		inventory_changed.emit()
+		if persist:
+			_persist_change()
+	return added
 
 
 func get_storage_save_data() -> Array:

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/items/item_data.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/objects/items/herb_pack.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "herb_pack"
+display_name = "草药包"
+description = "用树林里的草药包成的小布包。探险时使用，回复 2 点生命。满血时不会浪费。通关一张地图会得到 2 个。"
+category = 0
+usable = true
+icon = ExtResource("2_icon")
+max_stack = 10

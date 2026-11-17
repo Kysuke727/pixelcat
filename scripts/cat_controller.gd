@@ -525,6 +525,16 @@ func _break_shield() -> void:
 		combat.cancel_action()
 
 
+## Heal (herb pack...). Returns how much was actually healed (0 when dead or already full).
+func heal(amount: float) -> float:
+	if dead or amount <= 0.0 or current_health >= float(max_health):
+		return 0.0
+	var before := current_health
+	current_health = minf(current_health + amount, float(max_health))
+	health_changed.emit(current_health, max_health)
+	return current_health - before
+
+
 func receive_damage(amount: float, source_position: Vector2, knockback_force: float = 120.0) -> bool:
 	if not dead and amount > 0 and dodge_iframes_left > 0.0 and guard_break_left <= 0.0:
 		_trigger_perfect_dodge(source_position)
