@@ -5,6 +5,9 @@ signal item_added(item_id: String, quantity: int)
 signal item_removed(item_id: String, quantity: int)
 
 const SLOT_COUNT := 24
+## The home storage chest. Its contents are never lost when the cat falls (only the backpack is).
+## It can be enlarged later by raising this number (older saves load fine).
+const STORAGE_SLOT_COUNT := 56
 const ITEM_PATHS := [
 	"res://resources/items/yarn_ball.tres",
 	"res://resources/items/wood.tres",
@@ -16,6 +19,7 @@ const ITEM_PATHS := [
 
 var item_database: Dictionary = {}
 var slots: Array[Dictionary] = []
+var storage_slots: Array[Dictionary] = []
 var ui_open: bool = false
 var _loading: bool = false
 
@@ -29,6 +33,8 @@ func _ensure_ready() -> void:
 		_register_items()
 	if slots.is_empty():
 		_reset_slots()
+	if storage_slots.is_empty():
+		_reset_storage()
 
 
 func _register_items() -> void:
@@ -48,6 +54,102 @@ func _reset_slots() -> void:
 	slots.clear()
 	for _index in range(SLOT_COUNT):
 		slots.append({"item_id": "", "quantity": 0})
+
+
+func _reset_storage() -> void:
+	storage_slots.clear()
+	for _index in range(STORAGE_SLOT_COUNT):
+		storage_slots.append({"item_id": "", "quantity": 0})
+
+
+func get_storage_slot(index: int) -> Dictionary:
+	_ensure_ready()
+	if index < 0 or index >= storage_slots.size():
+		return {}
+	return storage_slots[index].duplicate(true)
+
+
+func get_storage_item_count(item_id: String) -> int:
+	_ensure_ready()
+	var total := 0
+	for slot in storage_slots:
+		if str(slot["item_id"]) == item_id:
+			total += int(slot["quantity"])
+	return total
+
+
+## Move up to `quantity` of an item between the backpack and the storage chest. It moves as
+## many as the other side has room for (the rest stays where it was).
+## Returns {"moved": int, "reason": "" | "none_to_move" | "full" | "invalid_item"}.
+func transfer(item_id: String, quantity: int, to_storage: bool, persist: bool = true) -> Dictionary:
+	_ensure_ready()
+	var item = get_item_data(item_id)
+	if item == null:
+		return {"moved": 0, "reason": "invalid_item"}
+	var source: Array[Dictionary] = slots if to_storage else storage_slots
+	var target: Array[Dictionary] = storage_slots if to_storage else slots
+	var have := 0
+	for slot in source:
+		if str(slot["item_id"]) == item_id:
+			have += int(slot["quantity"])
+	var wanted := mini(quantity, have)
+	if wanted <= 0:
+		return {"moved": 0, "reason": "none_to_move"}
+	var staged: Array[Dictionary] = []
+	for slot in target:
+		staged.append(slot.duplicate(true))
+	var moved := _add_to_slots(staged, item, wanted)
+	if moved <= 0:
+		return {"moved": 0, "reason": "full"}
+	# take `moved` out of the source, emptiest stacks first so stacks stay tidy
+	var remaining := moved
+	var order: Array[int] = []
+	for i in range(source.size()):
+		if str(source[i]["item_id"]) == item_id:
+			order.append(i)
+	order.sort_custom(func(a: int, b: int) -> bool: return int(source[a]["quantity"]) < int(source[b]["quantity"]))
+	for i in order:
+		var take := mini(remaining, int(source[i]["quantity"]))
+		source[i]["quantity"] = int(source[i]["quantity"]) - take
+		if int(source[i]["quantity"]) <= 0:
+			source[i] = {"item_id": "", "quantity": 0}
+		remaining -= take
+		if remaining <= 0:
+			break
+	if to_storage:
+		storage_slots = staged
+	else:
+		slots = staged
+	inventory_changed.emit()
+	if persist:
+		_persist_change()
+	return {"moved": moved, "reason": "" if moved == wanted else "full"}
+
+
+func get_storage_save_data() -> Array:
+	_ensure_ready()
+	var result: Array = []
+	for slot in storage_slots:
+		result.append({"item_id": str(slot["item_id"]), "quantity": int(slot["quantity"])})
+	return result
+
+
+func load_storage_save_data(data: Array) -> void:
+	_ensure_ready()
+	_reset_storage()
+	for entry in data:
+		if not entry is Dictionary:
+			continue
+		var item_id := str(entry.get("item_id", ""))
+		var quantity_value: Variant = entry.get("quantity", 0)
+		if item_id.is_empty() or typeof(quantity_value) not in [TYPE_INT, TYPE_FLOAT]:
+			continue
+		var quantity := int(quantity_value)
+		var item = get_item_data(item_id)
+		if quantity <= 0 or item == null:
+			continue
+		_add_to_slots(storage_slots, item, quantity)
+	inventory_changed.emit()
 
 
 func set_ui_open(open: bool) -> void:

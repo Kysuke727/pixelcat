@@ -17,6 +17,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/quickbar_ui.tscn" id="15_quickbar"]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/crafting_ui.tscn" id="crafting_ui"]
+[ext_resource type="PackedScene" path="res://scenes/interactables/storage_chest.tscn" id="storage_chest"]
+[ext_resource type="Script" path="res://scripts/storage_ui.gd" id="storage_ui_script"]
 [ext_resource type="PackedScene" path="res://scenes/interactables/crafting_workbench.tscn" id="crafting_workbench"]
 [ext_resource type="PackedScene" path="res://scenes/combat/combat_camera.tscn" id="cam_camera"]
 
@@ -146,6 +148,12 @@ offset_bottom = 80.0
 [node name="QuickbarUI" parent="." instance=ExtResource("15_quickbar")]
 
 [node name="CraftingUI" parent="." instance=ExtResource("crafting_ui")]
+
+[node name="StorageUI" type="CanvasLayer" parent="."]
+script = ExtResource("storage_ui_script")
+
+[node name="StorageChest" parent="World" instance=ExtResource("storage_chest")]
+position = Vector2(530, 520)
 
 [node name="CraftingWorkbench" parent="World" instance=ExtResource("crafting_workbench")]
 position = Vector2(740, 525)

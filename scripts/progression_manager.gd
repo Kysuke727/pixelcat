@@ -316,6 +316,7 @@ func _profile_data() -> Dictionary:
 		"cleared_maps": cleared_maps.duplicate(),
 		"currency": CurrencyManager.get_save_data(),
 		"inventory": _inventory_save_data(),
+		"storage": _storage_save_data(),
 		"quickbar": _quickbar_save_data(),
 		"day_state": _day_state_save_data(),
 	}
@@ -324,6 +325,12 @@ func _profile_data() -> Dictionary:
 func _inventory_save_data() -> Array:
 	if is_instance_valid(InventoryManager):
 		return InventoryManager.get_save_data()
+	return []
+
+
+func _storage_save_data() -> Array:
+	if is_instance_valid(InventoryManager):
+		return InventoryManager.get_storage_save_data()
 	return []
 
 
@@ -489,6 +496,8 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 			return false
 	if profile.has("inventory") and not _is_valid_inventory_data(profile["inventory"]):
 		return false
+	if profile.has("storage") and not _is_valid_inventory_data(profile["storage"], InventoryManager.STORAGE_SLOT_COUNT * 4):
+		return false
 	if profile.has("quickbar") and not _is_valid_quickbar_data(profile["quickbar"]):
 		return false
 	if profile.has("day_state") and not _is_valid_day_state_data(profile["day_state"]):
@@ -498,10 +507,10 @@ func _is_valid_profile_fields(profile: Dictionary, current_format: bool) -> bool
 	return true
 
 
-func _is_valid_inventory_data(value: Variant) -> bool:
+func _is_valid_inventory_data(value: Variant, max_size: int = InventoryManager.SLOT_COUNT) -> bool:
 	if not value is Array:
 		return false
-	if value.size() > InventoryManager.SLOT_COUNT:
+	if value.size() > max_size:
 		return false
 	for entry in value:
 		if not entry is Dictionary:
@@ -691,6 +700,9 @@ func _load_profile_data(data: Dictionary) -> void:
 			if MoveCatalog.has_move_id(id) and not unlocked_moves.has(id):
 				unlocked_moves.append(id)
 	_load_inventory_data(data.get("inventory", []))
+	var storage_data: Variant = data.get("storage", [])
+	if is_instance_valid(InventoryManager):
+		InventoryManager.load_storage_save_data(storage_data if storage_data is Array else [])
 	_load_quickbar_data(data.get("quickbar", []))
 	_load_day_state_data(data.get("day_state", {}))
 	pending_allocation.clear()
