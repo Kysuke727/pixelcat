@@ -18,6 +18,8 @@ extends Camera2D
 
 var trauma: float = 0.0
 var _target: Node2D
+## A directional push (a hit "punches" the view away from the cat); decays fast.
+var kick: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -37,6 +39,12 @@ func _ready() -> void:
 	make_current()
 
 
+## Push the view by `amount` pixels along `direction` (whole pixels, decays quickly).
+func add_kick(direction: Vector2, amount: float) -> void:
+	kick += direction.normalized() * amount
+	kick = kick.limit_length(max_offset * 1.6)
+
+
 func add_trauma(amount: float) -> void:
 	trauma = minf(trauma + maxf(amount, 0.0), 1.0)
 
@@ -44,13 +52,15 @@ func add_trauma(amount: float) -> void:
 func _process(delta: float) -> void:
 	if follow_player:
 		_follow()
+	kick = kick.move_toward(Vector2.ZERO, (kick.length() * 9.0 + 4.0) * delta)
 	if trauma <= 0.0:
-		if offset != Vector2.ZERO:
-			offset = Vector2.ZERO
+		var kicked := Vector2(roundf(kick.x), roundf(kick.y))
+		if offset != kicked:
+			offset = kicked
 		return
 	trauma = maxf(trauma - decay * delta, 0.0)
 	var strength := trauma * trauma * max_offset
-	offset = Vector2(roundf(randf_range(-1.0, 1.0) * strength), roundf(randf_range(-1.0, 1.0) * strength))
+	offset = Vector2(roundf(randf_range(-1.0, 1.0) * strength + kick.x), roundf(randf_range(-1.0, 1.0) * strength + kick.y))
 
 
 func _follow() -> void:

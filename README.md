@@ -50,7 +50,7 @@
 - **招式**（靠探索学会）：**三段连击**（J J J）、**扑击**（冲刺后按 J）、**反击爪**（完美闪避后按 J）。扑击和反击爪必定击晕敌人。
 - **绕背暴击**：攻击面朝别处的敌人的背后，有 50% 概率暴击，伤害 ×2。
 - **接触史莱姆**：碰到活着的史莱姆有一定概率（不是每次）让你滑倒（失控约 0.6 秒）或被黏住（变慢、不能冲刺和闪避约 1.2 秒），触发后 2 秒内不会再中招。
-- 命中会有火花、伤害数字、顿帧和轻微震屏，每一类效果都有开关。
+- 挥爪有爪痕特效，每一下的挥法不同；命中有冲击星芒、火花、伤害数字、顿帧、震屏和镜头顶一下；暴击、完美闪避有屏幕闪光；史莱姆死亡会炸开果冻块并留下一滩；冲刺和闪避有尘土。每一类效果都有开关。
 - 史莱姆会绕过树和路灯来追你；隔着树墙时不会发起扑击。实在绕不过来会放弃追击，回到原处。
 
 ### 成长
@@ -124,6 +124,7 @@ GODOT=/path/to/godot bash tests/run_all.sh slime    # 只跑名字里含 slime �
 | [docs/death-and-contact.md](docs/death-and-contact.md) | 死亡结算、成功结算、接触史莱姆、绕背暴击、成长面板 |
 | [docs/maps/forest-grove.md](docs/maps/forest-grove.md) | 小树林地图 |
 | [docs/crafting-audio.md](docs/crafting-audio.md) | 合成界面的音效槽（给负责音乐的同学） |
+| [docs/combat-audio.md](docs/combat-audio.md) | 战斗音效：把文件放进 `assets/audio/sfx/combat/` 就会自动播放 |
 | [docs/improvements.md](docs/improvements.md) | 可以改进的地方，按优先级排列 |
 
 ## 约定

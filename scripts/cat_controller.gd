@@ -194,6 +194,9 @@ func _physics_process(delta: float) -> void:
 	if stick_time_left > 0.0:
 		movement_multiplier *= stick_speed_multiplier
 	velocity = direction * get_effective_move_speed() * movement_multiplier
+	# a claw swing steps the cat forward a little (the attack "lunge")
+	if combat != null and combat.has_method("get_attack_step_velocity"):
+		velocity += combat.get_attack_step_velocity()
 
 	if combat == null or not combat.has_method("is_action_active") or not combat.is_action_active():
 		update_animation(direction)
@@ -265,6 +268,8 @@ func _try_start_dodge(input_direction: Vector2) -> bool:
 	invincibility_left = maxf(invincibility_left, dodge_invulnerability_duration)
 	dodge_iframes_left = dodge_invulnerability_duration
 	perfect_dodge_triggered = false
+	HitFeel.play_sfx("dodge")
+	HitFeel.dust(global_position, dodge_direction)
 	return true
 
 
@@ -291,6 +296,8 @@ func _try_start_dash(input_direction: Vector2) -> bool:
 		combat.cancel_action()
 	last_facing = dash_direction
 	HitFeel.afterimage(animated_sprite, Color(1.0, 0.8, 0.9, 0.55))
+	HitFeel.dust(global_position, dash_direction)
+	HitFeel.play_sfx("dash")
 	dashed.emit()
 	return true
 
@@ -377,6 +384,7 @@ func _start_slip(source: Node) -> void:
 	slip_velocity = direction * slip_speed
 	slip_time_left = slip_duration
 	slipped.emit(source)
+	HitFeel.play_sfx("slip")
 	HitFeel.damage_number(global_position + Vector2(0.0, -22.0), "滑倒！", HitFeel.CYAN, 15)
 
 
@@ -384,6 +392,7 @@ func _start_stick(source: Node) -> void:
 	stick_time_left = stick_duration
 	animated_sprite.modulate = Color(0.7, 1.0, 0.7, 1.0)
 	got_stuck.emit(source)
+	HitFeel.play_sfx("stick")
 	HitFeel.damage_number(global_position + Vector2(0.0, -22.0), "被黏住了！", HitFeel.GREEN, 15)
 
 
@@ -555,7 +564,7 @@ func receive_damage(amount: float, source_position: Vector2, knockback_force: fl
 	pounce_time_left = 0.0
 	health_changed.emit(current_health, max_health)
 	play_hit_feedback()
-	HitFeel.player_hurt(global_position)
+	HitFeel.player_hurt(global_position, -knockback_direction)
 
 	if current_health <= 0:
 		die()

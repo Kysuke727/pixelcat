@@ -22,6 +22,7 @@ func _ready() -> void:
 
 
 func show_move(move_id: String) -> void:
+	HitFeel.play_sfx("learn_move")
 	_queue.append(move_id)
 	if not _showing:
 		_show_next()

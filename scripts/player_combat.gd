@@ -81,6 +81,7 @@ var melee_window_open: bool = false
 var hit_targets: Dictionary = {}
 var facing: Vector2 = Vector2.DOWN
 var using_formal_animation: bool = false
+var slash_spawned: bool = false
 var sprite_base_position: Vector2
 var sprite_base_rotation: float
 var sprite_base_scale: Vector2
@@ -201,6 +202,7 @@ func _start_melee_step(step: int) -> void:
 	melee_cooldown_left = melee_cooldown
 	melee_window_open = false
 	hit_targets.clear()
+	slash_spawned = false
 	if step >= 2:
 		combo_window_open = false
 		combo_window_left = 0.0
@@ -211,7 +213,7 @@ func _start_melee_step(step: int) -> void:
 	facing = _get_facing()
 	_update_hitbox_transform()
 	_begin_action_visual("attack")
-	attack_arc.visible = not using_formal_animation
+	attack_arc.visible = false   # the slash effect (HitFeel.slash) replaces the old triangle
 
 
 ## Moves that start from a special situation instead of the normal combo:
@@ -243,6 +245,7 @@ func _start_special(state: int) -> void:
 	action_time = 0.0
 	melee_window_open = false
 	hit_targets.clear()
+	slash_spawned = false
 	combo_window_open = false
 	combo_window_left = 0.0
 	buffered_combo = false
@@ -250,7 +253,7 @@ func _start_special(state: int) -> void:
 	facing = _get_facing()
 	_update_hitbox_transform()
 	_begin_action_visual("attack")
-	attack_arc.visible = not using_formal_animation
+	attack_arc.visible = false   # the slash effect (HitFeel.slash) replaces the old triangle
 	if state == ActionState.POUNCE:
 		var direction: Vector2 = player.get_last_facing() if player.has_method("get_last_facing") else facing
 		player.start_pounce(direction, pounce_distance, pounce_move_duration)
@@ -287,6 +290,9 @@ func _update_action(previous_action_time: float = -1.0) -> void:
 		var active_end := timings.y
 		var duration := timings.z
 		var previous_time := action_time if previous_action_time < 0.0 else previous_action_time
+		if not slash_spawned and action_time >= active_start * 0.6:
+			slash_spawned = true
+			_spawn_slash()
 		if not melee_window_open and previous_time < active_start and action_time >= active_end:
 			_apply_melee_shape_query()
 		elif not melee_window_open and previous_time < active_end and action_time >= active_start:
@@ -396,7 +402,8 @@ func _try_damage_target(target: Node) -> void:
 	if not accepted:
 		return
 	var hit_position: Vector2 = (target as Node2D).global_position if target is Node2D else player.global_position
-	HitFeel.melee_hit(hit_position, attack_damage, state != ActionState.ATTACK1, state == ActionState.ATTACK3 or state == ActionState.POUNCE, is_crit)
+	var blow_direction: Vector2 = (hit_position - player.global_position).normalized()
+	HitFeel.melee_hit(hit_position, attack_damage, state != ActionState.ATTACK1, state == ActionState.ATTACK3 or state == ActionState.POUNCE, is_crit, blow_direction)
 	if state == ActionState.ATTACK1:
 		if not combo_window_open:
 			combo_window_open = true
@@ -436,6 +443,7 @@ func _try_damage_target(target: Node) -> void:
 		_apply_guaranteed_stun(target)
 		_grant_combo_reward(hit_position)
 	if is_crit:
+		HitFeel.slash(hit_position, blow_direction, "crit")
 		combo_feedback_text = "绕背暴击！"
 		combo_hit_feedback_left = 0.65
 
@@ -586,12 +594,93 @@ func _begin_action_visual(prefix: String) -> void:
 func _update_fallback_visual(progress: float) -> void:
 	if using_formal_animation:
 		return
-	var eased := sin(clampf(progress, 0.0, 1.0) * PI)
-	sprite.position = sprite_base_position + facing * eased * 3.0
+	var p := clampf(progress, 0.0, 1.0)
 	if _is_melee_state(action_state):
-		sprite.rotation = sprite_base_rotation + eased * 0.18 * (1.0 if facing.x >= 0.0 else -1.0)
+		_apply_attack_pose(p)
 	else:
+		var eased := sin(p * PI)
+		sprite.position = sprite_base_position + facing * eased * 3.0
 		sprite.scale = sprite_base_scale * (1.0 + eased * 0.08)
+
+
+## Placeholder attack animation (until real frames are drawn): wind up (pull back and squash),
+## strike (lunge and stretch along the swing), then settle. Each claw step swings its own way.
+func _apply_attack_pose(p: float) -> void:
+	var timings := _melee_timings()
+	var strike_start := timings.x / timings.z
+	var strike_end := timings.y / timings.z
+	var lunge := _attack_lunge_distance()
+	var offset := Vector2.ZERO
+	var squash := 0.0     # +1 = fully stretched along the swing, -1 = fully squashed
+	var tilt := 0.0
+	var side := 1.0 if facing.x >= 0.0 else -1.0
+	if action_state == ActionState.ATTACK2 or action_state == ActionState.COUNTER:
+		side = -side
+	if p < strike_start:
+		var w := p / maxf(strike_start, 0.001)
+		offset = -facing * 3.0 * w
+		squash = -0.6 * w
+		tilt = -0.2 * side * w
+	elif p < strike_end:
+		var w := (p - strike_start) / maxf(strike_end - strike_start, 0.001)
+		var e := 1.0 - pow(1.0 - w, 3.0)
+		offset = facing * lerpf(-3.0, lunge * 0.55, e)
+		squash = lerpf(-0.6, 1.0, e)
+		tilt = lerpf(-0.2, 0.3, e) * side
+	else:
+		var w := (p - strike_end) / maxf(1.0 - strike_end, 0.001)
+		var e := 1.0 - pow(1.0 - clampf(w, 0.0, 1.0), 2.0)
+		offset = facing * lerpf(lunge * 0.55, 0.0, e)
+		squash = lerpf(1.0, 0.0, e)
+		tilt = lerpf(0.3, 0.0, e) * side
+	var along := Vector2(1.0, 1.0)
+	if absf(facing.x) > absf(facing.y):
+		along = Vector2(1.0 + 0.16 * squash, 1.0 - 0.10 * squash)
+	else:
+		along = Vector2(1.0 - 0.10 * squash, 1.0 + 0.16 * squash)
+	sprite.position = sprite_base_position + offset
+	sprite.scale = sprite_base_scale * along
+	sprite.rotation = sprite_base_rotation + tilt
+
+
+func _attack_lunge_distance() -> float:
+	match action_state:
+		ActionState.ATTACK3:
+			return 22.0
+		ActionState.ATTACK2:
+			return 16.0
+		ActionState.COUNTER:
+			return 9.0
+		ActionState.POUNCE:
+			return 8.0
+		_:
+			return 13.0
+
+
+## The forward step of a claw swing, as extra velocity for the cat (only during the strike).
+## The pounce moves the cat by itself, so it adds nothing.
+func get_attack_step_velocity() -> Vector2:
+	if not _is_melee_state(action_state) or action_state == ActionState.POUNCE:
+		return Vector2.ZERO
+	var timings := _melee_timings()
+	if action_time < timings.x * 0.6 or action_time > timings.y:
+		return Vector2.ZERO
+	var window := maxf(timings.y - timings.x * 0.6, 0.02)
+	return facing * (_attack_lunge_distance() / window) * 0.8
+
+
+func _spawn_slash() -> void:
+	var kind := "claw1"
+	match action_state:
+		ActionState.ATTACK2:
+			kind = "claw2"
+		ActionState.ATTACK3:
+			kind = "claw3"
+		ActionState.POUNCE:
+			kind = "pounce"
+		ActionState.COUNTER:
+			kind = "counter"
+	HitFeel.slash(player.global_position + Vector2(0.0, 4.0), facing, kind)
 
 
 func _finish_action() -> void:
