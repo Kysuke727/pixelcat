@@ -42,6 +42,10 @@ PAWPRINTS = [(470, 905), (500, 860), (445, 815), (410, 770)]   # faint hint towa
 TRAIL_MOUTH = (520, 900)
 
 
+# Fireflies drift over each clearing (x, y, w, h in world pixels).
+FIREFLY_AREAS = [(cx - rx * 0.8, cy - ry * 0.8, rx * 1.6, ry * 1.6) for (cx, cy, rx, ry) in ZONES.values()]
+
+
 def dist_to_segment(p, a, b):
     ax, ay = a; bx, by = b; px, py = p
     dx, dy = bx - ax, by - ay

@@ -20,6 +20,7 @@ const OUT_PATH := "res://scenes/worlds/forest_grove.tscn"
 var park: Node
 var map_root: Node2D
 var level: Dictionary
+var failed: bool = false
 
 
 func _initialize() -> void:
@@ -40,9 +41,9 @@ func _initialize() -> void:
 	hud.name = "HUD"
 	hud.layer = 5
 	_adopt(hud)
-	_take("CoinUI", hud)
-	_take("BattleUI", hud)
-	_take("QuickbarUI", hud)
+	_take("HUD/CoinUI", hud)
+	_take("HUD/BattleUI", hud)
+	_take("HUD/QuickbarUI", hud)
 	var cat := _take("Cat", map_root)
 	cat.position = _vec(level["start"])
 	_add_enemies()
@@ -56,8 +57,13 @@ func _initialize() -> void:
 	camera.set("follow_player", true)
 	var world: Array = level["world"]
 	camera.set("world_rect", Rect2(0, 0, float(world[0]), float(world[1])))
+	_add_atmosphere()   # must stay the LAST child: it builds its lights from the nodes above
 
 	park.free()
+	if failed:
+		push_error("A node the forest needs was not found in the park scene; NOT saving a broken scene")
+		quit(1)
+		return
 	var packed := PackedScene.new()
 	var pack_error := packed.pack(map_root)
 	if pack_error != OK:
@@ -92,11 +98,15 @@ func _set_owner_recursive(node: Node) -> void:
 
 ## Move a node of the park scene into the new scene, keeping its configuration.
 func _take(node_name: String, new_parent: Node) -> Node:
-	var node := park.get_node(node_name)
+	var node := park.get_node_or_null(node_name)
+	if node == null:
+		push_error("Park scene has no node '%s'" % node_name)
+		failed = true
+		return Node.new()  # a throw-away so the rest of the run can report every problem
 	var owners := {}
 	for child in node.find_children("*", "", true, false):
 		owners[child] = child.owner
-	park.remove_child(node)
+	node.get_parent().remove_child(node)
 	# Clear the old owners first, otherwise Godot warns they are inconsistent.
 	node.owner = null
 	for child in owners:
@@ -250,6 +260,19 @@ func _add_music() -> void:
 	music.stream = original.stream
 	music.autoplay = true
 	_adopt(music)
+
+
+## Night look: tint, lamp / cat / exit lights, fireflies, vignette (see scripts/night_atmosphere.gd).
+func _add_atmosphere() -> void:
+	var atmosphere := Node.new()
+	atmosphere.name = "NightAtmosphere"
+	atmosphere.set_script(load("res://scripts/night_atmosphere.gd"))
+	var areas: Array[Rect2] = []
+	for area in level.get("firefly_areas", []):
+		areas.append(Rect2(float(area[0]), float(area[1]), float(area[2]), float(area[3])))
+	atmosphere.set("firefly_areas", areas)
+	atmosphere.set("fireflies_per_area", 10)
+	_adopt(atmosphere)
 
 
 ## The arrows that point at the remaining enemies (and, once it is open, the exit).

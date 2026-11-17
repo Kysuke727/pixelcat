@@ -156,6 +156,8 @@ func spark(world_position: Vector2, color: Color = CREAM, count: int = 6, speed:
 	particles.scale_amount_max = 3.0
 	particles.color = color
 	particles.z_index = 80
+	particles.modulate = _lift()
+	particles.light_mask = 0
 	scene.add_child(particles)
 	particles.global_position = world_position
 	particles.emitting = true
@@ -177,6 +179,8 @@ func damage_number(world_position: Vector2, text: String, color: Color = CREAM, 
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", INK)
 	label.add_theme_constant_override("outline_size", 5)
+	label.modulate = _lift()
+	label.light_mask = 0  # not lit by the night lights: the lift above already cancels the tint
 	scene.add_child(label)
 	label.reset_size()
 	label.global_position = world_position - label.size / 2.0 + Vector2(randf_range(-8.0, 8.0), -14.0)
@@ -219,6 +223,15 @@ func afterimage(source: AnimatedSprite2D, tint: Color = Color(1.0, 1.0, 1.0, 0.5
 	var tween := ghost.create_tween()
 	tween.tween_property(ghost, "modulate:a", 0.0, 0.22)
 	tween.tween_callback(ghost.queue_free)
+
+
+## Colour that cancels a night map's dark tint (white when there is none), so floating text and
+## sparks stay readable at night.
+func _lift() -> Color:
+	for atmosphere in get_tree().get_nodes_in_group("night_atmosphere"):
+		if atmosphere.has_method("lift_modulate"):
+			return atmosphere.lift_modulate()
+	return Color.WHITE
 
 
 func _format_amount(amount: float) -> String:

@@ -25,7 +25,7 @@ func _run() -> void:
 		await process_frame
 	var hud = get_first_node_in_group("battle_ui")
 	var player = get_first_node_in_group("player")
-	var coin: Control = scene.get_node("CoinUI/PanelContainer")
+	var coin: Control = scene.get_node("HUD/CoinUI/PanelContainer")
 	var strip: Control = hud.get_node("Strip")
 
 	# --- Size and placement -------------------------------------------------------------

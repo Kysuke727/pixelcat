@@ -279,6 +279,7 @@ def main():
         "start": START, "path": PATH, "exit": EXIT, "secret": SECRET,
         "enemies": ENEMIES, "optional_enemies": OPTIONAL_ENEMIES, "lamps": LAMPS, "pawprints": PAWPRINTS,
         "secret_radius": SECRET_RADIUS,
+        "firefly_areas": FIREFLY_AREAS,
     }
     (ROOT / "tools" / "data").mkdir(parents=True, exist_ok=True)
     (ROOT / "tools" / "data" / "forest_grove_level.json").write_text(json.dumps(level, ensure_ascii=False))
