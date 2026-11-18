@@ -75,7 +75,10 @@ LAMPS = [(760, 2180), (1180, 1960), (1750, 1560), (2280, 1250), (2950, 1130), (3
 PAWPRINTS = [(590, 2070), (640, 2030), (610, 1960), (560, 1880), (520, 1800)]
 
 # "Cat secrets": walking in teaches a move once.
-SECRETS = [{"id": "old_tree_hollow", "pos": (430, 402), "move_id": "triple_combo"}]
+SECRETS = [
+    {"id": "old_tree_hollow", "pos": (430, 402), "move_id": "triple_combo"},
+    {"id": "bench_hollow", "pos": (740, 920), "move_id": "shield_bash"},
+]
 
 # Hidden stashes. items = item_id -> quantity (the backpack must have room for ALL of it).
 LOOT = [

@@ -350,7 +350,7 @@ func _play(stream: AudioStream) -> void:
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_db = sound_volume_db
-	player.bus = &"Master"
+	player.bus = &"SFX"
 	add_child(player)
 	player.finished.connect(player.queue_free)
 	player.play()

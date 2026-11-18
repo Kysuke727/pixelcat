@@ -16,14 +16,19 @@ func _run() -> void:
 	root.add_child(menu)
 	current_scene = menu
 	await process_frame
-	for path in ["GalleryButton2", "SettingsButtonButton4"]:
+	for path in ["GalleryButton2"]:
 		var button: Button = menu.get_node("MenuPanel/MenuButtons/" + path)
 		_check(button.disabled, "%s is disabled" % path)
 		_check(button.tooltip_text.contains("还没做"), "%s explains why" % path)
 		_check(button.modulate.a < 1.0, "%s is visibly dimmed" % path)
-	for path in ["NewGameButton2", "ExitButton2"]:
+	for path in ["NewGameButton2", "ExitButton2", "SettingsButtonButton4"]:
 		var button: Button = menu.get_node("MenuPanel/MenuButtons/" + path)
 		_check(not button.disabled and is_equal_approx(button.modulate.a, 1.0), "%s is untouched" % path)
+	# The settings button opens the settings screen.
+	var settings_button: Button = menu.get_node("MenuPanel/MenuButtons/SettingsButtonButton4")
+	settings_button.pressed.emit()
+	_check(root.get_node("SettingsMenu").is_open(), "the settings button opens the settings screen")
+	root.get_node("SettingsMenu").close()
 	# Continue is only available with a save (not touched by this change).
 	var cont: Button = menu.get_node("MenuPanel/MenuButtons/ContinueButton")
 	_check(is_equal_approx(cont.modulate.a, 1.0), "Continue keeps its normal look")

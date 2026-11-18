@@ -38,6 +38,14 @@ signal got_stuck(source: Node)
 @export var guard_break_restore_ratio: float = 0.3
 @export var perfect_guard_window: float = 0.25
 @export var perfect_guard_pause_duration: float = 1.0
+## Shield bash (破盾弹反, hold Z + press H): costs shield durability, knocks enemies in front
+## away and stuns them; an enemy caught in the middle of an attack is parried outright.
+@export var shield_bash_cost: float = 30.0
+@export var shield_bash_range: float = 170.0
+@export var shield_bash_knockback: float = 560.0
+@export var shield_bash_stun: float = 1.4
+@export var shield_bash_cooldown: float = 2.0
+@export var shield_bash_guard_time: float = 0.35
 
 var current_health: float
 var nearby_objects: Array[Node] = []
@@ -84,6 +92,9 @@ var guard_break_left: float = 0.0
 var stun_left: float = 0.0
 var _stun_stars: Label
 var is_defending: bool = false
+var shield_bash_cooldown_left: float = 0.0
+## While > 0 every blocked attack is free (the bash itself is a hard guard).
+var shield_bash_guard_left: float = 0.0
 var perfect_guard_flash_left: float = 0.0
 var defend_must_release: bool = false
 var perfect_guard_hold_consumed: bool = false
@@ -490,6 +501,8 @@ func is_guard_broken() -> bool:
 
 func _update_defense(delta: float) -> void:
 	perfect_guard_flash_left = maxf(perfect_guard_flash_left - delta, 0.0)
+	shield_bash_cooldown_left = maxf(shield_bash_cooldown_left - delta, 0.0)
+	shield_bash_guard_left = maxf(shield_bash_guard_left - delta, 0.0)
 	var defend_held := Input.is_action_pressed("defend")
 	var defend_just_pressed := Input.is_action_just_pressed("defend")
 	if not defend_held:
@@ -521,6 +534,8 @@ func _update_defense(delta: float) -> void:
 		is_defending = true
 		if combat != null and combat.has_method("cancel_action"):
 			combat.cancel_action()
+	if is_defending and Input.is_action_just_pressed("shield_bash"):
+		try_shield_bash()
 	_update_shield_regeneration(delta)
 
 
@@ -575,6 +590,49 @@ func _try_perfect_guard() -> bool:
 	time_controller.pause_enemy_side(perfect_guard_pause_duration)
 	perfect_guard_flash_left = perfect_guard_pause_duration
 	HitFeel.perfect_guard(global_position)
+	return true
+
+
+## 破盾弹反: hold Z and press H. Returns true when the bash went off.
+func try_shield_bash() -> bool:
+	if (
+		dead or not is_defending or stun_left > 0.0 or guard_break_left > 0.0 or hitstun_left > 0.0
+		or shield_bash_cooldown_left > 0.0 or shield_durability < shield_bash_cost
+		or not ProgressionManager.has_move("shield_bash")
+	):
+		return false
+	shield_durability -= shield_bash_cost
+	shield_regen_delay_left = shield_regen_delay
+	shield_bash_cooldown_left = shield_bash_cooldown
+	shield_bash_guard_left = shield_bash_guard_time
+	var forward := last_facing.normalized()
+	var hit := 0
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy) or not (enemy is Node2D):
+			continue
+		var to_enemy: Vector2 = enemy.global_position - global_position
+		if to_enemy.length() > shield_bash_range or (to_enemy.length() > 24.0 and to_enemy.normalized().dot(forward) < 0.0):
+			continue
+		hit += 1
+		var parried := false
+		if enemy.has_method("parry_attack") and "current_attack_id" in enemy and int(enemy.current_attack_id) > 0:
+			parried = bool(enemy.parry_attack(int(enemy.current_attack_id)))
+		if enemy.has_method("receive_damage"):
+			enemy.receive_damage(1.0, global_position, shield_bash_knockback)
+		if enemy.has_method("apply_stun"):
+			# stun after the shove so it does not cancel the knockback
+			var stun_time := shield_bash_stun + (0.6 if parried else 0.0)
+			get_tree().create_timer(0.25).timeout.connect(func():
+				if is_instance_valid(enemy):
+					enemy.apply_stun(stun_time, 1.0)
+			)
+		HitFeel.impact(enemy.global_position, to_enemy.normalized(), 1.0, HitFeel.GOLD)
+		HitFeel.damage_number(enemy.global_position + Vector2(0.0, -26.0), "弹反！" if parried else "击开！", HitFeel.GOLD, 16)
+	HitFeel.ring(global_position + forward * 40.0, HitFeel.GOLD, 70.0, 0.28)
+	HitFeel.shake(0.3 if hit > 0 else 0.1)
+	HitFeel.kick(forward, 4.0)
+	if hit > 0:
+		HitFeel.hit_stop(0.08)
 	return true
 
 
@@ -651,6 +709,8 @@ func try_block_attack(attack_id: int, shield_damage: float = 25.0) -> bool:
 		return bool(attack_block_handler.call(attack_id))
 	if dead or guard_break_left > 0.0 or not is_defending or shield_durability <= 0.0:
 		return false
+	if shield_bash_guard_left > 0.0:
+		return true   # the bash is a hard guard: blocked for free
 	shield_durability = maxf(shield_durability - maxf(shield_damage, 0.0), 0.0)
 	shield_regen_delay_left = shield_regen_delay
 	if shield_durability <= 0.0:

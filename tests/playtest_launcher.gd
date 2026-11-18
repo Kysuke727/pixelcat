@@ -31,7 +31,7 @@ func _run() -> void:
 		_check(requested.size() == 1 and requested[0] == case[1], "%s loads %s" % [case[0], case[1]])
 		_check(pm._test_mode, "%s runs in test mode (nothing is saved)" % case[0])
 		_check(exp.run_active and day.current_state == day.TimeState.NIGHT, "%s starts a night run" % case[0])
-		_check((pm.unlocked_moves.size() == 3) == case[2], "%s moves unlocked = %s" % [case[0], str(case[2])])
+		_check((pm.unlocked_moves.size() == MoveCatalog.ids().size()) == case[2], "%s moves unlocked = %s" % [case[0], str(case[2])])
 		_check(not pm.is_map_cleared("park"), "%s does not need (or fake) clearing the earlier maps" % case[0])
 		launcher.queue_free()
 		await process_frame

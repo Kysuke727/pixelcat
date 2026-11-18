@@ -35,7 +35,7 @@ func _run() -> void:
 	var day = root.get_node("DayManager")
 
 	# --- Catalog and unlock API -------------------------------------------------
-	_check(MoveCatalog.ids().size() == 3, "three learnable moves are defined")
+	_check(MoveCatalog.ids().size() == 4, "four learnable moves are defined")
 	for id in MoveCatalog.ids():
 		_check(MoveCatalog.display_name(id) != id and MoveCatalog.hint(id) != "", "move %s has a name and hint" % id)
 	_check(pm.unlocked_moves.is_empty(), "no moves are learned at the start")
@@ -229,7 +229,7 @@ func _run() -> void:
 	pm._load_profile_data({})
 	var debug_panel = main_scene.get_node("DebugPanel")
 	debug_panel._unlock_all_moves()
-	_check(pm.unlocked_moves.size() == 3, "debug panel unlocks every move")
+	_check(pm.unlocked_moves.size() == 4, "debug panel unlocks every move")
 	debug_panel._clear_moves()
 	_check(pm.unlocked_moves.is_empty(), "debug panel clears learned moves")
 

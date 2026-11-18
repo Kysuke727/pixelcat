@@ -63,19 +63,20 @@ func _run() -> void:
 	_check(not text.contains("技巧") and not text.contains("减速") and not text.contains("束缚") and not text.contains("绕圈") and not text.contains("连接"), "no trace of the old skill branches in the panel text")
 	_check(text.contains("招式"), "the panel has a moves section")
 	var mysteries := text.count("？？？")
-	_check(mysteries == 3, "nothing learned yet: three mystery entries (%d)" % mysteries)
+	_check(mysteries == 4, "nothing learned yet: four mystery entries (%d)" % mysteries)
 	_check(not text.contains("✓"), "no learned marks yet")
 	pm.unlock_move("pounce")
 	await process_frame
 	text = _texts(layer.panel)
 	_check(text.contains("✓ 扑击") and text.contains("冲刺后 J"), "a learned move shows its name and key")
 	_check(text.contains("冲刺之后马上按 J"), "...and its description")
-	_check(text.count("？？？") == 2, "the others stay a mystery")
+	_check(text.count("？？？") == 3, "the others stay a mystery")
 	pm.unlock_move("triple_combo")
 	pm.unlock_move("counter_claw")
+	pm.unlock_move("shield_bash")
 	await process_frame
 	text = _texts(layer.panel)
-	_check(text.count("？？？") == 0 and text.count("✓") == 3, "all learned: no mysteries left")
+	_check(text.count("？？？") == 0 and text.count("✓") == 4, "all learned: no mysteries left")
 
 	# The little Lv/XP strip.
 	var hud_text: String = layer.hud_label.text

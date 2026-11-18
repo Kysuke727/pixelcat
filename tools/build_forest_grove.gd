@@ -221,7 +221,7 @@ func _add_props() -> void:
 		# need the autoload singletons the script uses at compile time.
 		var spot := Area2D.new()
 		spot.set_script(load("res://scripts/secret_spot.gd"))
-		spot.name = "SecretSpot"
+		spot.name = "SecretSpot" if str(secret_data["move_id"]) == "triple_combo" else "SecretSpot_%s" % secret_data["id"]
 		spot.position = secret + Vector2(0.0, 22.0)
 		spot.collision_layer = 0
 		spot.collision_mask = 1

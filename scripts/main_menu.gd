@@ -23,6 +23,9 @@ func _ready() -> void:
 	confirmation.confirmed.connect(_start_new_game)
 	add_child(confirmation)
 	_disable_unfinished_buttons()
+	var settings_button := get_node_or_null("MenuPanel/MenuButtons/SettingsButtonButton4") as Button
+	if settings_button != null:
+		settings_button.pressed.connect(func() -> void: SettingsMenu.open())
 
 
 func _continue_game() -> void:
@@ -52,12 +55,11 @@ func _start_new_game() -> void:
 	DayManager.enter_from_menu(DAY_SCENE, true)
 
 
-## The gallery and settings buttons are placeholders for now: show them greyed out with a
+## The gallery button is a placeholder for now: show them greyed out with a
 ## tooltip instead of letting players click buttons that do nothing. To enable one later,
 ## connect its `pressed` signal and remove its path from this list.
 const UNFINISHED_BUTTONS := [
 	"MenuPanel/MenuButtons/GalleryButton2",
-	"MenuPanel/MenuButtons/SettingsButtonButton4",
 ]
 
 
